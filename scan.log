@@ -1,0 +1,9 @@
+/Users/iliaraizman/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+$BLDE: possibly delisted; no price data found  (period=3mo) (Yahoo error = "No data found, symbol may be delisted")
+$SMAR: possibly delisted; no price data found  (period=3mo) (Yahoo error = "No data found, symbol may be delisted")
+$ZI: possibly delisted; no price data found  (period=3mo) (Yahoo error = "No data found, symbol may be delisted")
+[2026-04-05 22:50:01] מתחיל סריקה...
+סרקתי 47 מניות
+✅ מייל נשלח (22:50:44)
+סיום.
