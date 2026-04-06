@@ -16,9 +16,7 @@ _yf_session.headers['User-Agent'] = (
 )
 
 def _ticker(symbol):
-    t = yf.Ticker(symbol)
-    t.session = _yf_session
-    return t
+    return yf.Ticker(symbol, session=_yf_session)
 
 
 # ── מצב שוק + שעות מסחר ──────────────────────────────────────────────────────
@@ -459,7 +457,7 @@ def get_market_breadth():
     try:
         above = 0
         total = 0
-        data = yf.download(BREADTH_SAMPLE, period="1y", auto_adjust=True, progress=False)
+        data = yf.download(BREADTH_SAMPLE, period="1y", auto_adjust=True, progress=False, session=_yf_session)
         close = data['Close'] if 'Close' in data else data
         for ticker in BREADTH_SAMPLE:
             try:
@@ -564,7 +562,7 @@ def get_market_drivers():
     tickers = [c["ticker"] for c in COMMODITIES]
     try:
         import yfinance as yf
-        data = yf.download(tickers, period="5d", auto_adjust=True, progress=False)
+        data = yf.download(tickers, period="5d", auto_adjust=True, progress=False, session=_yf_session)
         close = data['Close'] if 'Close' in data else data
 
         for c in COMMODITIES:
@@ -704,7 +702,7 @@ def get_futures():
     results = []
     try:
         tickers = [f["ticker"] for f in FUTURES_LIST]
-        data = yf.download(tickers, period="5d", auto_adjust=True, progress=False)
+        data = yf.download(tickers, period="5d", auto_adjust=True, progress=False, session=_yf_session)
         close = data['Close'] if 'Close' in data else data
 
         for fut in FUTURES_LIST:

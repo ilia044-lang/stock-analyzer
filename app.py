@@ -14,9 +14,7 @@ _yf_session.headers['User-Agent'] = (
 )
 
 def _ticker(symbol):
-    t = yf.Ticker(symbol)
-    t.session = _yf_session
-    return t
+    return yf.Ticker(symbol, session=_yf_session)
 from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
                          get_sector_performance, get_upcoming_events,
                          get_market_drivers, get_futures,
