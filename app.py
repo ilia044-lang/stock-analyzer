@@ -745,7 +745,10 @@ def analyze():
         else:
             rec, rec_key = 'המתן - תמונה מעורבת, אין כיוון ברור', 'neutral'
 
-        prev_close = round(df['Close'].iloc[-1], 2)
+        prev_close      = round(df['Close'].iloc[-1], 2)
+        prev_prev_close = round(df['Close'].iloc[-2], 2) if len(df) >= 2 else prev_close
+        yesterday_change     = round(prev_close - prev_prev_close, 2)
+        yesterday_change_pct = round(yesterday_change / prev_prev_close * 100, 2) if prev_prev_close else 0
 
         # מחיר עדכני — פרה/אפטר מרקט קודם, אחר כך מחיר רגיל
         try:
@@ -956,6 +959,9 @@ def analyze():
             'company_name': company_name,
             'currency': currency,
             'current_price': current_price,
+            'prev_close': prev_close,
+            'yesterday_change': yesterday_change,
+            'yesterday_change_pct': yesterday_change_pct,
             'change': change,
             'change_pct': change_pct,
             'trend': trend,
@@ -1006,7 +1012,10 @@ def get_price():
         df = stock.history(period='2d')
         if df.empty or len(df) < 2:
             return jsonify({'error': 'no data'}), 404
-        prev_close = round(df['Close'].iloc[-1], 2)
+        prev_close      = round(df['Close'].iloc[-1], 2)
+        prev_prev_close = round(df['Close'].iloc[-2], 2) if len(df) >= 2 else prev_close
+        yesterday_change     = round(prev_close - prev_prev_close, 2)
+        yesterday_change_pct = round(yesterday_change / prev_prev_close * 100, 2) if prev_prev_close else 0
         info = stock.info
 
         # מחיר עדכני — פרה/אפטר מרקט קודם
@@ -1030,6 +1039,9 @@ def get_price():
         currency   = info.get('currency', 'USD')
         return jsonify({
             'current_price': current_price,
+            'prev_close': prev_close,
+            'yesterday_change': yesterday_change,
+            'yesterday_change_pct': yesterday_change_pct,
             'change': change,
             'change_pct': change_pct,
             'currency': currency,
