@@ -8,12 +8,16 @@ import datetime
 import yfinance as yf
 import requests as _req
 
-_yf_session = _req.Session()
-_yf_session.headers['User-Agent'] = (
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-    'AppleWebKit/537.36 (KHTML, like Gecko) '
-    'Chrome/120.0.0.0 Safari/537.36'
-)
+try:
+    from curl_cffi import requests as _curl
+    _yf_session = _curl.Session(impersonate="chrome110")
+except ImportError:
+    _yf_session = _req.Session()
+    _yf_session.headers['User-Agent'] = (
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/120.0.0.0 Safari/537.36'
+    )
 
 def _ticker(symbol):
     return yf.Ticker(symbol, session=_yf_session)

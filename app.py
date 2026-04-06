@@ -5,13 +5,17 @@ import numpy as np
 import time
 import requests
 
-# מונע חסימה של yfinance על שרתי ענן
-_yf_session = requests.Session()
-_yf_session.headers['User-Agent'] = (
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-    'AppleWebKit/537.36 (KHTML, like Gecko) '
-    'Chrome/120.0.0.0 Safari/537.36'
-)
+# מונע חסימה של yfinance על שרתי ענן — curl_cffi מדמה דפדפן אמיתי
+try:
+    from curl_cffi import requests as curl_requests
+    _yf_session = curl_requests.Session(impersonate="chrome110")
+except ImportError:
+    _yf_session = requests.Session()
+    _yf_session.headers['User-Agent'] = (
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/120.0.0.0 Safari/537.36'
+    )
 
 def _ticker(symbol):
     return yf.Ticker(symbol, session=_yf_session)
