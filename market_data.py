@@ -6,21 +6,8 @@ import urllib.request
 import json
 import datetime
 import yfinance as yf
-import requests as _req
-
-try:
-    from curl_cffi import requests as _curl
-    _yf_session = _curl.Session(impersonate="chrome110")
-except ImportError:
-    _yf_session = _req.Session()
-    _yf_session.headers['User-Agent'] = (
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) '
-        'Chrome/120.0.0.0 Safari/537.36'
-    )
-
 def _ticker(symbol):
-    return yf.Ticker(symbol, session=_yf_session)
+    return yf.Ticker(symbol)
 
 
 # ── מצב שוק + שעות מסחר ──────────────────────────────────────────────────────
@@ -461,7 +448,7 @@ def get_market_breadth():
     try:
         above = 0
         total = 0
-        data = yf.download(BREADTH_SAMPLE, period="1y", auto_adjust=True, progress=False, session=_yf_session)
+        data = yf.download(BREADTH_SAMPLE, period="1y", auto_adjust=True, progress=False)
         close = data['Close'] if 'Close' in data else data
         for ticker in BREADTH_SAMPLE:
             try:
@@ -566,7 +553,7 @@ def get_market_drivers():
     tickers = [c["ticker"] for c in COMMODITIES]
     try:
         import yfinance as yf
-        data = yf.download(tickers, period="5d", auto_adjust=True, progress=False, session=_yf_session)
+        data = yf.download(tickers, period="5d", auto_adjust=True, progress=False)
         close = data['Close'] if 'Close' in data else data
 
         for c in COMMODITIES:
@@ -706,7 +693,7 @@ def get_futures():
     results = []
     try:
         tickers = [f["ticker"] for f in FUTURES_LIST]
-        data = yf.download(tickers, period="5d", auto_adjust=True, progress=False, session=_yf_session)
+        data = yf.download(tickers, period="5d", auto_adjust=True, progress=False)
         close = data['Close'] if 'Close' in data else data
 
         for fut in FUTURES_LIST:
