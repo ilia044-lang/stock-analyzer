@@ -754,11 +754,11 @@ def analyze():
         try:
             fi  = stock.fast_info
             live = (
-                fi.get('preMarketPrice') or
-                fi.get('postMarketPrice') or
+                getattr(fi, 'preMarketPrice', None) or
+                getattr(fi, 'postMarketPrice', None) or
                 info.get('preMarketPrice') or
                 info.get('postMarketPrice') or
-                fi.get('lastPrice') or
+                getattr(fi, 'lastPrice', None) or
                 info.get('currentPrice') or
                 info.get('regularMarketPrice')
             )
@@ -1022,11 +1022,11 @@ def get_price():
         try:
             fi  = stock.fast_info
             live = (
-                fi.get('preMarketPrice') or
-                fi.get('postMarketPrice') or
+                getattr(fi, 'preMarketPrice', None) or
+                getattr(fi, 'postMarketPrice', None) or
                 info.get('preMarketPrice') or
                 info.get('postMarketPrice') or
-                fi.get('lastPrice') or
+                getattr(fi, 'lastPrice', None) or
                 info.get('currentPrice') or
                 info.get('regularMarketPrice')
             )
