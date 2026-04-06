@@ -745,10 +745,26 @@ def analyze():
         else:
             rec, rec_key = 'המתן - תמונה מעורבת, אין כיוון ברור', 'neutral'
 
-        current_price = round(df['Close'].iloc[-1], 2)
-        prev_close    = round(df['Close'].iloc[-2], 2)
-        change        = round(current_price - prev_close, 2)
-        change_pct    = round(change / prev_close * 100, 2)
+        prev_close = round(df['Close'].iloc[-1], 2)
+
+        # מחיר עדכני — פרה/אפטר מרקט אם זמין, אחרת סגירה אחרונה
+        try:
+            fi  = stock.fast_info
+            live = (
+                fi.get('lastPrice') or
+                fi.get('preMarketPrice') or
+                fi.get('postMarketPrice') or
+                info.get('currentPrice') or
+                info.get('regularMarketPrice') or
+                info.get('preMarketPrice') or
+                info.get('postMarketPrice')
+            )
+            current_price = round(float(live), 2) if live else prev_close
+        except Exception:
+            current_price = prev_close
+
+        change     = round(current_price - prev_close, 2)
+        change_pct = round(change / prev_close * 100, 2) if prev_close else 0
 
         # ATR (14)
         atr_series = calc_atr(df['High'], df['Low'], df['Close'])
@@ -990,11 +1006,28 @@ def get_price():
         df = stock.history(period='2d')
         if df.empty or len(df) < 2:
             return jsonify({'error': 'no data'}), 404
-        current_price = round(df['Close'].iloc[-1], 2)
-        prev_close    = round(df['Close'].iloc[-2], 2)
-        change        = round(current_price - prev_close, 2)
-        change_pct    = round(change / prev_close * 100, 2)
-        currency = stock.info.get('currency', 'USD')
+        prev_close = round(df['Close'].iloc[-1], 2)
+        info = stock.info
+
+        # מחיר עדכני — פרה/אפטר מרקט
+        try:
+            fi  = stock.fast_info
+            live = (
+                fi.get('lastPrice') or
+                fi.get('preMarketPrice') or
+                fi.get('postMarketPrice') or
+                info.get('currentPrice') or
+                info.get('regularMarketPrice') or
+                info.get('preMarketPrice') or
+                info.get('postMarketPrice')
+            )
+            current_price = round(float(live), 2) if live else prev_close
+        except Exception:
+            current_price = prev_close
+
+        change     = round(current_price - prev_close, 2)
+        change_pct = round(change / prev_close * 100, 2) if prev_close else 0
+        currency   = info.get('currency', 'USD')
         return jsonify({
             'current_price': current_price,
             'change': change,
