@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, request
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import time
 from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
                          get_sector_performance, get_upcoming_events,
                          get_market_drivers, get_futures,
@@ -691,8 +692,16 @@ def analyze():
 
     try:
         stock = yf.Ticker(ticker)
-        df = stock.history(period='3mo')
-        if df.empty:
+        df = None
+        for attempt in range(3):
+            try:
+                df = stock.history(period='3mo')
+                if not df.empty:
+                    break
+            except Exception:
+                pass
+            time.sleep(2)
+        if df is None or df.empty:
             return jsonify({'error': f'לא נמצאו נתונים עבור {ticker}. בדוק שהטיקר נכון.'}), 404
 
         info         = stock.info
