@@ -747,17 +747,17 @@ def analyze():
 
         prev_close = round(df['Close'].iloc[-1], 2)
 
-        # מחיר עדכני — פרה/אפטר מרקט אם זמין, אחרת סגירה אחרונה
+        # מחיר עדכני — פרה/אפטר מרקט קודם, אחר כך מחיר רגיל
         try:
             fi  = stock.fast_info
             live = (
-                fi.get('lastPrice') or
                 fi.get('preMarketPrice') or
                 fi.get('postMarketPrice') or
-                info.get('currentPrice') or
-                info.get('regularMarketPrice') or
                 info.get('preMarketPrice') or
-                info.get('postMarketPrice')
+                info.get('postMarketPrice') or
+                fi.get('lastPrice') or
+                info.get('currentPrice') or
+                info.get('regularMarketPrice')
             )
             current_price = round(float(live), 2) if live else prev_close
         except Exception:
@@ -1009,17 +1009,17 @@ def get_price():
         prev_close = round(df['Close'].iloc[-1], 2)
         info = stock.info
 
-        # מחיר עדכני — פרה/אפטר מרקט
+        # מחיר עדכני — פרה/אפטר מרקט קודם
         try:
             fi  = stock.fast_info
             live = (
-                fi.get('lastPrice') or
                 fi.get('preMarketPrice') or
                 fi.get('postMarketPrice') or
-                info.get('currentPrice') or
-                info.get('regularMarketPrice') or
                 info.get('preMarketPrice') or
-                info.get('postMarketPrice')
+                info.get('postMarketPrice') or
+                fi.get('lastPrice') or
+                info.get('currentPrice') or
+                info.get('regularMarketPrice')
             )
             current_price = round(float(live), 2) if live else prev_close
         except Exception:
