@@ -14,6 +14,18 @@ from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
 
 app = Flask(__name__)
 
+# ─── Simple in-memory cache ────────────────────────────────────────────────────
+_cache = {}   # {key: (timestamp, data)}
+CACHE_TTL = 300  # 5 minutes
+
+def _cache_get(key):
+    entry = _cache.get(key)
+    if entry and (time.time() - entry[0]) < CACHE_TTL:
+        return entry[1]
+    return None
+
+def _cache_set(key, data):
+    _cache[key] = (time.time(), data)
 
 # ─── Indicators ───────────────────────────────────────────────────────────────
 
@@ -694,6 +706,10 @@ def analyze():
     if not ticker:
         return jsonify({'error': 'נא להזין טיקר'}), 400
 
+    cached = _cache_get(f'analyze_{ticker}')
+    if cached:
+        return jsonify(cached)
+
     try:
         stock = _ticker(ticker)
         df = None
@@ -995,7 +1011,9 @@ def analyze():
             'short_ratio': short_ratio,
             'trade_plan': trade_plan,
             'diagnosis': diagnosis,
-        })
+        }
+        _cache_set(f'analyze_{ticker}', result)
+        return jsonify(result)
 
     except Exception as e:
         return jsonify({'error': f'שגיאה בניתוח: {str(e)}'}), 500
@@ -1007,6 +1025,11 @@ def get_price():
     ticker = request.args.get('ticker', '').upper().strip()
     if not ticker:
         return jsonify({'error': 'no ticker'}), 400
+
+    cached = _cache.get(f'price_{ticker}')
+    if cached and (time.time() - cached[0]) < 30:   # 30-second cache for live price
+        return jsonify(cached[1])
+
     try:
         stock = _ticker(ticker)
         df = stock.history(period='2d')
@@ -1037,7 +1060,7 @@ def get_price():
         change     = round(current_price - prev_close, 2)
         change_pct = round(change / prev_close * 100, 2) if prev_close else 0
         currency   = info.get('currency', 'USD')
-        return jsonify({
+        result = {
             'current_price': current_price,
             'prev_close': prev_close,
             'yesterday_change': yesterday_change,
@@ -1045,7 +1068,9 @@ def get_price():
             'change': change,
             'change_pct': change_pct,
             'currency': currency,
-        })
+        }
+        _cache_set(f'price_{ticker}', result)
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
