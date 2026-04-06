@@ -814,7 +814,6 @@
     <div>
       <div class="stock-name" id="companyName"></div>
       <div class="stock-change" id="stockChange"></div>
-      <div style="font-size:12px;color:#7a8391;margin-top:2px;" id="prevDayInfo"></div>
     </div>
     <div style="margin-right:auto; text-align:left;">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1421,12 +1420,6 @@
       const cls  = d.change >= 0 ? 'pos' : 'neg';
       document.getElementById('stockChange').innerHTML =
         `<span class="${cls}">${sign}${d.change} (${sign}${d.change_pct}%)</span> שינוי יומי`;
-      if (d.prev_close != null) {
-        const ysign = d.yesterday_change >= 0 ? '+' : '';
-        const ycls  = d.yesterday_change >= 0 ? 'pos' : 'neg';
-        document.getElementById('prevDayInfo').innerHTML =
-          `סגירה אתמול: ${d.prev_close} ${d.currency} &nbsp;|&nbsp; <span class="${ycls}">${ysign}${d.yesterday_change} (${ysign}${d.yesterday_change_pct}%)</span>`;
-      }
       const now = new Date();
       document.getElementById('lastUpdated').textContent =
         `עודכן: ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
@@ -1703,12 +1696,6 @@
     const cls  = d.change >= 0 ? 'pos' : 'neg';
     document.getElementById('stockChange').innerHTML =
       `<span class="${cls}">${sign}${d.change} (${sign}${d.change_pct}%)</span> שינוי יומי`;
-    if (d.prev_close != null) {
-      const ysign = d.yesterday_change >= 0 ? '+' : '';
-      const ycls  = d.yesterday_change >= 0 ? 'pos' : 'neg';
-      document.getElementById('prevDayInfo').innerHTML =
-        `סגירה אתמול: ${d.prev_close} ${d.currency} &nbsp;|&nbsp; <span class="${ycls}">${ysign}${d.yesterday_change} (${ysign}${d.yesterday_change_pct}%)</span>`;
-    }
     const now = new Date();
     document.getElementById('lastUpdated').textContent =
       `עודכן: ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;

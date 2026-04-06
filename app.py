@@ -4,10 +4,6 @@ import pandas as pd
 import numpy as np
 import time
 import requests
-import requests_cache
-
-# Cache all HTTP requests for 5 minutes to avoid Yahoo Finance rate limiting
-requests_cache.install_cache('yf_cache', backend='memory', expire_after=300)
 
 def _ticker(symbol):
     return yf.Ticker(symbol)
@@ -18,18 +14,6 @@ from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
 
 app = Flask(__name__)
 
-# ─── Simple in-memory cache ────────────────────────────────────────────────────
-_cache = {}   # {key: (timestamp, data)}
-CACHE_TTL = 300  # 5 minutes
-
-def _cache_get(key):
-    entry = _cache.get(key)
-    if entry and (time.time() - entry[0]) < CACHE_TTL:
-        return entry[1]
-    return None
-
-def _cache_set(key, data):
-    _cache[key] = (time.time(), data)
 
 # ─── Indicators ───────────────────────────────────────────────────────────────
 
@@ -710,10 +694,6 @@ def analyze():
     if not ticker:
         return jsonify({'error': 'נא להזין טיקר'}), 400
 
-    cached = _cache_get(f'analyze_{ticker}')
-    if cached:
-        return jsonify(cached)
-
     try:
         stock = _ticker(ticker)
         df = None
@@ -765,29 +745,10 @@ def analyze():
         else:
             rec, rec_key = 'המתן - תמונה מעורבת, אין כיוון ברור', 'neutral'
 
-        prev_close      = round(df['Close'].iloc[-1], 2)
-        prev_prev_close = round(df['Close'].iloc[-2], 2) if len(df) >= 2 else prev_close
-        yesterday_change     = round(prev_close - prev_prev_close, 2)
-        yesterday_change_pct = round(yesterday_change / prev_prev_close * 100, 2) if prev_prev_close else 0
-
-        # מחיר עדכני — פרה/אפטר מרקט קודם, אחר כך מחיר רגיל
-        try:
-            fi  = stock.fast_info
-            live = (
-                getattr(fi, 'preMarketPrice', None) or
-                getattr(fi, 'postMarketPrice', None) or
-                info.get('preMarketPrice') or
-                info.get('postMarketPrice') or
-                getattr(fi, 'lastPrice', None) or
-                info.get('currentPrice') or
-                info.get('regularMarketPrice')
-            )
-            current_price = round(float(live), 2) if live else prev_close
-        except Exception:
-            current_price = prev_close
-
-        change     = round(current_price - prev_close, 2)
-        change_pct = round(change / prev_close * 100, 2) if prev_close else 0
+        current_price = round(df['Close'].iloc[-1], 2)
+        prev_close    = round(df['Close'].iloc[-2], 2)
+        change        = round(current_price - prev_close, 2)
+        change_pct    = round(change / prev_close * 100, 2)
 
         # ATR (14)
         atr_series = calc_atr(df['High'], df['Low'], df['Close'])
@@ -974,14 +935,11 @@ def analyze():
             if lows[i] < lows[i-1] and lows[i] < lows[i-2] and lows[i] < lows[i+1] and lows[i] < lows[i+2]:
                 levels.append({'type': 'support', 'price': round(lows[i], 2), 'date': str(df.index[i].date())})
 
-        result = {
+        return jsonify({
             'ticker': ticker,
             'company_name': company_name,
             'currency': currency,
             'current_price': current_price,
-            'prev_close': prev_close,
-            'yesterday_change': yesterday_change,
-            'yesterday_change_pct': yesterday_change_pct,
             'change': change,
             'change_pct': change_pct,
             'trend': trend,
@@ -1015,9 +973,7 @@ def analyze():
             'short_ratio': short_ratio,
             'trade_plan': trade_plan,
             'diagnosis': diagnosis,
-        }
-        _cache_set(f'analyze_{ticker}', result)
-        return jsonify(result)
+        })
 
     except Exception as e:
         return jsonify({'error': f'שגיאה בניתוח: {str(e)}'}), 500
@@ -1029,52 +985,22 @@ def get_price():
     ticker = request.args.get('ticker', '').upper().strip()
     if not ticker:
         return jsonify({'error': 'no ticker'}), 400
-
-    cached = _cache.get(f'price_{ticker}')
-    if cached and (time.time() - cached[0]) < 30:   # 30-second cache for live price
-        return jsonify(cached[1])
-
     try:
         stock = _ticker(ticker)
         df = stock.history(period='2d')
         if df.empty or len(df) < 2:
             return jsonify({'error': 'no data'}), 404
-        prev_close      = round(df['Close'].iloc[-1], 2)
-        prev_prev_close = round(df['Close'].iloc[-2], 2) if len(df) >= 2 else prev_close
-        yesterday_change     = round(prev_close - prev_prev_close, 2)
-        yesterday_change_pct = round(yesterday_change / prev_prev_close * 100, 2) if prev_prev_close else 0
-        info = stock.info
-
-        # מחיר עדכני — פרה/אפטר מרקט קודם
-        try:
-            fi  = stock.fast_info
-            live = (
-                getattr(fi, 'preMarketPrice', None) or
-                getattr(fi, 'postMarketPrice', None) or
-                info.get('preMarketPrice') or
-                info.get('postMarketPrice') or
-                getattr(fi, 'lastPrice', None) or
-                info.get('currentPrice') or
-                info.get('regularMarketPrice')
-            )
-            current_price = round(float(live), 2) if live else prev_close
-        except Exception:
-            current_price = prev_close
-
-        change     = round(current_price - prev_close, 2)
-        change_pct = round(change / prev_close * 100, 2) if prev_close else 0
-        currency   = info.get('currency', 'USD')
-        result = {
+        current_price = round(df['Close'].iloc[-1], 2)
+        prev_close    = round(df['Close'].iloc[-2], 2)
+        change        = round(current_price - prev_close, 2)
+        change_pct    = round(change / prev_close * 100, 2)
+        currency = stock.info.get('currency', 'USD')
+        return jsonify({
             'current_price': current_price,
-            'prev_close': prev_close,
-            'yesterday_change': yesterday_change,
-            'yesterday_change_pct': yesterday_change_pct,
             'change': change,
             'change_pct': change_pct,
             'currency': currency,
-        }
-        _cache_set(f'price_{ticker}', result)
-        return jsonify(result)
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
