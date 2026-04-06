@@ -4,6 +4,10 @@ import pandas as pd
 import numpy as np
 import time
 import requests
+import requests_cache
+
+# Cache all HTTP requests for 5 minutes to avoid Yahoo Finance rate limiting
+requests_cache.install_cache('yf_cache', backend='memory', expire_after=300)
 
 def _ticker(symbol):
     return yf.Ticker(symbol)
@@ -970,7 +974,7 @@ def analyze():
             if lows[i] < lows[i-1] and lows[i] < lows[i-2] and lows[i] < lows[i+1] and lows[i] < lows[i+2]:
                 levels.append({'type': 'support', 'price': round(lows[i], 2), 'date': str(df.index[i].date())})
 
-        return jsonify({
+        result = {
             'ticker': ticker,
             'company_name': company_name,
             'currency': currency,
