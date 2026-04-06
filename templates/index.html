@@ -632,6 +632,7 @@
       <span class="mbar-label">טוען נתוני שוק...</span>
     </div>
   </div>
+  <div style="text-align:left;padding:2px 12px;font-size:10px;color:#484f58;" id="marketLastUpdated"></div>
 </div>
 
 <!-- ── סקטורים תמיד גלויים ── -->
@@ -1036,6 +1037,11 @@
       renderMarketPanels(data);
       if (data.futures && data.futures.length) renderFutures(data.futures);
       if (data.extended) renderExtended(data.extended, data.market_status);
+      // הצג שעת עדכון אחרון
+      const now = new Date();
+      const ts = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+      const el = document.getElementById('marketLastUpdated');
+      if (el) el.textContent = `עודכן: ${ts}`;
     } catch(e) { /* silent */ }
   }
 
