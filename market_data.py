@@ -6,6 +6,19 @@ import urllib.request
 import json
 import datetime
 import yfinance as yf
+import requests as _req
+
+_yf_session = _req.Session()
+_yf_session.headers['User-Agent'] = (
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) '
+    'Chrome/120.0.0.0 Safari/537.36'
+)
+
+def _ticker(symbol):
+    t = yf.Ticker(symbol)
+    t.session = _yf_session
+    return t
 
 
 # ── מצב שוק + שעות מסחר ──────────────────────────────────────────────────────
@@ -121,7 +134,7 @@ def get_extended_hours():
     results = []
     for ticker, name in EXTENDED_TICKERS:
         try:
-            info = yf.Ticker(ticker).info
+            info = _ticker(ticker).info
             reg  = info.get('regularMarketPrice') or info.get('previousClose')
             pre  = info.get('preMarketPrice')
             post = info.get('postMarketPrice')
@@ -156,7 +169,7 @@ def get_vix():
     מעל 40 = פאניקה.
     """
     try:
-        vix = yf.Ticker("^VIX")
+        vix = _ticker("^VIX")
         df  = vix.history(period="2d")
         if df.empty:
             return None
@@ -215,7 +228,7 @@ def get_fear_greed():
         # fallback: חשב Fear & Greed מ-VIX + ביצועי שוק
         if score is None:
             vix_data = get_vix()
-            spy = yf.Ticker("SPY").history(period="5d")
+            spy = _ticker("SPY").history(period="5d")
             spy_5d = round((spy['Close'].iloc[-1] - spy['Close'].iloc[0]) / spy['Close'].iloc[0] * 100, 1) if not spy.empty else 0
             if vix_data:
                 v = vix_data['value']
@@ -265,7 +278,7 @@ def get_dxy():
     דולר חלש (DXY יורד) → תמיכה במניות ובסחורות.
     """
     try:
-        t  = yf.Ticker("DX-Y.NYB")
+        t  = _ticker("DX-Y.NYB")
         df = t.history(period="2d")
         if df.empty:
             return None
@@ -295,7 +308,7 @@ def get_us10y():
     מעל 4.5% → לחץ כבד על שוק המניות.
     """
     try:
-        t  = yf.Ticker("^TNX")
+        t  = _ticker("^TNX")
         df = t.history(period="2d")
         if df.empty:
             return None
@@ -341,7 +354,7 @@ def get_sector_performance():
     results = []
     for ticker, name in SECTORS:
         try:
-            t  = yf.Ticker(ticker)
+            t  = _ticker(ticker)
             df = t.history(period="5d")
             if df.empty or len(df) < 2:
                 continue
@@ -483,7 +496,7 @@ def get_52w_movers(results):
     near_high, near_low = [], []
     for r in results:
         try:
-            t  = yf.Ticker(r['ticker'])
+            t  = _ticker(r['ticker'])
             hi = t.info.get('fiftyTwoWeekHigh')
             lo = t.info.get('fiftyTwoWeekLow')
             p  = r['price']

@@ -3,6 +3,20 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import time
+import requests
+
+# מונע חסימה של yfinance על שרתי ענן
+_yf_session = requests.Session()
+_yf_session.headers['User-Agent'] = (
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) '
+    'Chrome/120.0.0.0 Safari/537.36'
+)
+
+def _ticker(symbol):
+    t = yf.Ticker(symbol)
+    t.session = _yf_session
+    return t
 from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
                          get_sector_performance, get_upcoming_events,
                          get_market_drivers, get_futures,
@@ -691,7 +705,7 @@ def analyze():
         return jsonify({'error': 'נא להזין טיקר'}), 400
 
     try:
-        stock = yf.Ticker(ticker)
+        stock = _ticker(ticker)
         df = None
         for attempt in range(3):
             try:
@@ -982,7 +996,7 @@ def get_price():
     if not ticker:
         return jsonify({'error': 'no ticker'}), 400
     try:
-        stock = yf.Ticker(ticker)
+        stock = _ticker(ticker)
         df = stock.history(period='2d')
         if df.empty or len(df) < 2:
             return jsonify({'error': 'no data'}), 404
