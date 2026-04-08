@@ -14,6 +14,17 @@ from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
 
 app = Flask(__name__)
 
+# ─── Cache ────────────────────────────────────────────────────────────────────
+_cache = {}
+
+def cache_get(key, ttl=300):
+    entry = _cache.get(key)
+    if entry and (time.time() - entry[0]) < ttl:
+        return entry[1]
+    return None
+
+def cache_set(key, value):
+    _cache[key] = (time.time(), value)
 
 # ─── Indicators ───────────────────────────────────────────────────────────────
 
@@ -694,6 +705,10 @@ def analyze():
     if not ticker:
         return jsonify({'error': 'נא להזין טיקר'}), 400
 
+    cached = cache_get(f'analyze_{ticker}', ttl=300)
+    if cached:
+        return jsonify(cached)
+
     try:
         stock = _ticker(ticker)
         df = None
@@ -935,7 +950,7 @@ def analyze():
             if lows[i] < lows[i-1] and lows[i] < lows[i-2] and lows[i] < lows[i+1] and lows[i] < lows[i+2]:
                 levels.append({'type': 'support', 'price': round(lows[i], 2), 'date': str(df.index[i].date())})
 
-        return jsonify({
+        result = {
             'ticker': ticker,
             'company_name': company_name,
             'currency': currency,
@@ -973,7 +988,9 @@ def analyze():
             'short_ratio': short_ratio,
             'trade_plan': trade_plan,
             'diagnosis': diagnosis,
-        })
+        }
+        cache_set(f'analyze_{ticker}', result)
+        return jsonify(result)
 
     except Exception as e:
         return jsonify({'error': f'שגיאה בניתוח: {str(e)}'}), 500
@@ -985,6 +1002,11 @@ def get_price():
     ticker = request.args.get('ticker', '').upper().strip()
     if not ticker:
         return jsonify({'error': 'no ticker'}), 400
+
+    cached = cache_get(f'price_{ticker}', ttl=60)
+    if cached:
+        return jsonify(cached)
+
     try:
         stock = _ticker(ticker)
         df = stock.history(period='2d')
@@ -995,12 +1017,14 @@ def get_price():
         change        = round(current_price - prev_close, 2)
         change_pct    = round(change / prev_close * 100, 2)
         currency = stock.info.get('currency', 'USD')
-        return jsonify({
+        result = {
             'current_price': current_price,
             'change': change,
             'change_pct': change_pct,
             'currency': currency,
-        })
+        }
+        cache_set(f'price_{ticker}', result)
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
