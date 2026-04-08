@@ -833,6 +833,12 @@
     <div class="score-pills" id="scorePills"></div>
   </div>
 
+  <!-- Long / Short Direction -->
+  <div id="directionCard" style="display:none; border-radius:12px; padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; gap:16px;">
+    <div id="directionBadge" style="font-size:28px; font-weight:900; min-width:90px; text-align:center; border-radius:8px; padding:8px 14px;"></div>
+    <div id="directionReason" style="font-size:13px; color:#8b949e; line-height:1.6;"></div>
+  </div>
+
   <!-- Trade Plan -->
   <div class="trade-card" id="tradeCard">
     <div class="section-title">🎯 תוכנית מסחר — כניסה / יציאה / סטופ לוס</div>
@@ -1719,6 +1725,34 @@
       <span class="pill bear">🐻 בריש: ${d.bearish_count}/6</span>
     `;
     show('recCard');
+
+    // לונג / שורט
+    if (d.direction) {
+      const dc = document.getElementById('directionCard');
+      const badge = document.getElementById('directionBadge');
+      const reason = document.getElementById('directionReason');
+      if (d.direction === 'long') {
+        dc.style.background = '#0f2d1a';
+        dc.style.border = '2px solid #3fb950';
+        badge.textContent = '📈 לונג';
+        badge.style.background = '#1a4028';
+        badge.style.color = '#3fb950';
+      } else if (d.direction === 'short') {
+        dc.style.background = '#2d1717';
+        dc.style.border = '2px solid #f85149';
+        badge.textContent = '📉 שורט';
+        badge.style.background = '#3d1010';
+        badge.style.color = '#f85149';
+      } else {
+        dc.style.background = '#1f2428';
+        dc.style.border = '2px solid #8b949e';
+        badge.textContent = '⏸ המתן';
+        badge.style.background = '#2d333b';
+        badge.style.color = '#8b949e';
+      }
+      reason.textContent = d.direction_reason || '';
+      dc.style.display = 'flex';
+    }
   }
 
   function renderContradictory(d) {

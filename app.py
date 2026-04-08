@@ -760,6 +760,38 @@ def analyze():
         else:
             rec, rec_key = 'המתן - תמונה מעורבת, אין כיוון ברור', 'neutral'
 
+        # ── לונג / שורט לפי שיטת מיכה סטוקס ──
+        if bearish >= 4:
+            direction     = 'short'
+            direction_label = 'שורט'
+            direction_reason = (
+                f'{bearish} מתוך 6 אינדיקטורים בריש · '
+                f'טרנד {"יורד" if trend["signal"]=="bearish" else "ניטרלי"} · '
+                f'נר {"בריש" if candle["signal"]=="bearish" else candle["signal"]} · '
+                'מתאים לשורט לפי כלל הרוב הבריש'
+            )
+        elif bullish >= 4:
+            direction     = 'long'
+            direction_label = 'לונג'
+            direction_reason = (
+                f'{bullish} מתוך 6 אינדיקטורים בוליש · '
+                f'טרנד {"עולה" if trend["signal"]=="bullish" else "ניטרלי"} · '
+                f'נר {"בוליש" if candle["signal"]=="bullish" else candle["signal"]} · '
+                'מתאים ללונג לפי כלל הרוב הבוליש'
+            )
+        elif trend['signal'] == 'bearish' and candle['signal'] == 'bearish':
+            direction     = 'short'
+            direction_label = 'שורט (חלש)'
+            direction_reason = 'טרנד ונר שניהם בריש — נטייה לשורט, אך אין אישור מלא'
+        elif trend['signal'] == 'bullish' and candle['signal'] == 'bullish':
+            direction     = 'long'
+            direction_label = 'לונג (חלש)'
+            direction_reason = 'טרנד ונר שניהם בוליש — נטייה ללונג, אך אין אישור מלא'
+        else:
+            direction       = 'neutral'
+            direction_label = 'ניטרלי — המתן'
+            direction_reason = 'אין כיוון ברור, לא מומלץ ללונג ולא לשורט כרגע'
+
         current_price = round(df['Close'].iloc[-1], 2)
         prev_close    = round(df['Close'].iloc[-2], 2)
         change        = round(current_price - prev_close, 2)
@@ -968,6 +1000,9 @@ def analyze():
             'neutral_count': neutral,
             'recommendation': rec,
             'rec_key': rec_key,
+            'direction': direction,
+            'direction_label': direction_label,
+            'direction_reason': direction_reason,
             'narrative': narrative['text'],
             'position_pct': narrative['position_pct'],
             'contradictory': contradictory,
