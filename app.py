@@ -1127,9 +1127,13 @@ def get_price():
 @app.route('/drivers')
 def market_drivers():
     """מזהה מה מניע את השוק עכשיו"""
+    cached = cache_get('market_drivers', ttl=300)
+    if cached:
+        return jsonify(cached)
     try:
-        drivers = get_market_drivers()
-        return jsonify({'drivers': drivers})
+        result = {'drivers': get_market_drivers()}
+        cache_set('market_drivers', result)
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1137,6 +1141,9 @@ def market_drivers():
 @app.route('/market')
 def market_overview():
     """נתוני שוק רחבים — VIX, Fear & Greed, DXY, ריבית, סקטורים, אירועים"""
+    cached = cache_get('market_overview', ttl=120)
+    if cached:
+        return jsonify(cached)
     try:
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as ex:
@@ -1164,7 +1171,7 @@ def market_overview():
             if obj is None: return None
             return {k: (float(v) if hasattr(v, 'item') else v) for k, v in obj.items()}
 
-        return jsonify({
+        result = {
             'vix':     clean(vix),
             'fg':      clean(fg),
             'dxy':     clean(dxy),
@@ -1186,7 +1193,9 @@ def market_overview():
                 'color':      f['color'],
                 'explain':    f['explain'],
             } for f in futures],
-        })
+        }
+        cache_set('market_overview', result)
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1194,6 +1203,9 @@ def market_overview():
 @app.route('/macro')
 def macro_alerts():
     """המלצות סקטור לפי מצב מאקרו — חדשות עולם + VIX + F&G"""
+    cached = cache_get('macro_alerts', ttl=300)
+    if cached:
+        return jsonify(cached)
     try:
         vix  = get_vix()
         fg   = get_fear_greed()
@@ -1269,11 +1281,13 @@ def macro_alerts():
             },
         ]
 
-        return jsonify({
+        result = {
             'alerts': alerts,
             'hot_sectors': hot_sectors,
             'macro_themes': macro_themes,
-        })
+        }
+        cache_set('macro_alerts', result)
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
