@@ -4,9 +4,22 @@ import pandas as pd
 import numpy as np
 import time
 import requests
+import datetime
 
 def _ticker(symbol):
     return yf.Ticker(symbol)
+
+def translate_he(text):
+    """תרגום לעברית דרך MyMemory (חינם)"""
+    try:
+        url = 'https://api.mymemory.translated.net/get'
+        r = requests.get(url, params={'q': text[:400], 'langpair': 'en|he'}, timeout=5)
+        result = r.json().get('responseData', {}).get('translatedText', '')
+        if result and result != text:
+            return result
+    except Exception:
+        pass
+    return text
 from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
                          get_sector_performance, get_upcoming_events,
                          get_market_drivers, get_futures,
@@ -705,7 +718,8 @@ def analyze():
     if not ticker:
         return jsonify({'error': 'נא להזין טיקר'}), 400
 
-    cached = cache_get(f'analyze_{ticker}', ttl=300)
+    style  = request.args.get('style', 'swing')   # day / swing / position
+    cached = cache_get(f'analyze_{ticker}_{style}', ttl=300)
     if cached:
         return jsonify(cached)
 
@@ -828,6 +842,24 @@ def analyze():
         reward = round(target1 - current_price, 2)
         rr     = round(reward / risk, 2) if risk > 0 else None
 
+        # ── תוכנית מסחר לפי סגנון ──
+        if style == 'day':
+            sl_price = round(current_price * 0.99, 2)       # SL 1% מתחת
+            target1  = round(current_price * 1.02, 2)       # T1: 2%
+            target2  = round(current_price * 1.04, 2)       # T2: 4%
+            hold_desc = 'מסחר יומי — סגור הכל לפני סוף יום'
+        elif style == 'position':
+            sl_price = round(min(last_low, current_price * 0.92), 2)  # SL 8%
+            target1  = round(current_price * 1.20, 2)       # T1: 20%
+            target2  = round(current_price * 1.40, 2)       # T2: 40%
+            hold_desc = 'פוזיציה ארוכה — החזקה חודש עד שנה'
+        else:  # swing
+            hold_desc = 'סווינג — החזקה 3–10 ימי מסחר'
+
+        risk   = round(current_price - sl_price, 2)
+        reward = round(target1 - current_price, 2)
+        rr     = round(reward / risk, 2) if risk > 0 else None
+
         trade_plan = {
             'entry': entry_price,
             'sl': sl_price,
@@ -837,7 +869,31 @@ def analyze():
             'reward': reward,
             'rr': rr,
             'currency': currency,
+            'style': style,
+            'hold_desc': hold_desc,
         }
+
+        # ── אזהרות פסיכולוגיות (לפי שיטת מיכה) ──
+        psych_warnings = []
+        # FOMO — עלייה חדה לפני כניסה
+        if trend['weekly_change'] > 8:
+            psych_warnings.append('⚠️ FOMO — המניה עלתה {:.0f}% השבוע. אל תרדוף אחרי הרכבת, המתן לתיקון.'.format(trend['weekly_change']))
+        # כניסה מוקדמת מדי — אין אישור
+        if bullish < 3 and bearish < 3:
+            psych_warnings.append('⏳ מוקדם מדי — פחות מ-3 אינדיקטורים מאשרים כיוון. המתן לאישור לפני כניסה.')
+        # 5 ימים באותו כיוון — צפה לשינוי
+        if trend.get('five_day_warning'):
+            dir_he = 'עלייה' if trend['consecutive_dir'] == 'up' else 'ירידה'
+            psych_warnings.append(f'🔄 כלל 5 הימים — {trend["consecutive_days"]} ימי {dir_he} רצופים. צפה לשינוי כיוון בקרוב.')
+        # R:R גרוע
+        if rr is not None and rr < 1.5:
+            psych_warnings.append(f'🚨 יחס סיכוי/סיכון נמוך ({rr}) — לפי מיכה, כניסה רק מעל 2:1. שנה את ה-SL או היעד.')
+        # פחד מהפסד — CCI שלילי עם נר בוליש
+        if cci.get('signal') == 'bearish' and candle.get('signal') == 'bullish':
+            psych_warnings.append('🧠 סיגנל מנוגד — נר בוליש אבל CCI שלילי. ייתכן שזה מלכודת שורט. אל תמהר.')
+        # נפח נמוך בפריצה
+        if gaps.get('signal') == 'bullish' and volume.get('signal') != 'bullish':
+            psych_warnings.append('📉 פריצה ללא נפח — פריצה בנפח נמוך היא לרוב מזויפת. המתן לאישור נפח.')
 
         # אזהרת נתונים סותרים (לפי כלל מיכה)
         contradictory = (candle['signal'] == 'bullish' and volume['signal'] == 'bearish') or \
@@ -872,8 +928,10 @@ def analyze():
                             'investigation', 'bankruptcy', 'layoff', 'partnership',
                             'דוח', 'רכישה', 'שותפות', 'הפסד', 'רווח']
                 is_mover = any(kw.lower() in title.lower() for kw in keywords)
+                title_he = translate_he(title) if title else title
                 news_list.append({
-                    'title': title,
+                    'title': title_he,
+                    'title_en': title,
                     'publisher': publisher,
                     'link': link,
                     'date': pub_date,
@@ -1023,8 +1081,10 @@ def analyze():
             'short_ratio': short_ratio,
             'trade_plan': trade_plan,
             'diagnosis': diagnosis,
+            'psych_warnings': psych_warnings,
+            'style': style,
         }
-        cache_set(f'analyze_{ticker}', result)
+        cache_set(f'analyze_{ticker}_{style}', result)
         return jsonify(result)
 
     except Exception as e:
@@ -1129,6 +1189,193 @@ def market_overview():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/macro')
+def macro_alerts():
+    """המלצות סקטור לפי מצב מאקרו — חדשות עולם + VIX + F&G"""
+    try:
+        vix  = get_vix()
+        fg   = get_fear_greed()
+        dxy  = get_dxy()
+        t10  = get_us10y()
+
+        alerts = []
+        hot_sectors = []
+
+        vix_val = vix['value'] if vix else 20
+        fg_score = fg['score'] if fg else 50
+        dxy_chg  = dxy['change_pct'] if dxy else 0
+        t10_val  = t10['value'] if t10 else 4.0
+
+        # VIX גבוה — שוק בפחד, הזדמנויות קנייה
+        if vix_val > 30:
+            alerts.append({'type': 'danger', 'text': f'VIX = {vix_val:.1f} — פחד קיצוני בשוק. לפי מיכה: זה הזמן לחפש מניות חזקות שנמכרו יחד עם השוק — הזדמנות.'})
+            hot_sectors.append({'sector': 'מניות ערך / דיבידנד', 'reason': 'VIX גבוה = מוכרים כל מה שיש. מניות דיבידנד יציבות נמכרות זול.', 'tickers': 'JNJ, KO, PG, VZ'})
+        elif vix_val < 15:
+            alerts.append({'type': 'info', 'text': f'VIX = {vix_val:.1f} — שוק רגוע, ביטחון גבוה. הזהר מהתרדמות — לא הזמן לקחת סיכונים גדולים.'})
+
+        # פחד קיצוני — F&G מתחת ל-20
+        if fg_score < 20:
+            alerts.append({'type': 'opportunity', 'text': f'Fear & Greed = {fg_score:.0f} (פחד קיצוני) — היסטורית, כאשר כולם מפחדים זה הזמן לקנות חזק.'})
+            hot_sectors.append({'sector': 'טכנולוגיה / נאסד"ק', 'reason': 'פחד קיצוני מייצר הזדמנות ב-QQQ, NVDA, MSFT שנמכרו יתר על המידה.', 'tickers': 'QQQ, NVDA, MSFT, AAPL'})
+        elif fg_score > 80:
+            alerts.append({'type': 'warning', 'text': f'Fear & Greed = {fg_score:.0f} (חמדנות קיצונית) — כולם קונים. לפי מיכה: זה הזמן לממש רווחים, לא להיכנס.'})
+
+        # דולר חזק — לחץ על חומרי גלם
+        if dxy_chg > 0.5:
+            alerts.append({'type': 'warning', 'text': f'דולר חזק (+{dxy_chg:.1f}%) — לחץ על נפט, זהב, וחברות יצוא. סיכון למניות מולטי-נשיונל.'})
+            hot_sectors.append({'sector': 'בנקים / פיננסים', 'reason': 'דולר חזק = בנקים מרוויחים יותר על ריבית. XLF מועדף.', 'tickers': 'XLF, JPM, GS, BAC'})
+        elif dxy_chg < -0.5:
+            alerts.append({'type': 'opportunity', 'text': f'דולר חלש ({dxy_chg:.1f}%) — חיובי לנפט, זהב, וחברות עם הכנסות בינלאומיות.'})
+            hot_sectors.append({'sector': 'אנרגיה / זהב', 'reason': 'דולר חלש = נפט וזהב עולים. XLE, GLD מועדפים.', 'tickers': 'XLE, GLD, XOM, CVX'})
+
+        # ריבית גבוהה
+        if t10_val > 4.5:
+            alerts.append({'type': 'warning', 'text': f'ריבית 10 שנה = {t10_val:.2f}% — גבוהה. לחץ על מניות צמיחה (טק). בנקים נהנים.'})
+            hot_sectors.append({'sector': 'בנקים / ביטוח', 'reason': f'ריבית {t10_val:.2f}% — בנקים מרוויחים יותר על הלוואות. KRE, XLF.', 'tickers': 'KRE, XLF, JPM, BRK-B'})
+
+        # המלצות גיאופוליטיות קבועות (לפי מגמות עולמיות)
+        macro_themes = [
+            {
+                'theme': '🛢️ מתח במזרח התיכון / נפט',
+                'explanation': 'כל מתח עם איראן, סעודיה, או עיראק מעלה נפט. קנה לפני כולם.',
+                'tickers': 'XLE, USO, XOM, CVX, OXY',
+                'trigger': 'חדשות על מתח בפרסי, פיגועים, סנקציות על נפט'
+            },
+            {
+                'theme': '🔫 בטחון / ביטחוני',
+                'explanation': 'מלחמה או מתח גיאופוליטי = תקציבי ביטחון עולים בכל העולם.',
+                'tickers': 'LMT, RTX, NOC, GD, PLTR',
+                'trigger': 'מלחמה, צבא, נאט"ו, הגנה'
+            },
+            {
+                'theme': '🤖 AI / בינה מלאכותית',
+                'explanation': 'כל חדשה חיובית על AI מעלה את NVDA ואת כל המגזר.',
+                'tickers': 'NVDA, MSFT, GOOGL, META, AMD',
+                'trigger': 'ChatGPT, Gemini, AI חדש, שיתוף פעולה טכנולוגי'
+            },
+            {
+                'theme': '💊 פארמה / בריאות',
+                'explanation': 'אישור FDA, תוצאות ניסוי קליני — מניות פארמה קטנות יכולות להכפיל.',
+                'tickers': 'XLV, UNH, LLY, PFE, MRNA',
+                'trigger': 'FDA, ניסוי קליני, תרופה חדשה, מגיפה'
+            },
+            {
+                'theme': '⚡ אנרגיה ירוקה',
+                'explanation': 'מדיניות ממשלתית על אנרגיה מתחדשת = הזדמנות ב-solar/EV.',
+                'tickers': 'ICLN, ENPH, FSLR, NEE, TSLA',
+                'trigger': 'הסכם אקלים, כלי רכב חשמלי, מענקי אנרגיה'
+            },
+        ]
+
+        return jsonify({
+            'alerts': alerts,
+            'hot_sectors': hot_sectors,
+            'macro_themes': macro_themes,
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/ask')
+def ask_assistant():
+    """עוזר חכם — שאל שאלה על מניה או שוק"""
+    q = request.args.get('q', '').strip()
+    ticker = request.args.get('ticker', '').upper().strip()
+    if not q:
+        return jsonify({'answer': 'שאל אותי שאלה על מניה או שוק...'})
+
+    q_lower = q.lower()
+    answer = ''
+
+    # קבל נתוני ניתוח אם יש טיקר
+    analysis = cache_get(f'analyze_{ticker}_swing') if ticker else None
+
+    # תשובות חכמות לפי שאלה
+    if any(w in q_lower for w in ['כניסה', 'לקנות', 'לקנות', 'לקנות עכשיו', 'לכנס']):
+        if analysis:
+            bullish = analysis.get('bullish_count', 0)
+            bearish = analysis.get('bearish_count', 0)
+            rec = analysis.get('recommendation', '')
+            direction = analysis.get('direction', 'neutral')
+            if bullish >= 4 and direction == 'long':
+                answer = f'לפי הניתוח של {ticker}: {bullish}/6 אינדיקטורים בוליש — כן, זה זמן כניסה סביר. {rec}. אבל המתן לנר אישור ובדוק נפח.'
+            elif bearish >= 4:
+                answer = f'לפי הניתוח של {ticker}: {bearish}/6 אינדיקטורים בריש — לא מומלץ לקנות עכשיו. {rec}.'
+            else:
+                answer = f'לפי {ticker}: תמונה מעורבת ({bullish} בוליש, {bearish} בריש). לפי מיכה — אם אתה לא בטוח 100%, אל תיכנס. המתן לאישור.'
+        else:
+            answer = 'חפש קודם מניה ואז שאל אותי. לפי מיכה סטוק: כניסה רק כשרוב האינדיקטורים מכוונים לאותו כיוון.'
+
+    elif any(w in q_lower for w in ['שורט', 'short', 'ירידה', 'למכור']):
+        if analysis:
+            bearish = analysis.get('bearish_count', 0)
+            direction = analysis.get('direction', 'neutral')
+            if bearish >= 4 or direction == 'short':
+                answer = f'{ticker}: {bearish}/6 אינדיקטורים בריש. מתאים לשורט. SL מעל הגבוה האחרון. יעד: ממוצע 20.'
+            else:
+                answer = f'{ticker}: אין מספיק אישורים לשורט. {analysis.get("bearish_count",0)}/6 בריש — לפי מיכה, צריך לפחות 4.'
+        else:
+            answer = 'לפי מיכה: שורט טוב צריך: טרנד יורד + נר בריש + נפח עולה + CCI שלילי. ודא שיש לפחות 4/6 אינדיקטורים.'
+
+    elif any(w in q_lower for w in ['sl', 'סטופ', 'stop', 'stop loss', 'סל']):
+        if analysis:
+            tp = analysis.get('trade_plan', {})
+            answer = f'לפי הניתוח: SL מומלץ ב-{tp.get("sl")} ({analysis.get("currency","USD")}). זה שפל הנר האחרון. אל תזיז SL כלפי מטה — זו טעות קלאסית.'
+        else:
+            answer = 'לפי מיכה: SL תמיד מתחת לשפל נר הכניסה. לעולם אל תזיז SL כלפי מטה. אם ה-SL נפגע — צא, ובדוק מחדש.'
+
+    elif any(w in q_lower for w in ['יעד', 'target', 'מטרה', 'רווח']):
+        if analysis:
+            tp = analysis.get('trade_plan', {})
+            rr = tp.get('rr')
+            answer = f'יעד 1: {tp.get("target1")} | יעד 2: {tp.get("target2")} | יחס סיכוי/סיכון: {rr}. '
+            if rr and rr >= 2:
+                answer += 'יחס טוב! לפי מיכה — מכור חצי ביעד 1, תן לשאר לרוץ.'
+            else:
+                answer += 'יחס נמוך. לפי מיכה — כניסה רק כשיחס מעל 2:1. שנה את נקודת הכניסה או ה-SL.'
+        else:
+            answer = 'לפי מיכה: יעד 1 = ממוצע 20 (אפקט גומיה). יעד 2 = התנגדות קרובה. מכור חצי ביעד 1 ותן לשאר לרוץ.'
+
+    elif any(w in q_lower for w in ['fomo', 'פומו', 'פחד', 'מפחד', 'חרדה']):
+        answer = 'לפי מיכה: FOMO הורג חשבונות. אם אתה נכנס כי אתה "מפחד להפסיד" — כבר טעית. הרכבת תמיד יוצאת שוב. המתן לסטיפ-אפ הבא.'
+
+    elif any(w in q_lower for w in ['vix', 'ויקס', 'פחד שוק']):
+        try:
+            vix = get_vix()
+            val = vix['value'] if vix else 'N/A'
+            level = vix['level'] if vix else ''
+            if val != 'N/A':
+                if val > 30:
+                    answer = f'VIX עכשיו: {val:.1f} ({level}). פחד קיצוני! לפי מיכה — זה הזמן לחפש הזדמנויות, לא לברוח. המשקיע הטוב קונה כשאחרים מפחדים.'
+                elif val > 20:
+                    answer = f'VIX עכשיו: {val:.1f} ({level}). אי-ודאות בינונית. סחר בזהירות, קח פוזיציות קטנות יותר.'
+                else:
+                    answer = f'VIX עכשיו: {val:.1f} ({level}). שוק רגוע. זהר מהתרדמות — לפעמים השקט הכי מסוכן.'
+        except Exception:
+            answer = 'לא הצלחתי לטעון VIX כרגע.'
+
+    elif any(w in q_lower for w in ['שיטה', 'מיכה', 'ליב 20', 'כלל']):
+        answer = ('שיטת מיכה סטוקס (ליב 20):\n'
+                  '1. זהה טרנד — בוליש או בריש\n'
+                  '2. אשר עם נר יפני + נפח\n'
+                  '3. בדוק MA20 — הגומייה\n'
+                  '4. כניסה רק כש-4/6 אינדיקטורים באותו כיוון\n'
+                  '5. SL תמיד מתחת לשפל הנר\n'
+                  '6. יחס סיכוי/סיכון לפחות 2:1\n'
+                  '7. 5 ימים רצופים = צפה לשינוי')
+
+    else:
+        answer = ('אני עוזר המסחר שלך לפי שיטת מיכה סטוקס. תוכל לשאול:\n'
+                  '• "האם לקנות את [מניה]?"\n'
+                  '• "מה ה-SL המומלץ?"\n'
+                  '• "מה היעדים?"\n'
+                  '• "מה ה-VIX עכשיו?"\n'
+                  '• "מה שיטת מיכה?"\n'
+                  '• "יש לי FOMO, מה לעשות?"')
+
+    return jsonify({'answer': answer, 'ticker': ticker})
 
 
 if __name__ == '__main__':
