@@ -5,6 +5,7 @@ market_data.py — מאסף נתוני שוק רחבים לדו"ח היומי
 import urllib.request
 import json
 import datetime
+import time
 import yfinance as yf
 def _ticker(symbol):
     return yf.Ticker(symbol)
@@ -332,6 +333,17 @@ SECTORS = [
     ("XLU",  "שירותים ⚡"),
 ]
 
+_md_cache = {}
+
+def _md_cache_get(key, ttl=600):
+    entry = _md_cache.get(key)
+    if entry and (time.time() - entry[0]) < ttl:
+        return entry[1]
+    return None
+
+def _md_cache_set(key, val):
+    _md_cache[key] = (time.time(), val)
+
 def get_sector_performance():
     """
     ביצועי הסקטורים של S&P 500 היום.
@@ -339,6 +351,9 @@ def get_sector_performance():
     סקטור עולה = כסף נכנס לשם → הזדמנות.
     סקטור יורד = יציאת כסף → זהירות.
     """
+    cached = _md_cache_get('sectors', ttl=600)  # 10 דקות
+    if cached:
+        return cached
     import math
     results = []
     for ticker, name in SECTORS:
@@ -358,6 +373,7 @@ def get_sector_performance():
         except Exception:
             pass
     results.sort(key=lambda x: x['change'], reverse=True)
+    _md_cache_set('sectors', results)
     return results
 
 
