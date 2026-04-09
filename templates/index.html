@@ -819,6 +819,7 @@
     <div style="margin-right:auto; text-align:left;">
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="stock-price" id="stockPrice"></div>
+        <canvas id="sparkline" width="80" height="36" style="display:none;"></canvas>
         <div class="live-badge" id="liveBadge" style="display:none;">
           <div class="live-dot"></div>LIVE
         </div>
@@ -1700,6 +1701,28 @@
     show('tradeCard');
   }
 
+  function drawSparkline(prices) {
+    const canvas = document.getElementById('sparkline');
+    if (!canvas || !prices || prices.length < 2) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const min = Math.min(...prices), max = Math.max(...prices);
+    const range = max - min || 1;
+    const isUp = prices[prices.length - 1] >= prices[0];
+    const color = isUp ? '#3fb950' : '#f85149';
+    ctx.beginPath();
+    prices.forEach((p, i) => {
+      const x = (i / (prices.length - 1)) * w;
+      const y = h - ((p - min) / range) * (h - 4) - 2;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    canvas.style.display = 'block';
+  }
+
   function renderStockHeader(d) {
     document.getElementById('tickerBadge').textContent  = d.ticker;
     document.getElementById('companyName').textContent  = d.company_name;
@@ -1711,6 +1734,7 @@
     const now = new Date();
     document.getElementById('lastUpdated').textContent =
       `עודכן: ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+    if (d.chart && d.chart.close) drawSparkline(d.chart.close);
     show('stockHeader', true);
     startLivePrice(d.ticker, d.currency);
   }
