@@ -879,13 +879,15 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         vd = 'תמונה מעורבת. המתן לסיגנל ברור יותר.'
 
     return {
-        'prev_candle': prev_candle,
-        'ma_table': ma_table,
-        'rsi': {'value': rsi_val, 'signal': rsi_sig, 'description': rsi_desc},
+        'prev_candle': {k: (bool(v) if isinstance(v, (bool, np.bool_)) else v) for k, v in prev_candle.items()},
+        'ma_table': [{'label': m['label'], 'value': float(m['value']),
+                      'above': bool(m['above']), 'dist_pct': float(m['dist_pct']),
+                      'signal': m['signal']} for m in ma_table],
+        'rsi': {'value': float(rsi_val) if rsi_val is not None else None, 'signal': rsi_sig, 'description': rsi_desc},
         'breakout': {
-            'score': breakout_score, 'label': bo_label, 'color': bo_color,
-            'signals': bo_signals, 'near_resistance': near_resistance,
-            'resistance_level': resistance_level, 'consolidation_pct': consolidation_pct,
+            'score': int(breakout_score), 'label': bo_label, 'color': bo_color,
+            'signals': bo_signals, 'near_resistance': bool(near_resistance),
+            'resistance_level': resistance_level, 'consolidation_pct': float(consolidation_pct),
         },
         'fundamental': fundamental,
         'expert_opinion': ' '.join(lines),
