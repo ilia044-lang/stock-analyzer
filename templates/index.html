@@ -455,6 +455,134 @@
     }
     .chart-container { width: 100%; }
 
+    /* ── Chart Analysis ── */
+    .chart-analysis-card {
+      display: none;
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+    .candle-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .candle-stat {
+      background: #0d1117;
+      border-radius: 8px;
+      padding: 10px 14px;
+      border: 1px solid #30363d;
+    }
+    .candle-stat .cs-label { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
+    .candle-stat .cs-val   { font-size: 15px; font-weight: 700; }
+    .ma-row {
+      display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0;
+    }
+    .ma-badge {
+      padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    }
+    .ma-badge.bullish { background: #1a3a2a; color: #3fb950; border: 1px solid #3fb950; }
+    .ma-badge.bearish { background: #3a1a1a; color: #f85149; border: 1px solid #f85149; }
+    .expert-box {
+      background: #0d1117;
+      border-right: 3px solid #58a6ff;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #c9d1d9;
+    }
+    .verdict-box {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 18px; border-radius: 10px; margin-top: 14px;
+    }
+    .verdict-box.green  { background: #1a3a2a; border: 1px solid #3fb950; }
+    .verdict-box.yellow { background: #2d2a1a; border: 1px solid #e3b341; }
+    .verdict-box.red    { background: #3a1a1a; border: 1px solid #f85149; }
+    .verdict-icon { font-size: 26px; }
+    .verdict-label { font-size: 16px; font-weight: 700; }
+    .verdict-detail { font-size: 13px; color: #8b949e; margin-top: 3px; }
+    .breakout-bar {
+      height: 8px; border-radius: 4px; background: #21262d; margin: 8px 0;
+      overflow: hidden;
+    }
+    .breakout-bar-fill {
+      height: 100%; border-radius: 4px;
+      transition: width .5s;
+    }
+    .fund-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px; margin: 10px 0;
+    }
+    .fund-item {
+      background: #0d1117; border: 1px solid #21262d;
+      border-radius: 8px; padding: 8px 12px;
+    }
+    .fund-item .fi-label { font-size: 11px; color: #8b949e; }
+    .fund-item .fi-val   { font-size: 14px; font-weight: 700; margin-top: 2px; }
+
+    /* ── World News (macro) ── */
+    .world-news-card {
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+    .macro-event-block {
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+      background: #0d1117;
+    }
+    .macro-event-topic {
+      font-size: 16px; font-weight: 700; color: #f0883e; margin-bottom: 8px;
+    }
+    .macro-tip {
+      font-size: 13px; color: #8b949e; border-right: 2px solid #e3b341;
+      padding-right: 8px; margin: 8px 0;
+    }
+    .ww-cols { display: flex; gap: 12px; margin-top: 10px; }
+    .ww-col  { flex: 1; }
+    .ww-col-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+    .ww-col.winners .ww-col-title { color: #3fb950; }
+    .ww-col.losers  .ww-col-title { color: #f85149; }
+    .ww-stock-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; border-radius: 6px;
+      background: #161b22; margin-bottom: 4px;
+      cursor: pointer; transition: background .15s;
+    }
+    .ww-stock-row:hover { background: #21262d; }
+    .ww-ticker-badge {
+      font-size: 11px; font-weight: 700;
+      padding: 2px 7px; border-radius: 4px;
+      background: #21262d; color: #58a6ff;
+      white-space: nowrap;
+    }
+    .ww-stock-name  { font-size: 12px; color: #8b949e; }
+    .ww-stock-reason{ font-size: 11px; color: #484f58; margin-top: 1px; }
+    .live-news-item {
+      padding: 8px 0; border-bottom: 1px solid #21262d;
+      font-size: 13px; color: #c9d1d9; line-height: 1.5;
+    }
+    .live-news-item .lni-source { font-size: 11px; color: #58a6ff; margin-bottom: 2px; }
+    .world-tabs {
+      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .world-tab {
+      padding: 6px 16px; border-radius: 20px; font-size: 13px;
+      cursor: pointer; border: 1px solid #30363d;
+      background: #0d1117; color: #8b949e; transition: all .15s;
+    }
+    .world-tab.active { background: #1f4068; color: #58a6ff; border-color: #58a6ff; }
+
     /* ── Bulls/Bears ── */
     .control-card {
       display: none;
@@ -729,6 +857,29 @@
       <button class="assistant-send" onclick="askAssistant()">שלח</button>
     </div>
     <div class="assistant-answer" id="assistantAnswer">שאל אותי כל שאלה על מניה, שיטה, או רגש במסחר...</div>
+  </div>
+</div>
+
+<!-- ── חדשות עולם — מי מרוויח ומי מפסיד ── -->
+<div style="max-width:1500px;margin:10px auto 0;padding:0 20px;">
+  <div class="world-news-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div class="section-title" style="margin:0;">🌍 חדשות עולם — מי מרוויח ומי מפסיד</div>
+      <button onclick="loadWorldNews()" style="background:#21262d;border:1px solid #30363d;border-radius:8px;padding:5px 12px;color:#8b949e;font-size:12px;cursor:pointer;">רענן</button>
+    </div>
+    <div style="font-size:12px;color:#6e7681;margin-bottom:14px;">לפי אירועים מאקרו — לחץ על מניה לניתוח מהיר</div>
+    <div class="world-tabs" id="worldTabs">
+      <div class="world-tab active" onclick="showWorldTab('live')">📡 חדשות חמות עכשיו</div>
+      <div class="world-tab" onclick="showWorldTab('all')">📚 כל האירועים</div>
+    </div>
+    <div id="worldTabLive">
+      <div id="worldMatchedEvents" style="margin-bottom:16px;"></div>
+      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:8px;">📰 כותרות עולם</div>
+      <div id="worldLiveNews"></div>
+    </div>
+    <div id="worldTabAll" style="display:none;">
+      <div id="worldAllEvents"></div>
+    </div>
   </div>
 </div>
 
@@ -1080,19 +1231,74 @@
     <div id="newsList"></div>
   </div>
 
-  <!-- Charts -->
+  <!-- Professional Chart -->
   <div class="charts-section" id="chartsSection">
     <div class="chart-card">
-      <div class="section-title">🕯️ גרף נרות יפניים + ממוצע 20</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div class="section-title" style="margin:0;">📊 גרף מקצועי — נרות + MA20 + MA50 + ווליום</div>
+        <div style="display:flex;gap:6px;">
+          <span style="font-size:12px;color:#f0883e;">━ MA20</span>
+          <span style="font-size:12px;color:#58a6ff;margin-right:8px;">━ MA50</span>
+        </div>
+      </div>
       <div class="chart-container" id="candleChart"></div>
+      <div class="chart-container" style="margin-top:4px;" id="volumeChart"></div>
     </div>
+    <!-- RSI -->
     <div class="chart-card">
-      <div class="section-title">📊 ווליום</div>
-      <div class="chart-container" id="volumeChart"></div>
-    </div>
-    <div class="chart-card">
-      <div class="section-title">📈 CCI (Commodity Channel Index)</div>
+      <div class="section-title">📈 RSI(14) + CCI(14)</div>
+      <div class="chart-container" id="rsiChart"></div>
       <div class="chart-container" id="cciChart"></div>
+    </div>
+  </div>
+
+  <!-- Chart Analysis -->
+  <div class="chart-analysis-card" id="chartAnalysisCard">
+    <div class="section-title">🧠 ניתוח גרף מקצועי — דעת מומחה</div>
+
+    <!-- נר סגירה אחרון -->
+    <div style="margin-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:8px;">🕯️ נר סגירה של יום המסחר האחרון</div>
+      <div class="candle-detail-grid" id="candleDetailGrid"></div>
+      <div id="candleTypeLabel" style="font-size:13px;color:#e3b341;margin-top:6px;"></div>
+    </div>
+
+    <!-- ממוצעים -->
+    <div style="margin-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:6px;">📏 ממוצעים נעים</div>
+      <div class="ma-row" id="maTableRow"></div>
+    </div>
+
+    <!-- RSI -->
+    <div style="margin-top:12px;" id="rsiAnalysisRow"></div>
+
+    <!-- פריצה -->
+    <div style="margin-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:6px;">🚀 סבירות פריצה</div>
+      <div class="breakout-bar"><div class="breakout-bar-fill" id="breakoutBarFill"></div></div>
+      <div id="breakoutLabel" style="font-size:13px;margin-top:4px;"></div>
+      <div id="breakoutSignals" style="font-size:12px;color:#8b949e;margin-top:4px;"></div>
+    </div>
+
+    <!-- פונדמנטלים -->
+    <div style="margin-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:6px;">📋 פונדמנטלי קצר</div>
+      <div class="fund-grid" id="fundamentalGrid"></div>
+    </div>
+
+    <!-- דעת מומחה -->
+    <div style="margin-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:6px;">💬 דעתי האישית</div>
+      <div class="expert-box" id="expertOpinion"></div>
+    </div>
+
+    <!-- המלצה -->
+    <div id="verdictBox" class="verdict-box" style="display:none;">
+      <div class="verdict-icon" id="verdictIcon"></div>
+      <div>
+        <div class="verdict-label" id="verdictLabel"></div>
+        <div class="verdict-detail" id="verdictDetail"></div>
+      </div>
     </div>
   </div>
 </div><!-- end .main -->
@@ -1644,6 +1850,7 @@
     hide('tradeCard');
     hide('diagCard');
     hide('chartsSection');
+    hide('chartAnalysisCard');
     hide('psychCard');
     document.getElementById('clSidebar').style.display = 'none';
     show('loading');
@@ -1680,6 +1887,7 @@
       renderNews(data);
       renderSL(data);
       renderCharts(data);
+      renderChartAnalysis(data);
 
     } catch (err) {
       hide('loading');
@@ -2304,10 +2512,20 @@
       });
     }
 
-    Plotly.newPlot('candleChart', [candleTrace, ma20Trace], {
+    // Add MA50 trace
+    const ma50Trace = {
+      type: 'scatter',
+      x: ch.dates, y: ch.ma50,
+      name: 'MA50',
+      line: { color: '#58a6ff', width: 2, dash: 'dot' },
+      mode: 'lines',
+    };
+
+    Plotly.newPlot('candleChart', [candleTrace, ma20Trace, ma50Trace], {
       ...layout,
       shapes,
-      height: 420,
+      height: 400,
+      legend: { x: 0, y: 1, bgcolor: 'rgba(0,0,0,0)', font: { size: 11 } },
     }, { responsive: true, displayModeBar: false });
 
     // ── Volume chart ──
@@ -2318,22 +2536,48 @@
       name: 'ווליום',
       marker: { color: volColors },
     };
-
     Plotly.newPlot('volumeChart', [volTrace], {
       ...layout,
-      height: 200,
+      height: 140,
       showlegend: false,
+      margin: { l: 50, r: 20, t: 4, b: 40 },
       yaxis: { ...layout.yaxis, tickformat: '.2s' }
     }, { responsive: true, displayModeBar: false });
 
+    // ── RSI chart ──
+    if (ch.rsi) {
+      const rsiTrace = {
+        type: 'scatter', x: ch.dates, y: ch.rsi,
+        name: 'RSI(14)', line: { color: '#d2a8ff', width: 2 }, mode: 'lines',
+      };
+      const rsiShapes = [
+        { type: 'rect', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 70, y1: 100,
+          fillcolor: 'rgba(248,81,73,0.07)', line: { width: 0 } },
+        { type: 'rect', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 0, y1: 30,
+          fillcolor: 'rgba(63,185,80,0.07)', line: { width: 0 } },
+        { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 70, y1: 70,
+          line: { color: '#f85149', width: 1, dash: 'dash' } },
+        { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 30, y1: 30,
+          line: { color: '#3fb950', width: 1, dash: 'dash' } },
+        { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 50, y1: 50,
+          line: { color: '#484f58', width: 1 } },
+      ];
+      Plotly.newPlot('rsiChart', [rsiTrace], {
+        ...layout, height: 160, showlegend: false,
+        margin: { l: 50, r: 20, t: 10, b: 20 },
+        shapes: rsiShapes,
+        yaxis: { ...layout.yaxis, range: [0, 100] },
+        annotations: [
+          { x: ch.dates[ch.dates.length-1], y: 70, xanchor: 'right', text: 'אוברבוט 70', showarrow: false, font: { color: '#f85149', size: 10 } },
+          { x: ch.dates[ch.dates.length-1], y: 30, xanchor: 'right', text: 'אוסלד 30', showarrow: false, font: { color: '#3fb950', size: 10 } },
+        ]
+      }, { responsive: true, displayModeBar: false });
+    }
+
     // ── CCI chart ──
-    const cciColors = ch.cci.map(v => v === null ? '#8b949e' : v > 100 ? '#3fb950' : v < -100 ? '#f85149' : '#8b949e');
     const cciTrace = {
-      type: 'scatter',
-      x: ch.dates, y: ch.cci,
-      name: 'CCI',
-      line: { color: '#58a6ff', width: 2 },
-      mode: 'lines',
+      type: 'scatter', x: ch.dates, y: ch.cci,
+      name: 'CCI(14)', line: { color: '#e3b341', width: 2 }, mode: 'lines',
     };
     const cciShapes = [
       { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 100, y1: 100,
@@ -2343,24 +2587,184 @@
       { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 0, y1: 0,
         line: { color: '#484f58', width: 1 } },
     ];
-    // Highlight overbought/oversold zones
-    const cciAnnotations = [
-      { x: ch.dates[ch.dates.length-1], y: 100, xanchor: 'right',
-        text: '+100', showarrow: false, font: { color: '#3fb950', size: 11 } },
-      { x: ch.dates[ch.dates.length-1], y: -100, xanchor: 'right',
-        text: '-100', showarrow: false, font: { color: '#f85149', size: 11 } },
-    ];
-
     Plotly.newPlot('cciChart', [cciTrace], {
-      ...layout,
-      height: 220,
-      showlegend: false,
+      ...layout, height: 160, showlegend: false,
+      margin: { l: 50, r: 20, t: 4, b: 40 },
       shapes: cciShapes,
-      annotations: cciAnnotations,
+      annotations: [
+        { x: ch.dates[ch.dates.length-1], y: 100, xanchor: 'right', text: '+100', showarrow: false, font: { color: '#3fb950', size: 10 } },
+        { x: ch.dates[ch.dates.length-1], y: -100, xanchor: 'right', text: '-100', showarrow: false, font: { color: '#f85149', size: 10 } },
+      ]
     }, { responsive: true, displayModeBar: false });
 
     show('chartsSection');
   }
+
+  // ── ניתוח גרף מקצועי ──
+  function renderChartAnalysis(d) {
+    const ca = d.chart_analysis;
+    if (!ca) return;
+
+    // נר סגירה
+    const pc = ca.prev_candle;
+    const candleColor = pc.color === 'bullish' ? '#3fb950' : '#f85149';
+    const candleHe    = pc.color === 'bullish' ? 'ירוק (בוליש)' : 'אדום (בריש)';
+    const volQ = pc.vol_ratio > 1.5 ? 'גבוה מאוד' : pc.vol_ratio > 1.2 ? 'גבוה' : pc.vol_ratio < 0.7 ? 'נמוך' : 'ממוצע';
+    document.getElementById('candleDetailGrid').innerHTML = [
+      { label: 'פתיחה', val: pc.open, color: '#e6edf3' },
+      { label: 'גבוה',  val: pc.high, color: '#3fb950' },
+      { label: 'נמוך',  val: pc.low,  color: '#f85149' },
+      { label: 'סגירה', val: pc.close, color: candleColor },
+      { label: 'צבע נר', val: candleHe, color: candleColor },
+      { label: 'גוף %', val: pc.body_pct + '%', color: '#e6edf3' },
+      { label: 'ווליום', val: pc.vol_ratio + 'x — ' + volQ, color: '#e6edf3' },
+      { label: 'פתיל עליון', val: pc.upper_wick_pct + '%', color: '#8b949e' },
+      { label: 'פתיל תחתון', val: pc.lower_wick_pct + '%', color: '#8b949e' },
+    ].map(s => `<div class="candle-stat"><div class="cs-label">${s.label}</div><div class="cs-val" style="color:${s.color}">${s.val}</div></div>`).join('');
+    document.getElementById('candleTypeLabel').textContent = '📌 סוג נר: ' + pc.type;
+
+    // ממוצעים
+    document.getElementById('maTableRow').innerHTML = (ca.ma_table || []).map(m =>
+      `<div class="ma-badge ${m.signal}">
+        ${m.label}: ${m.value} (${m.above ? '▲' : '▼'} ${Math.abs(m.dist_pct)}%)
+      </div>`
+    ).join('');
+
+    // RSI
+    const rsi = ca.rsi;
+    const rsiColor = rsi.signal === 'bullish' ? '#3fb950' : rsi.signal === 'bearish' ? '#f85149' : '#8b949e';
+    document.getElementById('rsiAnalysisRow').innerHTML =
+      `<div style="font-size:13px;color:${rsiColor};">📊 ${rsi.description}</div>`;
+
+    // פריצה
+    const bo = ca.breakout;
+    const boColor = bo.color === 'green' ? '#3fb950' : bo.color === 'yellow' ? '#e3b341' : '#f85149';
+    const fill = document.getElementById('breakoutBarFill');
+    fill.style.width = bo.score + '%';
+    fill.style.background = boColor;
+    document.getElementById('breakoutLabel').innerHTML =
+      `<span style="color:${boColor};font-weight:700;">${bo.label}</span> (${bo.score}/100)`;
+    document.getElementById('breakoutSignals').textContent = bo.signals.join(' · ');
+
+    // פונדמנטלים
+    const f = ca.fundamental;
+    const fundItems = [];
+    if (f.sector)     fundItems.push({ label: 'סקטור', val: f.sector });
+    if (f.market_cap) fundItems.push({ label: 'שווי שוק', val: f.market_cap });
+    if (f.pe)         fundItems.push({ label: 'P/E', val: f.pe, note: f.pe < 15 ? '✅ זול' : f.pe > 40 ? '⚠️ יקר' : '' });
+    if (f.fpe)        fundItems.push({ label: 'Forward P/E', val: f.fpe });
+    if (f.eps)        fundItems.push({ label: 'EPS', val: '$' + f.eps });
+    if (f.week52_high)fundItems.push({ label: '52W High', val: f.week52_high });
+    if (f.week52_low) fundItems.push({ label: '52W Low',  val: f.week52_low });
+    if (f.week52_pos !== null && f.week52_pos !== undefined)
+      fundItems.push({ label: 'מיקום ב-52W', val: f.week52_pos + '%',
+        note: f.week52_pos > 80 ? '🔥 קרוב לשיא' : f.week52_pos < 20 ? '📉 קרוב לשפל' : '' });
+    if (f.analyst_rating) fundItems.push({ label: 'אנליסטים', val: f.analyst_rating });
+    document.getElementById('fundamentalGrid').innerHTML = fundItems.map(fi =>
+      `<div class="fund-item">
+        <div class="fi-label">${fi.label}</div>
+        <div class="fi-val">${fi.val} ${fi.note ? '<span style="font-size:11px;">' + fi.note + '</span>' : ''}</div>
+      </div>`
+    ).join('');
+
+    // דעת מומחה
+    document.getElementById('expertOpinion').textContent = ca.expert_opinion;
+
+    // המלצה
+    const vb = document.getElementById('verdictBox');
+    vb.className = 'verdict-box ' + ca.verdict_color;
+    vb.style.display = 'flex';
+    document.getElementById('verdictIcon').textContent =
+      ca.verdict_color === 'green' ? '✅' : ca.verdict_color === 'red' ? '🚫' : '⚠️';
+    document.getElementById('verdictLabel').textContent = ca.verdict;
+    document.getElementById('verdictDetail').textContent = ca.verdict_detail;
+
+    show('chartAnalysisCard');
+  }
+
+  // ── חדשות עולם ──
+  let _worldData = null;
+  let _worldTab  = 'live';
+
+  async function loadWorldNews() {
+    try {
+      const res  = await fetch('/world-news');
+      const data = await res.json();
+      if (data.error) return;
+      _worldData = data;
+      renderWorldTab(_worldTab);
+    } catch(e) { /* silent */ }
+  }
+
+  function showWorldTab(tab) {
+    _worldTab = tab;
+    document.querySelectorAll('.world-tab').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('worldTabLive').style.display = tab === 'live' ? 'block' : 'none';
+    document.getElementById('worldTabAll').style.display  = tab === 'all'  ? 'block' : 'none';
+    if (_worldData) renderWorldTab(tab);
+  }
+
+  function renderWorldTab(tab) {
+    if (!_worldData) return;
+    if (tab === 'live') {
+      // אירועים תואמים
+      const matchEl = document.getElementById('worldMatchedEvents');
+      if (_worldData.events && _worldData.events.length) {
+        matchEl.innerHTML = '<div style="font-size:13px;font-weight:700;color:#f0883e;margin-bottom:10px;">🔥 אירועים רלוונטיים עכשיו:</div>' +
+          _worldData.events.map(ev => renderEventBlock(ev, true)).join('');
+      } else {
+        matchEl.innerHTML = '<div style="font-size:13px;color:#8b949e;">אין התאמות לחדשות הנוכחיות — ראה לשונית "כל האירועים"</div>';
+      }
+      // חדשות חיות
+      const newsEl = document.getElementById('worldLiveNews');
+      newsEl.innerHTML = (_worldData.live_news || []).map(n =>
+        `<div class="live-news-item">
+          <div class="lni-source">${n.source}</div>
+          <div>${n.title}</div>
+        </div>`
+      ).join('') || '<div style="font-size:13px;color:#8b949e;">לא הצלחנו לטעון חדשות חיות</div>';
+    } else {
+      document.getElementById('worldAllEvents').innerHTML =
+        (_worldData.all_events || []).map(ev => renderEventBlock(ev, false)).join('');
+    }
+  }
+
+  function renderEventBlock(ev, showNews) {
+    const winnersHtml = (ev.winners || []).map(w =>
+      `<div class="ww-stock-row" onclick="setTicker('${w.ticker}')">
+        <div class="ww-ticker-badge">${w.ticker}</div>
+        <div><div class="ww-stock-name">${w.name}</div><div class="ww-stock-reason">${w.reason}</div></div>
+      </div>`
+    ).join('');
+    const losersHtml = (ev.losers || []).map(l =>
+      `<div class="ww-stock-row" onclick="setTicker('${l.ticker}')">
+        <div class="ww-ticker-badge" style="color:#f85149;">${l.ticker}</div>
+        <div><div class="ww-stock-name">${l.name}</div><div class="ww-stock-reason">${l.reason}</div></div>
+      </div>`
+    ).join('');
+    const newsHtml = showNews && ev.news && ev.news.length
+      ? `<div style="font-size:12px;color:#8b949e;margin-bottom:6px;">📰 ${ev.news.slice(0,2).join(' | ')}</div>` : '';
+    return `<div class="macro-event-block">
+      <div class="macro-event-topic">📌 ${ev.topic}</div>
+      ${newsHtml}
+      <div class="macro-tip">${ev.tip}</div>
+      <div class="ww-cols">
+        <div class="ww-col winners">
+          <div class="ww-col-title">✅ מרוויחים — קנה</div>
+          ${winnersHtml}
+        </div>
+        <div class="ww-col losers">
+          <div class="ww-col-title">❌ מפסידים — הימנע</div>
+          ${losersHtml}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // טען חדשות עולם בטעינה
+  loadWorldNews();
+  setInterval(loadWorldNews, 900000); // כל 15 דקות
 </script>
 </body>
 </html>

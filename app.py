@@ -62,6 +62,20 @@ def calc_atr(high, low, close, period=14):
     return tr.rolling(period).mean()
 
 
+def calc_rsi(close, period=14):
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.rolling(period).mean()
+    avg_loss = loss.rolling(period).mean()
+    rs = avg_gain / avg_loss.replace(0, float('nan'))
+    return 100 - (100 / (1 + rs))
+
+
+def calc_ma50(close):
+    return close.rolling(window=50).mean()
+
+
 def calc_fibonacci(high_series, low_series):
     """מחשב רמות פיבונאצ'י מהשיא לשפל האחרון"""
     swing_high = high_series.max()
@@ -705,6 +719,180 @@ def generate_narrative(ticker, company_name, current_price, currency,
     }
 
 
+def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volume, ma20, cci, bullish, bearish):
+    """ניתוח גרף מקצועי עם דעת מומחה, פונדמנטלים ופריצה"""
+
+    # ── נר סגירה אחרון (מפורט) ──
+    o1 = df['Open'].iloc[-1];  h1 = df['High'].iloc[-1]
+    l1 = df['Low'].iloc[-1];   c1 = df['Close'].iloc[-1]
+    v1 = df['Volume'].iloc[-1]
+    range1   = h1 - l1 if h1 != l1 else 0.0001
+    body1    = abs(c1 - o1)
+    upper_w  = h1 - max(o1, c1)
+    lower_w  = min(o1, c1) - l1
+    avg_vol  = df['Volume'].iloc[-20:].mean() if len(df) >= 20 else df['Volume'].mean()
+    vol_r    = round(v1 / avg_vol, 2) if avg_vol > 0 else 1
+
+    prev_candle = {
+        'open': round(o1, 2), 'high': round(h1, 2),
+        'low':  round(l1, 2), 'close': round(c1, 2),
+        'volume': int(v1), 'avg_volume': int(avg_vol), 'vol_ratio': vol_r,
+        'body_pct':       round(body1  / range1 * 100, 1),
+        'upper_wick_pct': round(upper_w / range1 * 100, 1),
+        'lower_wick_pct': round(lower_w / range1 * 100, 1),
+        'color':  'bullish' if c1 >= o1 else 'bearish',
+        'type':   candle['patterns'][0] if candle['patterns'] else 'נר רגיל',
+    }
+
+    # ── טבלת ממוצעים ──
+    ma50_s  = calc_ma50(df['Close'])
+    ma20_v  = ma20['ma20']
+    ma50_v  = round(ma50_s.iloc[-1], 2) if pd.notna(ma50_s.iloc[-1]) else None
+    ma_table = []
+    for lbl, val in [('MA20', ma20_v), ('MA50', ma50_v)]:
+        if val is None:
+            continue
+        dist = round((current_price - val) / val * 100, 2)
+        ma_table.append({'label': lbl, 'value': val,
+                         'above': current_price > val, 'dist_pct': dist,
+                         'signal': 'bullish' if current_price > val else 'bearish'})
+
+    # ── RSI ──
+    rsi_s   = calc_rsi(df['Close'])
+    rsi_val = round(rsi_s.iloc[-1], 1) if pd.notna(rsi_s.iloc[-1]) else None
+    if rsi_val is not None:
+        if rsi_val < 30:   rsi_sig = 'bullish'; rsi_desc = f'RSI = {rsi_val} — אוסלד (קנייה יתר הפוכה), מניה זולה יחסית'
+        elif rsi_val > 70: rsi_sig = 'bearish'; rsi_desc = f'RSI = {rsi_val} — אוברבוט, זהירות מתיקון'
+        else:              rsi_sig = 'neutral';  rsi_desc = f'RSI = {rsi_val} — טווח ניטרלי'
+    else:
+        rsi_sig = 'neutral'; rsi_desc = 'RSI לא זמין'
+
+    # ── ניתוח פריצה ──
+    high_5d = df['High'].iloc[-5:].max()
+    low_5d  = df['Low'].iloc[-5:].min()
+    consolidation_pct = round((high_5d - low_5d) / current_price * 100, 1)
+
+    swing_highs = []
+    for i in range(2, len(df) - 2):
+        if (df['High'].iloc[i] > df['High'].iloc[i-1] and
+            df['High'].iloc[i] > df['High'].iloc[i-2] and
+            df['High'].iloc[i] > df['High'].iloc[i+1] and
+            df['High'].iloc[i] > df['High'].iloc[i+2]):
+            swing_highs.append(df['High'].iloc[i])
+
+    near_resistance = False;  resistance_level = None
+    for sh in sorted(swing_highs, reverse=True):
+        if sh > current_price and (sh - current_price) / current_price < 0.03:
+            near_resistance = True;  resistance_level = round(sh, 2);  break
+
+    vol_trend_up = df['Volume'].iloc[-3:].mean() > df['Volume'].iloc[-10:-3].mean()
+
+    breakout_score = 0;  bo_signals = []
+    if consolidation_pct < 5:
+        breakout_score += 25;  bo_signals.append('קונסולידציה צרה — הצטברות')
+    if vol_trend_up and volume['signal'] == 'bullish':
+        breakout_score += 30;  bo_signals.append('ווליום עולה — לחץ קנייה')
+    if near_resistance:
+        breakout_score += 20;  bo_signals.append(f'קרוב להתנגדות {resistance_level} — פריצה אפשרית')
+    if bullish >= 4:
+        breakout_score += 25;  bo_signals.append('רוב האינדיקטורים בוליש')
+
+    if breakout_score >= 70:   bo_label = 'סבירות גבוהה לפריצה';  bo_color = 'green'
+    elif breakout_score >= 40: bo_label = 'פריצה אפשרית — עקוב';   bo_color = 'yellow'
+    else:                      bo_label = 'אין סימני פריצה ברורים'; bo_color = 'red'
+
+    # ── פונדמנטלי קצר ──
+    sector    = info.get('sector', 'לא ידוע')
+    mcap      = info.get('marketCap', None)
+    pe        = info.get('trailingPE', None)
+    fpe       = info.get('forwardPE', None)
+    eps       = info.get('trailingEps', None)
+    w52h      = info.get('fiftyTwoWeekHigh', None)
+    w52l      = info.get('fiftyTwoWeekLow', None)
+    rating    = info.get('recommendationKey', None)
+
+    if mcap:
+        if mcap >= 1e12:   cap_s = f'{mcap/1e12:.1f}T'
+        elif mcap >= 1e9:  cap_s = f'{mcap/1e9:.1f}B'
+        else:              cap_s = f'{mcap/1e6:.0f}M'
+    else: cap_s = None
+
+    w52_pos = None
+    if w52h and w52l and w52h != w52l:
+        w52_pos = round((current_price - w52l) / (w52h - w52l) * 100, 1)
+
+    fundamental = {
+        'sector': sector, 'market_cap': cap_s,
+        'pe':     round(pe, 1)  if pe  and pe  > 0 else None,
+        'fpe':    round(fpe, 1) if fpe and fpe > 0 else None,
+        'eps':    round(eps, 2) if eps else None,
+        'week52_high': round(w52h, 2) if w52h else None,
+        'week52_low':  round(w52l, 2) if w52l else None,
+        'week52_pos':  w52_pos,
+        'analyst_rating': rating,
+    }
+
+    # ── דעת מומחה ──
+    lines = []
+    if trend['signal'] == 'bullish' and ma50_v and current_price > ma50_v:
+        lines.append(f"מבנה הגרף של {ticker} בריא — המחיר מעל ממוצע 20 ו-50, הטרנד עולה.")
+    elif trend['signal'] == 'bearish':
+        lines.append(f"מבנה הגרף של {ticker} חלש — המחיר מתחת לממוצעים, הטרנד יורד.")
+    else:
+        lines.append(f"מבנה הגרף של {ticker} מעורב — תנועה צידית ללא כיוון ברור.")
+
+    ccolor = 'ירוק' if prev_candle['color'] == 'bullish' else 'אדום'
+    vol_q  = 'גבוה' if vol_r > 1.2 else ('נמוך' if vol_r < 0.8 else 'ממוצע')
+    lines.append(f"נר סגירה אחרון {ccolor}: גוף {prev_candle['body_pct']}%, "
+                 f"פתיחה {prev_candle['open']} סגירה {prev_candle['close']}. "
+                 f"ווליום {vol_r:.1f}x ממוצע — {vol_q}.")
+
+    lines.append(f"{rsi_desc}. {cci['description']}.")
+
+    if breakout_score >= 50:
+        lines.append(f"שים לב: {' | '.join(bo_signals)} — המניה על הרדאר לפריצה.")
+    elif near_resistance:
+        lines.append(f"המניה קרובה להתנגדות {resistance_level} — מעקב צמוד.")
+
+    pe_v = pe if pe else None
+    if pe_v and 0 < pe_v < 15:
+        lines.append(f"מבחינה פונדמנטלית: P/E={pe_v:.1f} — נחשב זול. סקטור: {sector}.")
+    elif pe_v and pe_v > 40:
+        lines.append(f"מבחינה פונדמנטלית: P/E={pe_v:.1f} — גבוה, ציפיות גדולות במחיר. סקטור: {sector}.")
+    elif cap_s:
+        lines.append(f"מבחינה פונדמנטלית: שווי שוק {cap_s}. סקטור: {sector}.")
+
+    if bullish >= 5:
+        verdict = 'שווה — סטאפ חזק';  vc = 'green'
+        vd = 'רוב האינדיקטורים תומכים בעלייה. כניסה מלאה עם ניהול סיכון.'
+    elif bullish >= 4:
+        verdict = 'שווה — כניסה חלקית'; vc = 'green'
+        vd = 'תמונה טובה אך לא מושלמת. כניסה חלקית ומעקב.'
+    elif bearish >= 4:
+        verdict = 'לא שווה — תמונה בריש'; vc = 'red'
+        vd = 'רוב האינדיקטורים שליליים. לא להיכנס כרגע.'
+    elif breakout_score >= 60:
+        verdict = 'שקול — פריצה פוטנציאלית'; vc = 'yellow'
+        vd = 'ישנם סימני פריצה — כדאי לעקוב מקרוב.'
+    else:
+        verdict = 'שקול — אין כיוון ברור'; vc = 'yellow'
+        vd = 'תמונה מעורבת. המתן לסיגנל ברור יותר.'
+
+    return {
+        'prev_candle': prev_candle,
+        'ma_table': ma_table,
+        'rsi': {'value': rsi_val, 'signal': rsi_sig, 'description': rsi_desc},
+        'breakout': {
+            'score': breakout_score, 'label': bo_label, 'color': bo_color,
+            'signals': bo_signals, 'near_resistance': near_resistance,
+            'resistance_level': resistance_level, 'consolidation_pct': consolidation_pct,
+        },
+        'fundamental': fundamental,
+        'expert_opinion': ' '.join(lines),
+        'verdict': verdict, 'verdict_color': vc, 'verdict_detail': vd,
+    }
+
+
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route('/')
@@ -1010,14 +1198,18 @@ def analyze():
             bullish, bearish, neutral, rec_key
         )
 
-        # Chart data — calculate on full history, display last 14 trading days
+        # Chart data — calculate on full history, display last 60 trading days
         ma20_series = calc_ma20(df['Close'])
+        ma50_series = calc_ma50(df['Close'])
         cci_series  = calc_cci(df['High'], df['Low'], df['Close'], period=14)
+        rsi_series  = calc_rsi(df['Close'])
 
-        display_n = 14
-        df14 = df.iloc[-display_n:]
+        display_n = min(60, len(df))
+        df14    = df.iloc[-display_n:]
         ma20_14 = ma20_series.iloc[-display_n:]
+        ma50_14 = ma50_series.iloc[-display_n:]
         cci_14  = cci_series.iloc[-display_n:]
+        rsi_14  = rsi_series.iloc[-display_n:]
 
         chart = {
             'dates':  [str(d.date()) for d in df14.index],
@@ -1027,8 +1219,15 @@ def analyze():
             'close':  df14['Close'].round(2).tolist(),
             'volume': df14['Volume'].tolist(),
             'ma20':   [round(x, 2) if pd.notna(x) else None for x in ma20_14],
+            'ma50':   [round(x, 2) if pd.notna(x) else None for x in ma50_14],
             'cci':    [round(x, 2) if pd.notna(x) else None for x in cci_14],
+            'rsi':    [round(x, 2) if pd.notna(x) else None for x in rsi_14],
         }
+
+        # ── ניתוח גרף מקצועי + פונדמנטלים ──
+        chart_analysis = generate_chart_analysis(
+            df, ticker, info, current_price, trend, candle, volume, ma20, cci, bullish, bearish
+        )
 
         # Support/resistance levels (simple: recent swing highs/lows)
         highs  = df['High'].tolist()
@@ -1083,6 +1282,7 @@ def analyze():
             'diagnosis': diagnosis,
             'psych_warnings': psych_warnings,
             'style': style,
+            'chart_analysis': chart_analysis,
         }
         cache_set(f'analyze_{ticker}_{style}', result)
         return jsonify(result)
@@ -1141,7 +1341,7 @@ def market_drivers():
 @app.route('/market')
 def market_overview():
     """נתוני שוק רחבים — VIX, Fear & Greed, DXY, ריבית, סקטורים, אירועים"""
-    cached = cache_get('market_overview', ttl=120)
+    cached = cache_get('market_overview', ttl=300)
     if cached:
         return jsonify(cached)
     try:
@@ -1390,6 +1590,204 @@ def ask_assistant():
                   '• "יש לי FOMO, מה לעשות?"')
 
     return jsonify({'answer': answer, 'ticker': ticker})
+
+
+@app.route('/world-news')
+def world_news():
+    """חדשות מאקרו עולמיות + מי מרוויח מכל אירוע"""
+    cached = cache_get('world_news', ttl=900)
+    if cached:
+        return jsonify(cached)
+    try:
+        # אירועים מאקרו עם מנצחים ומפסידים
+        MACRO_EVENTS = [
+            {
+                'topic': 'מלחמת סחר / מכסים',
+                'keywords': ['tariff','trade war','trade deal','customs','import duty','export ban','sanctions','מכס','סנקציות'],
+                'winners': [
+                    {'ticker': 'LMT', 'name': 'Lockheed Martin', 'reason': 'ביטחון + תעשייה מקומית'},
+                    {'ticker': 'RTX',  'name': 'Raytheon',        'reason': 'תעשיית הגנה אמריקאית'},
+                    {'ticker': 'CAT',  'name': 'Caterpillar',      'reason': 'ייצור מקומי מוגן ממכסים'},
+                    {'ticker': 'DE',   'name': 'John Deere',       'reason': 'מכונות חקלאות אמריקאיות'},
+                    {'ticker': 'NEM',  'name': 'Newmont Mining',   'reason': 'זהב עולה בעת אי-ודאות'},
+                ],
+                'losers': [
+                    {'ticker': 'AAPL', 'name': 'Apple',    'reason': 'שרשרת אספקה בסין'},
+                    {'ticker': 'NVDA', 'name': 'NVIDIA',   'reason': 'הגבלות יצוא שבבים'},
+                    {'ticker': 'WMT',  'name': 'Walmart',  'reason': 'מוצרים מיובאים מסין'},
+                    {'ticker': 'NKE',  'name': 'Nike',     'reason': 'ייצור בדרום-מזרח אסיה'},
+                ],
+                'tip': 'כשיש מכסים — קנה תעשייה מקומית, מכור יצואניות גלובליות',
+            },
+            {
+                'topic': 'עלייה בריבית / פד אגרסיבי',
+                'keywords': ['interest rate','fed hike','hawkish','rate rise','fomc','jerome powell','ריבית','פד','העלאת ריבית'],
+                'winners': [
+                    {'ticker': 'JPM',  'name': 'JP Morgan',       'reason': 'בנקים מרוויחים מריבית גבוהה'},
+                    {'ticker': 'BAC',  'name': 'Bank of America',  'reason': 'מרווח ריבית גדל'},
+                    {'ticker': 'GS',   'name': 'Goldman Sachs',    'reason': 'בנק השקעות, הכנסות ריבית'},
+                    {'ticker': 'BRK-B','name': 'Berkshire',        'reason': 'מזומן עצום מניב ריבית'},
+                    {'ticker': 'UNH',  'name': 'UnitedHealth',     'reason': 'שירותי בריאות — לא תלויים בריבית'},
+                ],
+                'losers': [
+                    {'ticker': 'TSLA', 'name': 'Tesla',        'reason': 'מכירות מימון רכב מתייקרות'},
+                    {'ticker': 'AMZN', 'name': 'Amazon',       'reason': 'צמיחה נחתכת — מכפילים יורדים'},
+                    {'ticker': 'ARKK', 'name': 'ARK Innovation','reason': 'טכנולוגיה ספקולטיבית נפגעת'},
+                    {'ticker': 'IYR',  'name': 'Real Estate ETF','reason': 'נדל"ן תלוי ריבית'},
+                ],
+                'tip': 'ריבית עולה = הטה לבנקים ובריאות, הימנע מצמיחה ונדל"ן',
+            },
+            {
+                'topic': 'מלחמה / קונפליקט גיאופוליטי',
+                'keywords': ['war','conflict','military','attack','invasion','geopolitical','nato','מלחמה','קונפליקט','התקפה','צבאי'],
+                'winners': [
+                    {'ticker': 'LMT', 'name': 'Lockheed Martin', 'reason': 'נשק וביטחון'},
+                    {'ticker': 'NOC', 'name': 'Northrop Grumman','reason': 'מערכות הגנה'},
+                    {'ticker': 'GD',  'name': 'General Dynamics', 'reason': 'ספינות וכלי רכב צבאיים'},
+                    {'ticker': 'XOM', 'name': 'Exxon Mobil',      'reason': 'נפט עולה בקונפליקטים'},
+                    {'ticker': 'GLD', 'name': 'Gold ETF',          'reason': 'זהב — מקלט בטוח'},
+                ],
+                'losers': [
+                    {'ticker': 'DAL', 'name': 'Delta Air Lines', 'reason': 'תעופה נפגעת מקונפליקטים'},
+                    {'ticker': 'CCL', 'name': 'Carnival Cruise',  'reason': 'תיירות יורדת'},
+                    {'ticker': 'BABA','name': 'Alibaba',          'reason': 'ריסק סין עולה'},
+                ],
+                'tip': 'קונפליקט = קנה ביטחון ואנרגיה, מכור תיירות ותחבורה',
+            },
+            {
+                'topic': 'ירידת ריבית / פד יוני',
+                'keywords': ['rate cut','dovish','pivot','fed cut','lower rates','הורדת ריבית','פיבוט','יוני'],
+                'winners': [
+                    {'ticker': 'TSLA', 'name': 'Tesla',     'reason': 'ריבית נמוכה = מימון זול לרכב חשמלי'},
+                    {'ticker': 'AMZN', 'name': 'Amazon',    'reason': 'מכפילים עולים בריבית נמוכה'},
+                    {'ticker': 'NVDA', 'name': 'NVIDIA',    'reason': 'טכנולוגיה צומחת נהנית'},
+                    {'ticker': 'IYR',  'name': 'Real Estate ETF','reason': 'נדל"ן עולה'},
+                    {'ticker': 'ARKK', 'name': 'ARK Innovation','reason': 'ספקולציה חוזרת'},
+                ],
+                'losers': [
+                    {'ticker': 'JPM', 'name': 'JP Morgan',  'reason': 'מרווח ריבית נצמצם'},
+                    {'ticker': 'BAC', 'name': 'Bank of America','reason': 'הכנסות ריבית יורדות'},
+                ],
+                'tip': 'ריבית יורדת = קנה טכנולוגיה ונדל"ן, הקטן בנקים',
+            },
+            {
+                'topic': 'משבר בנקאי / פשיטת רגל',
+                'keywords': ['bank crisis','bank failure','bankruptcy','credit crunch','collapse','contagion','משבר','פשיטת רגל','קריסה'],
+                'winners': [
+                    {'ticker': 'GLD', 'name': 'Gold ETF',    'reason': 'מקלט בטוח קלאסי'},
+                    {'ticker': 'TLT', 'name': 'Bonds ETF',   'reason': 'אג"ח ארוך עולה בפחד'},
+                    {'ticker': 'V',   'name': 'Visa',         'reason': 'תשלומים — לא נפגע ממשבר בנקאי'},
+                    {'ticker': 'UNH', 'name': 'UnitedHealth', 'reason': 'דפנסיבי — אנשים עדיין צריכים ביטוח'},
+                ],
+                'losers': [
+                    {'ticker': 'SIVB','name': 'SVB type',    'reason': 'בנקים קטנים/אזוריים נפגעים'},
+                    {'ticker': 'KRE', 'name': 'Regional Banks ETF','reason': 'חשיפה לבנקים אזוריים'},
+                ],
+                'tip': 'משבר בנקאי = ברח לזהב ואג"ח, הימנע מבנקים אזוריים',
+            },
+            {
+                'topic': 'מחיר נפט גבוה',
+                'keywords': ['oil price','crude oil','opec','brent','wti','energy crisis','נפט','אנרגיה','אופ"ק'],
+                'winners': [
+                    {'ticker': 'XOM',  'name': 'Exxon',      'reason': 'חברת נפט — מרוויחה ישירות'},
+                    {'ticker': 'CVX',  'name': 'Chevron',     'reason': 'חברת נפט גדולה'},
+                    {'ticker': 'OXY',  'name': 'Occidental',  'reason': 'ייצור נפט אמריקאי'},
+                    {'ticker': 'HAL',  'name': 'Halliburton', 'reason': 'שירותי קידוח'},
+                    {'ticker': 'XLE',  'name': 'Energy ETF',  'reason': 'אנרגיה כולה'},
+                ],
+                'losers': [
+                    {'ticker': 'DAL', 'name': 'Delta',   'reason': 'עלויות דלק עולות'},
+                    {'ticker': 'UPS', 'name': 'UPS',     'reason': 'לוגיסטיקה תלויה בדלק'},
+                    {'ticker': 'AMZN','name': 'Amazon',  'reason': 'משלוחים מתייקרים'},
+                ],
+                'tip': 'נפט עולה = קנה XLE, מכור תעופה ולוגיסטיקה',
+            },
+            {
+                'topic': 'בינה מלאכותית / AI boom',
+                'keywords': ['artificial intelligence','ai','machine learning','chatgpt','generative ai','large language','gpu','ai chip','בינה מלאכותית','AI'],
+                'winners': [
+                    {'ticker': 'NVDA', 'name': 'NVIDIA',   'reason': 'GPU לאימון AI — מלך השוק'},
+                    {'ticker': 'MSFT', 'name': 'Microsoft','reason': 'Copilot + Azure AI'},
+                    {'ticker': 'GOOG', 'name': 'Google',   'reason': 'Gemini + אינפרה ענן'},
+                    {'ticker': 'AMD',  'name': 'AMD',      'reason': 'תחרות עם NVIDIA בשבבי AI'},
+                    {'ticker': 'SMCI', 'name': 'Super Micro','reason': 'שרתי AI'},
+                ],
+                'losers': [
+                    {'ticker': 'IBM',  'name': 'IBM',      'reason': 'מחשוב ישן נדחק'},
+                    {'ticker': 'ACN',  'name': 'Accenture','reason': 'ייעוץ IT מוחלף ע"י AI'},
+                ],
+                'tip': 'AI boom = NVDA + MSFT + ענן, הימנע מ-IT ישן',
+            },
+            {
+                'topic': 'אינפלציה גבוהה',
+                'keywords': ['inflation','cpi','pce','price index','cost of living','אינפלציה','יוקר מחיה','מדד מחירים'],
+                'winners': [
+                    {'ticker': 'GLD',  'name': 'Gold ETF',       'reason': 'גידור קלאסי מול אינפלציה'},
+                    {'ticker': 'XOM',  'name': 'Exxon',           'reason': 'אנרגיה עולה עם אינפלציה'},
+                    {'ticker': 'PG',   'name': 'Procter & Gamble','reason': 'מעביר עליות מחיר לצרכנים'},
+                    {'ticker': 'COST', 'name': 'Costco',          'reason': 'מוצרי יסוד בסיטונאות'},
+                ],
+                'losers': [
+                    {'ticker': 'TSLA', 'name': 'Tesla',  'reason': 'מוצר לא הכרחי — ביקוש יורד'},
+                    {'ticker': 'AMZN', 'name': 'Amazon', 'reason': 'עלויות לוגיסטיקה ועבודה עולות'},
+                    {'ticker': 'DIS',  'name': 'Disney', 'reason': 'בידור — ביקוש יורד ביוקר מחיה'},
+                ],
+                'tip': 'אינפלציה = זהב + אנרגיה + יסודות, הימנע מבידור ו-discretionary',
+            },
+        ]
+
+        # שלוף חדשות עולם אמיתיות מ-RSS
+        import xml.etree.ElementTree as ET
+        rss_feeds = [
+            ('https://feeds.bbci.co.uk/news/business/rss.xml', 'BBC Business'),
+            ('https://rss.cnn.com/rss/money_news_international.rss', 'CNN Money'),
+        ]
+        live_news = []
+        for feed_url, source in rss_feeds:
+            try:
+                req = requests.get(feed_url, timeout=5,
+                    headers={'User-Agent': 'Mozilla/5.0'})
+                root = ET.fromstring(req.content)
+                for item in root.findall('.//item')[:5]:
+                    title = item.findtext('title', '')
+                    desc  = item.findtext('description', '')
+                    link  = item.findtext('link', '')
+                    live_news.append({'title': title, 'desc': desc[:200], 'link': link, 'source': source})
+            except Exception:
+                pass
+
+        # התאם חדשות לאירועי מאקרו
+        matched = []
+        for event in MACRO_EVENTS:
+            score = 0
+            matched_titles = []
+            for news in live_news:
+                text = (news['title'] + ' ' + news['desc']).lower()
+                hits = sum(1 for kw in event['keywords'] if kw.lower() in text)
+                if hits > 0:
+                    score += hits
+                    matched_titles.append(news['title'])
+            if matched_titles:
+                matched.append({
+                    'topic': event['topic'],
+                    'relevance': score,
+                    'news': matched_titles[:3],
+                    'winners': event['winners'],
+                    'losers': event['losers'],
+                    'tip': event['tip'],
+                })
+
+        matched.sort(key=lambda x: x['relevance'], reverse=True)
+
+        result = {
+            'events': matched[:4],
+            'all_events': [{'topic': e['topic'], 'tip': e['tip'], 'winners': e['winners'], 'losers': e['losers']} for e in MACRO_EVENTS],
+            'live_news': live_news[:8],
+        }
+        cache_set('world_news', result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
