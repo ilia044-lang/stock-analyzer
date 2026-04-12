@@ -92,6 +92,329 @@ def calc_fibonacci(high_series, low_series):
     }
 
 
+def detect_chart_patterns(df):
+    """
+    זיהוי תבניות גרף קלאסיות על היסטוריה של עד 3 חודשים.
+    מחזיר רשימת תבניות שזוהו, עם תיאור + כיוון + רמות מפתח.
+    """
+    close  = df['Close'].values.astype(float)
+    high   = df['High'].values.astype(float)
+    low    = df['Low'].values.astype(float)
+    volume = df['Volume'].values.astype(float)
+    n = len(close)
+    if n < 20:
+        return []
+
+    current = close[-1]
+    patterns = []
+
+    # ── עזר: מציאת שיאים ושפלים מקומיים ──
+    def local_highs(window=5):
+        idx = []
+        for i in range(window, n - window):
+            if high[i] == max(high[i-window:i+window+1]):
+                idx.append(i)
+        return idx
+
+    def local_lows(window=5):
+        idx = []
+        for i in range(window, n - window):
+            if low[i] == min(low[i-window:i+window+1]):
+                idx.append(i)
+        return idx
+
+    highs_idx = local_highs()
+    lows_idx  = local_lows()
+
+    # ════════════════════════════════════════
+    # 1. ספל-וידית (Cup and Handle)
+    # ════════════════════════════════════════
+    if n >= 40:
+        # מחפשים: שיא שמאלי → ירידה לשפל → עלייה חזרה לשיא → ידית (תיקון קטן) → פריצה
+        cup_window = min(n - 5, 50)
+        cup_high   = max(high[-cup_window:-cup_window//2])
+        cup_low    = min(low[-cup_window+5:-5])
+        cup_right  = max(high[-cup_window//2:-3])
+        handle_low = min(low[-10:])
+        depth_pct  = (cup_high - cup_low) / cup_high * 100
+        symmetry   = abs(cup_high - cup_right) / cup_high
+
+        if (10 < depth_pct < 35 and                  # עומק ספל 10-35%
+                symmetry < 0.08 and                   # שני צדדים סימטריים
+                handle_low > cup_low and              # הידית מעל שפל הספל
+                (cup_high - handle_low) / cup_high < 0.15 and  # ידית לא יותר מ-15%
+                current > cup_right * 0.97):          # מחיר קרוב לשפה הימנית
+            breakout_target = round(cup_high * (1 + depth_pct / 100), 2)
+            patterns.append({
+                'name': 'ספל-וידית (Cup & Handle)',
+                'emoji': '☕',
+                'signal': 'bullish',
+                'strength': 'חזק',
+                'description': (
+                    f"תבנית ספל-וידית מתגבשת — עומק ספל {depth_pct:.1f}%. "
+                    f"'The wider the base the higher to space.' "
+                    f"פריצה מעל {round(cup_right,2)} עם ווליום = כניסה."
+                ),
+                'target': breakout_target,
+                'key_level': round(cup_right, 2),
+            })
+
+    # ════════════════════════════════════════
+    # 2. ראש-וכתפיים (Head & Shoulders) — בריש
+    # ════════════════════════════════════════
+    if len(highs_idx) >= 3:
+        for i in range(len(highs_idx) - 2):
+            ls, hd, rs = highs_idx[i], highs_idx[i+1], highs_idx[i+2]
+            if (high[hd] > high[ls] * 1.02 and    # ראש גבוה משתי הכתפיים
+                    high[hd] > high[rs] * 1.02 and
+                    abs(high[ls] - high[rs]) / high[hd] < 0.06 and  # כתפיים סימטריות
+                    rs > n - 20):                  # תבנית עדכנית
+                # קו צוואר — ממוצע השפלים בין הכתפיים
+                neckline_lows = [low[j] for j in range(ls, rs+1)]
+                neckline = sum(sorted(neckline_lows)[:3]) / 3
+                target = round(neckline - (high[hd] - neckline), 2)
+                if current < high[hd] * 0.98:     # לא בשיא עצמו
+                    patterns.append({
+                        'name': 'ראש-וכתפיים (H&S)',
+                        'emoji': '👤',
+                        'signal': 'bearish',
+                        'strength': 'חזק מאוד',
+                        'description': (
+                            f"ראש-וכתפיים בריש — קו צוואר ב-{round(neckline,2)}. "
+                            f"שבירת הצוואר = אות מכירה. יעד: {target}."
+                        ),
+                        'target': target,
+                        'key_level': round(neckline, 2),
+                    })
+                    break
+
+    # ════════════════════════════════════════
+    # 3. ראש-וכתפיים הפוך — בוליש
+    # ════════════════════════════════════════
+    if len(lows_idx) >= 3:
+        for i in range(len(lows_idx) - 2):
+            ls, hd, rs = lows_idx[i], lows_idx[i+1], lows_idx[i+2]
+            if (low[hd] < low[ls] * 0.98 and
+                    low[hd] < low[rs] * 0.98 and
+                    abs(low[ls] - low[rs]) / (low[hd] + 0.001) < 0.06 and
+                    rs > n - 20):
+                neckline_highs = [high[j] for j in range(ls, rs+1)]
+                neckline = sum(sorted(neckline_highs)[-3:]) / 3
+                target = round(neckline + (neckline - low[hd]), 2)
+                if current > low[hd] * 1.02:
+                    patterns.append({
+                        'name': 'ראש-וכתפיים הפוך',
+                        'emoji': '🔃',
+                        'signal': 'bullish',
+                        'strength': 'חזק מאוד',
+                        'description': (
+                            f"ראש-וכתפיים הפוך — בוליש. קו צוואר ב-{round(neckline,2)}. "
+                            f"פריצה מעל הצוואר = אות קנייה. יעד: {target}."
+                        ),
+                        'target': target,
+                        'key_level': round(neckline, 2),
+                    })
+                    break
+
+    # ════════════════════════════════════════
+    # 4. משולש עולה (Ascending Triangle) — בוליש
+    # ════════════════════════════════════════
+    if n >= 15:
+        recent_highs = [high[i] for i in highs_idx if i > n - 30]
+        recent_lows  = [low[i]  for i in lows_idx  if i > n - 30]
+        if len(recent_highs) >= 2 and len(recent_lows) >= 2:
+            res_flat  = max(recent_highs)
+            hi_spread = (max(recent_highs) - min(recent_highs)) / res_flat
+            lo_rising = recent_lows[-1] > recent_lows[0] if len(recent_lows) >= 2 else False
+            if hi_spread < 0.04 and lo_rising and current > min(recent_lows):
+                patterns.append({
+                    'name': 'משולש עולה (Ascending Triangle)',
+                    'emoji': '📐',
+                    'signal': 'bullish',
+                    'strength': 'בינוני-חזק',
+                    'description': (
+                        f"משולש עולה — התנגדות שטוחה ב-{round(res_flat,2)}, שפלים עולים. "
+                        f"פריצה עם ווליום = כניסה. יעד: {round(res_flat * 1.08, 2)}."
+                    ),
+                    'target': round(res_flat * 1.08, 2),
+                    'key_level': round(res_flat, 2),
+                })
+
+    # ════════════════════════════════════════
+    # 5. משולש יורד (Descending Triangle) — בריש
+    # ════════════════════════════════════════
+    if n >= 15:
+        recent_highs = [high[i] for i in highs_idx if i > n - 30]
+        recent_lows  = [low[i]  for i in lows_idx  if i > n - 30]
+        if len(recent_highs) >= 2 and len(recent_lows) >= 2:
+            sup_flat  = min(recent_lows)
+            lo_spread = (max(recent_lows) - min(recent_lows)) / (sup_flat + 0.001)
+            hi_falling = recent_highs[-1] < recent_highs[0] if len(recent_highs) >= 2 else False
+            if lo_spread < 0.04 and hi_falling and current < max(recent_highs):
+                patterns.append({
+                    'name': 'משולש יורד (Descending Triangle)',
+                    'emoji': '📐',
+                    'signal': 'bearish',
+                    'strength': 'בינוני-חזק',
+                    'description': (
+                        f"משולש יורד — תמיכה שטוחה ב-{round(sup_flat,2)}, שיאים יורדים. "
+                        f"שבירת תמיכה = סיגנל מכירה. יעד: {round(sup_flat * 0.92, 2)}."
+                    ),
+                    'target': round(sup_flat * 0.92, 2),
+                    'key_level': round(sup_flat, 2),
+                })
+
+    # ════════════════════════════════════════
+    # 6. משולש מתכנס (Symmetrical Triangle)
+    # ════════════════════════════════════════
+    if n >= 15:
+        recent_highs = [high[i] for i in highs_idx if i > n - 25]
+        recent_lows  = [low[i]  for i in lows_idx  if i > n - 25]
+        if len(recent_highs) >= 2 and len(recent_lows) >= 2:
+            hi_falling = recent_highs[-1] < recent_highs[0]
+            lo_rising  = recent_lows[-1]  > recent_lows[0]
+            range_now  = recent_highs[-1] - recent_lows[-1]
+            range_then = recent_highs[0]  - recent_lows[0]
+            tightening = range_now < range_then * 0.7
+            if hi_falling and lo_rising and tightening:
+                apex = round((recent_highs[-1] + recent_lows[-1]) / 2, 2)
+                patterns.append({
+                    'name': 'משולש מתכנס (Symmetrical)',
+                    'emoji': '🔺',
+                    'signal': 'neutral',
+                    'strength': 'בינוני',
+                    'description': (
+                        f"משולש מתכנס — שיאים יורדים ושפלים עולים. "
+                        f"השוק בלחץ — פריצה בקרוב. אפקס סביב {apex}. "
+                        "כיוון הפריצה יקבע את הטרייד."
+                    ),
+                    'target': None,
+                    'key_level': apex,
+                })
+
+    # ════════════════════════════════════════
+    # 7. דגל (Flag) — בוליש
+    # ════════════════════════════════════════
+    if n >= 15:
+        pole_start = max(0, n - 20)
+        pole_high  = max(high[pole_start:n-5])
+        pole_low   = min(low[pole_start:n-10])
+        pole_gain  = (pole_high - pole_low) / (pole_low + 0.001) * 100
+        flag_range = max(high[-7:]) - min(low[-7:])
+        flag_pct   = flag_range / (pole_high + 0.001) * 100
+        flag_trending_down = close[-1] < close[-5]  # דגל יורד קצת
+
+        if (pole_gain > 10 and          # עמוד חזק > 10%
+                flag_pct < 5 and         # דגל צר
+                flag_trending_down and   # דגל יורד
+                current > pole_low * 1.05):
+            target = round(current + (pole_high - pole_low) * 0.8, 2)
+            patterns.append({
+                'name': 'דגל בוליש (Bull Flag)',
+                'emoji': '🚩',
+                'signal': 'bullish',
+                'strength': 'חזק',
+                'description': (
+                    f"דגל בוליש — עמוד עלייה {pole_gain:.1f}%, ואז תיקון צר {flag_pct:.1f}%. "
+                    f"פריצה מעל {round(max(high[-7:]),2)} = כניסה. יעד: {target}."
+                ),
+                'target': target,
+                'key_level': round(max(high[-7:]), 2),
+            })
+
+    # ════════════════════════════════════════
+    # 8. כפל תחתית (Double Bottom) — בוליש
+    # ════════════════════════════════════════
+    if len(lows_idx) >= 2:
+        l1_i, l2_i = lows_idx[-2], lows_idx[-1]
+        if (l2_i > l1_i + 5 and                          # מספיק מרחק בין שפלים
+                abs(low[l1_i] - low[l2_i]) / low[l1_i] < 0.04 and  # שפלים קרובים
+                l2_i > n - 15):                           # שפל שני אחרון
+            peak_between = max(high[l1_i:l2_i])
+            target = round(peak_between + (peak_between - low[l2_i]), 2)
+            patterns.append({
+                'name': 'כפל תחתית (Double Bottom)',
+                'emoji': 'W',
+                'signal': 'bullish',
+                'strength': 'חזק',
+                'description': (
+                    f"כפל תחתית — שני שפלים קרובים ב-{round(low[l1_i],2)} ו-{round(low[l2_i],2)}. "
+                    f"פריצה מעל {round(peak_between,2)} = אות כניסה. יעד: {target}."
+                ),
+                'target': target,
+                'key_level': round(peak_between, 2),
+            })
+
+    # ════════════════════════════════════════
+    # 9. כפל שיא (Double Top) — בריש
+    # ════════════════════════════════════════
+    if len(highs_idx) >= 2:
+        h1_i, h2_i = highs_idx[-2], highs_idx[-1]
+        if (h2_i > h1_i + 5 and
+                abs(high[h1_i] - high[h2_i]) / high[h1_i] < 0.04 and
+                h2_i > n - 15):
+            trough_between = min(low[h1_i:h2_i])
+            target = round(trough_between - (high[h2_i] - trough_between), 2)
+            patterns.append({
+                'name': 'כפל שיא (Double Top)',
+                'emoji': 'M',
+                'signal': 'bearish',
+                'strength': 'חזק',
+                'description': (
+                    f"כפל שיא — שני שיאים קרובים ב-{round(high[h1_i],2)} ו-{round(high[h2_i],2)}. "
+                    f"שבירה מתחת {round(trough_between,2)} = אות מכירה. יעד: {target}."
+                ),
+                'target': target,
+                'key_level': round(trough_between, 2),
+            })
+
+    # ════════════════════════════════════════
+    # 10. תנועת V (V-Recovery) — ריקושט חד
+    # ════════════════════════════════════════
+    if n >= 10:
+        low_10  = min(low[-10:])
+        low_idx = list(low[-10:]).index(low_10)
+        gain_since_low = (current - low_10) / (low_10 + 0.001) * 100
+        if gain_since_low > 8 and low_idx < 7:   # עלייה >8% משפל האחרון
+            patterns.append({
+                'name': 'ריקושט V חד',
+                'emoji': '⚡',
+                'signal': 'bullish',
+                'strength': 'בינוני',
+                'description': (
+                    f"ריקושט חד — +{gain_since_low:.1f}% מהשפל ב-{round(low_10,2)}. "
+                    "תשאלו: האם זה ריקושט אמיתי עם ווליום, או dead-cat bounce?"
+                ),
+                'target': None,
+                'key_level': round(low_10, 2),
+            })
+
+    # ════════════════════════════════════════
+    # 11. קונסולידציה (בסיס) — Wide Base
+    # ════════════════════════════════════════
+    if n >= 20:
+        rng_20 = (max(high[-20:]) - min(low[-20:])) / (min(low[-20:]) + 0.001) * 100
+        vol_20_avg = sum(volume[-20:]) / 20
+        vol_5_avg  = sum(volume[-5:])  / 5
+        vol_declining = vol_5_avg < vol_20_avg * 0.8
+        if rng_20 < 10 and vol_declining:
+            patterns.append({
+                'name': 'קונסולידציה / בסיס רחב',
+                'emoji': '🏗️',
+                'signal': 'neutral',
+                'strength': 'בינוני',
+                'description': (
+                    f"בסיס רחב — תנודתיות {rng_20:.1f}% ב-20 יום עם ווליום יורד. "
+                    "'The wider the base the higher to space.' "
+                    "לחכות לפריצה עם ווליום."
+                ),
+                'target': round(max(high[-20:]) * 1.05, 2),
+                'key_level': round(max(high[-20:]), 2),
+            })
+
+    return patterns
+
+
 # ─── Analysis Functions ────────────────────────────────────────────────────────
 
 def analyze_trend(close):
@@ -162,69 +485,235 @@ def analyze_trend(close):
 
 
 def analyze_candle(o, h, l, c):
+    """
+    זיהוי תבניות נרות יפניים — כולל תבניות חד-נרי, דו-נרי ותלת-נרי.
+    תבניות לפי סדר חשיבות: חזקות יותר דורסות חלשות יותר.
+    """
     if len(o) < 2:
         return {'patterns': [], 'signal': 'neutral', 'description': 'אין מספיק נתונים'}
 
-    o1, h1, l1, c1 = o.iloc[-1], h.iloc[-1], l.iloc[-1], c.iloc[-1]  # today
-    o2, h2, l2, c2 = o.iloc[-2], h.iloc[-2], l.iloc[-2], c.iloc[-2]  # yesterday
+    # נר נוכחי
+    o1, h1, l1, c1 = float(o.iloc[-1]), float(h.iloc[-1]), float(l.iloc[-1]), float(c.iloc[-1])
+    # נר קודם
+    o2, h2, l2, c2 = float(o.iloc[-2]), float(h.iloc[-2]), float(l.iloc[-2]), float(c.iloc[-2])
+    # לפני קודם (לתבניות תלת-נרי)
+    has3 = len(o) >= 3
+    if has3:
+        o3, h3, l3, c3 = float(o.iloc[-3]), float(h.iloc[-3]), float(l.iloc[-3]), float(c.iloc[-3])
 
-    body1  = abs(c1 - o1)
     range1 = h1 - l1 if h1 != l1 else 0.0001
-    lower1 = min(o1, c1) - l1
+    body1  = abs(c1 - o1)
     upper1 = h1 - max(o1, c1)
+    lower1 = min(o1, c1) - l1
+    body_pct1 = body1 / range1
+
+    range2 = h2 - l2 if h2 != l2 else 0.0001
+    body2  = abs(c2 - o2)
+
+    bull1 = c1 > o1   # נר נוכחי ירוק
+    bear1 = c1 < o1   # נר נוכחי אדום
+    bull2 = c2 > o2   # נר קודם ירוק
+    bear2 = c2 < o2   # נר קודם אדום
 
     patterns = []
-    signal = 'neutral'
+    # רשימת סיגנלים לפי עוצמה (bull=+1, bear=-1, neutral=0)
+    signals = []
 
-    # Doji
-    if range1 > 0 and body1 / range1 < 0.1:
-        patterns.append("דוג'י - חוסר החלטיות")
-        signal = 'neutral'
+    # ══════════════════════════════════════════
+    # תבניות חד-נרי
+    # ══════════════════════════════════════════
 
-    # Bullish hammer
-    if lower1 > 2 * body1 and upper1 < body1 * 0.5:
-        patterns.append("פטיש בוליש - דחיית מחירים נמוכים")
-        signal = 'bullish'
+    # ── דוג'ים ──
+    is_doji = body_pct1 < 0.08 and range1 > 0
 
-    # Bearish shooting star
-    if upper1 > 2 * body1 and lower1 < body1 * 0.5 and c1 < o1:
-        patterns.append("כוכב נופל בריש - דחיית מחירים גבוהים")
-        signal = 'bearish'
-
-    # Bullish engulfing
-    if c1 > o1 and c2 < o2 and c1 > o2 and o1 < c2:
-        patterns.append("בולען בוליש - קונים השתלטו")
-        signal = 'bullish'
-
-    # Bearish engulfing
-    if c1 < o1 and c2 > o2 and c1 < o2 and o1 > c2:
-        patterns.append("בולען בריש - מוכרים השתלטו")
-        signal = 'bearish'
-
-    # Bullish harami
-    if c1 > o1 and c2 < o2 and c1 < o2 and o1 > c2:
-        patterns.append("האראמי בוליש - עצירת ירידה")
-        signal = 'bullish'
-
-    # Bearish harami
-    if c1 < o1 and c2 > o2 and c1 > o2 and o1 < c2:
-        patterns.append("האראמי בריש - עצירת עלייה")
-        signal = 'bearish'
-
-    # Marubozu
-    if range1 > 0 and body1 / range1 > 0.92:
-        if c1 > o1:
-            patterns.append("מרבוזו בוליש - כוח קנייה מלא")
-            signal = 'bullish'
+    if is_doji:
+        # דוג'י טאבלאית (Dragonfly) — פתיל תחתון ארוך, גוף בראש
+        if lower1 > range1 * 0.6 and upper1 < range1 * 0.1:
+            patterns.append("דוגי טאבלאית 🐉 — דחיית שפל, רמז בוליש")
+            signals.append(1)
+        # דוג'י מצבה (Gravestone) — פתיל עליון ארוך, גוף בתחתית
+        elif upper1 > range1 * 0.6 and lower1 < range1 * 0.1:
+            patterns.append("דוגי מצבה 🪦 — דחיית שיא, רמז בריש")
+            signals.append(-1)
+        # דוג'י רגיל
         else:
-            patterns.append("מרבוזו בריש - כוח מכירה מלא")
-            signal = 'bearish'
+            patterns.append("דוג'י ⚖️ — חוסר החלטיות, מחכים לאישור")
+            signals.append(0)
+
+    # ── סביבון (Spinning Top) — גוף קטן, פתילים גדולים ──
+    elif body_pct1 < 0.25 and upper1 > body1 * 0.5 and lower1 > body1 * 0.5:
+        patterns.append("סביבון 🌀 — חוסר החלטיות, קונים ומוכרים מתמודדים")
+        signals.append(0)
+
+    # ── מרבוזו (Marubozu) — גוף מלא, כמעט ללא פתילים ──
+    elif body_pct1 > 0.92:
+        if bull1:
+            patterns.append("מרבוזו בוליש 💪 — כוח קנייה מלא, ללא היסוס")
+            signals.append(2)
+        else:
+            patterns.append("מרבוזו בריש 🔴 — כוח מכירה מלא, ללא היסוס")
+            signals.append(-2)
+
+    else:
+        # ── פטיש (Hammer) — פתיל תחתון ארוך, גוף למעלה ──
+        if lower1 >= 2 * body1 and upper1 <= body1 * 0.5 and range1 > 0:
+            if bull1:
+                patterns.append("פטיש ירוק 🔨 — דחיית שפל עם סגירה גבוהה, בוליש חזק")
+                signals.append(2)
+            else:
+                patterns.append("פטיש אדום 🔨 — דחיית שפל, בוליש (גוף אדום פחות אידיאלי)")
+                signals.append(1)
+
+        # ── פטיש הפוך (Inverted Hammer) — פתיל עליון ארוך, גוף למטה ──
+        elif upper1 >= 2 * body1 and lower1 <= body1 * 0.5 and bull1:
+            patterns.append("פטיש הפוך 🔄 — ניסיון עלייה, צריך אישור ביום הבא")
+            signals.append(1)
+
+        # ── כוכב נופל (Shooting Star) — פתיל עליון ארוך + נר אדום ──
+        elif upper1 >= 2 * body1 and lower1 <= body1 * 0.5 and bear1:
+            patterns.append("כוכב נופל ⭐ — דחיית שיא, בריש")
+            signals.append(-2)
+
+        # ── איש תלוי (Hanging Man) — פטיש בסוף עלייה ──
+        elif lower1 >= 2 * body1 and upper1 <= body1 * 0.5 and bear1:
+            patterns.append("איש תלוי 🪝 — פטיש אדום בסוף עלייה, אזהרה בריש")
+            signals.append(-1)
+
+    # ══════════════════════════════════════════
+    # תבניות דו-נרי
+    # ══════════════════════════════════════════
+
+    # ── בולען בוליש (Bullish Engulfing) ──
+    if bull1 and bear2 and c1 >= o2 and o1 <= c2 and body1 > body2:
+        patterns.append("בולען בוליש 🟢 — קונים בלעו את המוכרים לגמרי")
+        signals.append(2)
+
+    # ── בולען בריש (Bearish Engulfing) ──
+    elif bear1 and bull2 and c1 <= o2 and o1 >= c2 and body1 > body2:
+        patterns.append("בולען בריש 🔴 — מוכרים בלעו את הקונים לגמרי")
+        signals.append(-2)
+
+    # ── האראמי בוליש (Bullish Harami) — נר פנימי אחרי ירידה ──
+    if bull1 and bear2 and c1 < o2 and o1 > c2 and body1 < body2 * 0.6:
+        patterns.append("האראמי בוליש 🔵 — נר קטן בתוך נר גדול, עצירת ירידה")
+        signals.append(1)
+
+    # ── האראמי בריש (Bearish Harami) ──
+    elif bear1 and bull2 and c1 > o2 and o1 < c2 and body1 < body2 * 0.6:
+        patterns.append("האראמי בריש 🟠 — נר קטן בתוך נר גדול, עצירת עלייה")
+        signals.append(-1)
+
+    # ── נר פנימי (Inside Bar) — הנר נמצא בתוך הנר הקודם ──
+    if h1 < h2 and l1 > l2 and not any("האראמי" in p for p in patterns):
+        patterns.append("נר פנימי 📦 — התכווצות תנודתיות, לפני תנועה גדולה")
+        signals.append(0)
+
+    # ── נר חיצוני (Outside Bar) — הנר בולע את הנר הקודם ──
+    if h1 > h2 and l1 < l2:
+        if bull1:
+            patterns.append("נר חיצוני ירוק 📈 — קונים שלטו בכל הטווח")
+            signals.append(1)
+        else:
+            patterns.append("נר חיצוני אדום 📉 — מוכרים שלטו בכל הטווח")
+            signals.append(-1)
+
+    # ── פינצטה תחתית (Tweezer Bottom) — שני שפלים זהים ──
+    if abs(l1 - l2) / (max(l1, l2) + 0.0001) < 0.003 and bear2 and bull1:
+        patterns.append("פינצטה תחתית 🔧 — דחיית שפל כפולה, בוליש")
+        signals.append(2)
+
+    # ── פינצטה עליונה (Tweezer Top) — שני שיאים זהים ──
+    if abs(h1 - h2) / (max(h1, h2) + 0.0001) < 0.003 and bull2 and bear1:
+        patterns.append("פינצטה עליונה 🔧 — דחיית שיא כפולה, בריש")
+        signals.append(-2)
+
+    # ── קו חוצה (Piercing Line) — ירידה חדה ואחריה כיסוי >50% ──
+    if bear2 and bull1 and o1 < l2 and c1 > (o2 + c2) / 2 and body2 > range2 * 0.5:
+        patterns.append("קו חוצה 💉 — קונים חזרו בחוזקה, בוליש")
+        signals.append(2)
+
+    # ── כיסוי עננה כהה (Dark Cloud Cover) ──
+    if bull2 and bear1 and o1 > h2 and c1 < (o2 + c2) / 2 and body2 > range2 * 0.5:
+        patterns.append("עננה כהה ☁️ — מוכרים חזרו בחוזקה, בריש")
+        signals.append(-2)
+
+    # ══════════════════════════════════════════
+    # תבניות תלת-נרי
+    # ══════════════════════════════════════════
+
+    if has3:
+        bull3 = c3 > o3
+        bear3 = c3 < o3
+        body3 = abs(c3 - o3)
+
+        # ── כוכב בוקר (Morning Star) — ירידה, סביבון/דוגי, עלייה ──
+        if (bear3 and body3 > 0 and
+                abs(c2 - o2) / (h2 - l2 + 0.0001) < 0.3 and
+                bull1 and c1 > (o3 + c3) / 2):
+            patterns.append("כוכב בוקר 🌅 — תבנית היפוך בוליש קלאסית (3 נרות)")
+            signals.append(3)
+
+        # ── כוכב ערב (Evening Star) — עלייה, סביבון/דוגי, ירידה ──
+        elif (bull3 and body3 > 0 and
+              abs(c2 - o2) / (h2 - l2 + 0.0001) < 0.3 and
+              bear1 and c1 < (o3 + c3) / 2):
+            patterns.append("כוכב ערב 🌆 — תבנית היפוך בריש קלאסית (3 נרות)")
+            signals.append(-3)
+
+        # ── שלושה חיילים לבנים (Three White Soldiers) ──
+        if (bull1 and bull2 and bull3 and
+                c1 > c2 > c3 and
+                o1 > o2 > o3 and
+                body1 > range1 * 0.5 and body2 > range2 * 0.5):
+            patterns.append("3 חיילים לבנים 🪖🪖🪖 — עלייה חזקה ומסודרת, בוליש חזק")
+            signals.append(3)
+
+        # ── שלושה עורבים שחורים (Three Black Crows) ──
+        elif (bear1 and bear2 and bear3 and
+              c1 < c2 < c3 and
+              o1 < o2 < o3 and
+              body1 > range1 * 0.5 and body2 > range2 * 0.5):
+            patterns.append("3 עורבים שחורים 🦅🦅🦅 — ירידה חזקה ומסודרת, בריש חזק")
+            signals.append(-3)
+
+        # ── קיקר בוליש (Bullish Kicker) — גפ בין נר אדום לנר ירוק ──
+        if bear2 and bull1 and o1 >= c2:
+            patterns.append("קיקר בוליש ⚡ — גפ חד מנר אדום לנר ירוק, שינוי כיוון מהיר")
+            signals.append(3)
+
+        # ── קיקר בריש (Bearish Kicker) ──
+        elif bull2 and bear1 and o1 <= c2:
+            patterns.append("קיקר בריש ⚡ — גפ חד מנר ירוק לנר אדום, שינוי כיוון מהיר")
+            signals.append(-3)
+
+    # ══════════════════════════════════════════
+    # קביעת סיגנל סופי
+    # ══════════════════════════════════════════
 
     if not patterns:
-        patterns.append("נר רגיל - אין תבנית מיוחדת")
+        patterns.append("נר רגיל — אין תבנית מיוחדת")
+        signals.append(0)
+
+    # ממוצע משוקלל לפי עוצמה
+    total = sum(signals)
+    if total >= 2:
+        signal = 'bullish'
+    elif total <= -2:
+        signal = 'bearish'
+    elif total > 0:
+        signal = 'bullish'
+    elif total < 0:
+        signal = 'bearish'
+    else:
+        signal = 'neutral'
 
     desc = ' | '.join(patterns)
-    return {'patterns': patterns, 'signal': signal, 'description': desc}
+    return {
+        'patterns': patterns,
+        'signal': signal,
+        'description': desc,
+        'signal_strength': total,   # עוצמת הסיגנל המצטבר
+    }
 
 
 def analyze_volume(volume, close):
@@ -389,7 +878,6 @@ def analyze_cci(high, low, close):
     cci    = calc_cci(high, low, close, period=14)
     val    = cci.iloc[-1]
     prev   = cci.iloc[-2]
-    prev2  = cci.iloc[-3] if len(cci) > 2 else prev
     rising = val > prev
 
     # כללי CCI לפי מיכה סטוקס (מהסרטון w-NGbxzMcDY):
@@ -565,157 +1053,208 @@ def self_diagnose(df, trend, candle, volume, ma20, gaps, cci,
 def generate_narrative(ticker, company_name, current_price, currency,
                         trend, candle, volume, ma20, gaps, cci,
                         bullish, bearish, neutral, rec_key):
-    """מייצר ניתוח טקסטואלי בסגנון מיכה סטוקס"""
-
+    """
+    ניתוח בסגנון מיכה סטוק — לייב 20.
+    עובר על הצ'קליסט לפי הסדר: טרנד → נר → ווליום → MA20 → גאפים → CCI
+    ואז נותן סיכום + תוכנית מסחר.
+    """
     lines = []
+    consec     = trend.get('consecutive_days', 0)
+    consec_dir = trend.get('consecutive_dir', 'none')
+    dist       = ma20['distance_pct']
+    cci_val    = cci['value']
+    ma20_val   = ma20['ma20']
 
-    # ── פתיח ──
-    trend_word = 'עולה' if trend['signal'] == 'bullish' else ('יורד' if trend['signal'] == 'bearish' else 'צידי')
+    # ══ פתיח ══
+    monthly_ch = trend['monthly_change']
+    weekly_ch  = trend['weekly_change']
+    dir_he = 'ירוקים' if consec_dir == 'up' else 'אדומים' if consec_dir == 'down' else ''
+
     lines.append(
-        f"אז בואו נדבר על {company_name} ({ticker}), שנסחרת כרגע ב-{current_price} {currency}. "
-        f"הטרנד של החודש האחרון הוא {trend_word} — "
-        f"המניה עשתה {trend['monthly_change']:+.1f}% בחודש ו-{trend['weekly_change']:+.1f}% בשבוע האחרון."
+        f"בוא נעבור על הצ'קליסט של {ticker} ({current_price} {currency}). "
+        f"חודש אחרון: {monthly_ch:+.1f}%, שבוע: {weekly_ch:+.1f}%."
     )
 
-    # כלל 5 ימים
-    if trend.get('five_day_warning'):
-        dir_heb = 'ירוקים' if trend['consecutive_dir'] == 'up' else 'אדומים'
-        opp_heb = 'תיקון ירידה' if trend['consecutive_dir'] == 'up' else 'ריקושט עלייה'
+    # ══ שאלה 1: ימים רצופים ══
+    if consec >= 7 and consec_dir == 'up':
         lines.append(
-            f"שימו לב — {trend['consecutive_days']} ימים רצופים {dir_heb}. "
-            f"לפי כלל 5 הימים, זה הזמן לצפות ל{opp_heb}. לא מוחלט, אבל שווה לשים לב."
+            f"📌 ימים רצופים — בואו נספור: {consec} ימים {dir_he} רצופים. "
+            f"תשאלו את עצמכם: האם הגיוני {consec} ימים ירוקים? לא. "
+            "זה לא הזמן להיכנס."
         )
+    elif consec >= 5 and consec_dir == 'up':
+        lines.append(
+            f"📌 ימים רצופים — {consec} ימים {dir_he}. "
+            "לפי כלל 5 הימים — צפו לשינוי כיוון בקרוב. לא מוחלט, אבל שמו לב."
+        )
+    elif consec >= 5 and consec_dir == 'down':
+        lines.append(
+            f"📌 ימים רצופים — {consec} ימים {dir_he}. "
+            "המוכרים עייפים — מתקרבים לנקודה שמעניינת אותנו."
+        )
+    elif consec >= 3:
+        lines.append(
+            f"📌 ימים רצופים — {consec} ימים {dir_he}. עדיין לא קיצוני."
+        )
+    else:
+        lines.append(f"📌 ימים רצופים — {consec} יום. ניטרלי.")
 
-    # ── נרות ──
-    candle_signal = candle['signal']
-    if candle_signal == 'bullish':
+    # ══ שאלה 2: מרחק ממוצע 20 ══
+    if dist > 12:
         lines.append(
-            f"הנר של אתמול אומר לנו סיפור בוליש: {candle['description']}. "
-            "זה בדיוק מה שאנחנו רוצים לראות לפני כניסה — הקונים נכנסו בכוח."
+            f"📌 ממוצע 20 — מרחק {dist:+.1f}%. "
+            f"האם הגיוני מרחק כזה גדול מממוצע 20? לא. "
+            f"הממוצע ב-{ma20_val} הוא המגנט — שם הוא הולך לחזור."
         )
-    elif candle_signal == 'bearish':
+    elif dist > 6:
         lines.append(
-            f"הנר של אתמול מדליק נורה אדומה: {candle['description']}. "
-            "המוכרים השתלטו — צריך להיות זהירים כאן."
+            f"📌 ממוצע 20 — מניה {dist:+.1f}% מעל הממוצע. "
+            "מרחק שמתחיל להיות לא נוח. ממוצע 20 משמש כמגנט."
+        )
+    elif 0 < dist <= 6:
+        lines.append(
+            f"📌 ממוצע 20 — מניה {dist:+.1f}% מעל הממוצע עולה. סביבה בוליש, מרחק סביר."
+        )
+    elif -4 <= dist <= 0:
+        lines.append(
+            f"📌 ממוצע 20 — מניה {abs(dist):.1f}% מתחת לממוצע. "
+            "האזור הכי לא נוח — קצת מתחת אבל לא מספיק לריקושט."
+        )
+    elif dist < -8:
+        lines.append(
+            f"📌 ממוצע 20 — מניה {abs(dist):.1f}% מתחת לממוצע. "
+            f"מרחק גדול — הגומיה מתוחה. יעד: חזרה לממוצע ב-{ma20_val}."
         )
     else:
         lines.append(
-            f"הנר של אתמול לא נותן לנו הרבה מידע: {candle['description']}. "
-            "אין כיוון ברור, לחכות לאישור."
+            f"📌 ממוצע 20 — מניה {abs(dist):.1f}% מתחת לממוצע. "
+            f"מתקרבת לאזור שמעניין אותנו."
         )
 
-    # ── ווליום ──
-    if volume['signal'] == 'bullish':
+    # ══ נר (סוג + פתיחה/סגירה) ══
+    candle_sig = candle['signal']
+    candle_desc = candle['description']
+    if candle_sig == 'bullish':
         lines.append(
-            f"מה שמחזק את התמונה הבוליש זה הווליום — {volume['description']}. "
-            "כשיש ווליום גדול בצד הקונים, זה מראה שהשוק באמת מאמין בעלייה."
+            f"📌 נר — {candle_desc}. "
+            "קונים נכנסו — זה מה שאנחנו רוצים לראות."
         )
-    elif volume['signal'] == 'bearish':
+    elif candle_sig == 'bearish':
         lines.append(
-            f"הווליום מדאיג אותי כאן — {volume['description']}. "
-            "ווליום גדול בירידה אומר שהמוסדיים יוצאים, לא לרוץ להיכנס."
+            f"📌 נר — {candle_desc}. "
+            "המוכרים השתלטו. מדליק נורה אדומה."
         )
     else:
         lines.append(
-            f"הווליום הוא {volume['description']}. "
-            "אין confirmation חזק בשום כיוון מהווליום."
+            f"📌 נר — {candle_desc}. "
+            "אין החלטה ברורה — מחכים לאישור."
         )
 
-    # ── ממוצע 20 ──
-    dist = ma20['distance_pct']
-    if ma20['signal'] == 'bullish' and dist < -5:
+    # ══ ווליום ══
+    vol_ratio = volume.get('ratio', 1)
+    vol_sig   = volume['signal']
+    if vol_sig == 'bullish':
         lines.append(
-            f"ממוצע 20 — וזה הלב של לייב 20. המניה {dist:.1f}% מתחת לממוצע. "
-            "מרחק כזה מהממוצע זה בדיוק מה שאנחנו מחפשים — ההיסטוריה מראה שמניות חוזרות לממוצע. "
-            f"המטרה הראשונה שלנו זה הממוצע ב-{ma20['ma20']}."
+            f"📌 ווליום — {volume['description']}. "
+            "כשהווליום מגיב ככה זה מה שאוהב לראות — קונים אמיתיים נכנסים."
         )
-    elif ma20['signal'] == 'bullish':
+    elif vol_sig == 'bearish':
         lines.append(
-            f"ממוצע 20 — המניה {dist:+.1f}% מעל הממוצע והממוצע עולה. סביבה בוליש קלאסית."
-        )
-    elif ma20['signal'] == 'bearish':
-        lines.append(
-            f"ממוצע 20 — המניה קצת מתחת לממוצע ({dist:.1f}%) אבל לא מספיק רחוק כדי לדבר על ריקושט. "
-            "זה האזור הכי לא נעים — לא ברור לאן."
+            f"📌 ווליום — {volume['description']}. "
+            "מוסדיים יוצאים — לא לרוץ להיכנס."
         )
     else:
-        lines.append(
-            f"ממוצע 20 — המניה {dist:.1f}% מהממוצע, מתחילה להתקרב לאזור שמעניין אותנו. "
-            "עוד לא שם, אבל שווה לנטר."
-        )
+        # בדוק עלייה עם ירידת ווליום (חולשה)
+        if vol_ratio < 0.85:
+            lines.append(
+                f"📌 ווליום — עלייה עם ירידת ווליום ({vol_ratio:.1f}x ממוצע). "
+                "זה לא מאשר את הכיוון. ממתינים לווליום אמיתי."
+            )
+        else:
+            lines.append(
+                f"📌 ווליום — {volume['description']}. אין confirmation חזק."
+            )
 
-    # ── גאפים ──
-    if gaps['signal'] == 'bullish':
-        levels = ', '.join(str(g['level']) for g in gaps['gaps_up'])
+    # ══ גאפים ══
+    gaps_up  = gaps.get('gaps_up', [])
+    gaps_dn  = gaps.get('gaps_down', [])
+    if gaps_dn:
+        lvls = ', '.join(str(g['level']) for g in gaps_dn[:2])
         lines.append(
-            f"גאפים — יש גאפ פתוח למעלה ב-{levels}. "
-            "גאפים פועלים כמגנטים, ויכולים למשוך את המחיר כלפי מעלה."
+            f"📌 גאפים — יש גפ פתוח מתחת ב-{lvls}. "
+            "גפ משמש כמגנט — הוא מושך את המחיר כלפי מטה."
         )
-    elif gaps['signal'] == 'bearish':
-        levels = ', '.join(str(g['level']) for g in gaps['gaps_down'])
+    elif gaps_up:
+        lvls = ', '.join(str(g['level']) for g in gaps_up[:2])
         lines.append(
-            f"זהירות עם הגאפ — יש גאפ פתוח למטה ב-{levels}. "
-            "גאפ פתוח מתחת למחיר הנוכחי הוא משקולת שמושכת למטה."
+            f"📌 גאפים — יש גפ פתוח למעלה ב-{lvls}. "
+            "גפ משמש כמגנט כלפי מעלה."
         )
     else:
-        lines.append("אין גאפים פתוחים משמעותיים בסביבה הקרובה.")
+        lines.append("📌 גאפים — אין גפים פתוחים משמעותיים קרובים.")
 
-    # ── CCI ──
-    if cci['signal'] == 'bullish':
+    # ══ שאלה 3: CCI ══
+    if cci_val > 150:
         lines.append(
-            f"ה-CCI(14) עומד על {cci['value']:.0f} — מעל +100 זה אומר מומנטום בוליש חזק. "
-            "כן, זה נשמע כמו 'קנייה יתר' אבל עם טרנד חזק זה בדיוק מה שאנחנו רוצים לראות."
+            f"📌 CCI — עומד על {cci_val:.0f}. האם מצביע לקנות? לא. "
+            "זה אוברבוט. CCI אומר לנו שהמומנטום חם מדי."
         )
-    elif cci['signal'] == 'bearish':
+    elif cci_val > 100:
         lines.append(
-            f"ה-CCI(14) עומד על {cci['value']:.0f} — מתחת ל-100 מינוס. "
-            "מומנטום בריש חזק, המוכרים שולטים בקצב."
+            f"📌 CCI — {cci_val:.0f}. מעל 100, מומנטום חיובי. "
+            "עם טרנד עולה — מאשר."
         )
-    else:
+    elif 0 <= cci_val <= 100:
         lines.append(
-            f"ה-CCI(14) עומד על {cci['value']:.0f} — בטווח הניטרלי. "
-            "אין מומנטום חזק בשום כיוון, השוק בלבול."
+            f"📌 CCI — {cci_val:.0f}. בטריטוריה חיובית, "
+            "עוד 2-4 ימי עליות צפויים לפי הסטטיסטיקה."
+        )
+    elif -100 <= cci_val < 0:
+        lines.append(
+            f"📌 CCI — {cci_val:.0f}. שלילי, מומנטום חלש. "
+            "ממתינים לחציית האפס כלפי מעלה."
+        )
+    elif cci_val < -100:
+        lines.append(
+            f"📌 CCI — {cci_val:.0f}. אוסלד קיצוני. "
+            "האות שאנחנו מחכים לו — חציית -100 כלפי מעלה."
         )
 
-    # ── סיכום ──
+    # ══ סיכום בסגנון מיכה ══
+    lines.append("")  # שורה ריקה לפני הסיכום
+
     if rec_key == 'strong-buy':
         pct = 100
         lines.append(
-            f"\n📊 סיכום: {bullish} מתוך 6 אינדיקטורים בוליש — זאת תמונה מאוד חזקה. "
-            f"אני הייתי נכנס ב-{pct}% מהפוזיציה המתוכננת. "
-            "לשים SL מתחת לממוצע 20 ולנטר."
+            f"סיכום — {bullish}/6 בוליש. כל הצ'קליסט עובר. "
+            f"מה הייתי עושה? נכנס ב-{pct}% מהפוזיציה, SL מתחת לממוצע 20 ({ma20_val}). "
+            "ממשיכים לנטר."
         )
     elif rec_key == 'buy':
         pct = 50
         lines.append(
-            f"\n📊 סיכום: {bullish} מתוך 6 אינדיקטורים בוליש — תמונה טובה אבל לא מושלמת. "
-            f"כניסה חלקית של {pct}% מהפוזיציה המתוכננת. "
-            "אם המניה תאשר עם ווליום, להשלים את הפוזיציה."
+            f"סיכום — {bullish}/6 בוליש. תמונה טובה, לא מושלמת. "
+            f"כניסה חלקית — {pct}%. "
+            f"אם תאשר עם ווליום — להשלים. SL מתחת לממוצע 20 ({ma20_val})."
         )
-    elif rec_key == 'sell':
+    elif rec_key in ('sell', 'strong-sell'):
         pct = 0
         lines.append(
-            f"\n📊 סיכום: {bearish} מתוך 6 אינדיקטורים בריש — אנחנו לא נכנסים לכאן. "
-            f"אחוז כניסה: {pct}%. "
-            "להמתין לשינוי כיוון לפני שמחליטים להיכנס."
-        )
-    elif rec_key == 'strong-sell':
-        pct = 0
-        lines.append(
-            f"\n📊 סיכום: {bearish} מתוך 6 אינדיקטורים בריש — תמונה קשה. "
-            f"אחוז כניסה: {pct}%. להישאר בצד ולחכות."
+            f"סיכום — {bearish}/6 בריש. "
+            "אנחנו לא נכנסים פה. אחוז כניסה: 0. "
+            "ממשיכים לנטר — תמיד יש מניות."
         )
     else:
         pct = 25
         lines.append(
-            f"\n📊 סיכום: תמונה מעורבת — {bullish} בוליש, {bearish} בריש, {neutral} ניטרלי. "
-            f"אם בכל זאת רוצים להיכנס, לא יותר מ-{pct}% מהפוזיציה. "
-            "עדיף לחכות לאישור ברור יותר."
+            f"סיכום — תמונה מעורבת: {bullish} בוליש, {bearish} בריש, {neutral} ניטרלי. "
+            "אין פה כרגע טרייד ברור. "
+            "תמיד יש מניות — ממשיכים הלאה."
         )
 
     return {
-        'text': ' '.join(lines),
-        'position_pct': pct if rec_key in ('strong-buy','buy','neutral') else 0
+        'text': '\n'.join(lines),
+        'position_pct': pct if rec_key in ('strong-buy', 'buy', 'neutral') else 0
     }
 
 
@@ -1289,7 +1828,6 @@ def analyze():
         # ── תוכנית מסחר (כניסה / יציאה / SL) ──
         entry_price = current_price
         last_low    = round(df['Low'].iloc[-1], 2)
-        last_high   = round(df['High'].iloc[-1], 2)
         ma20_val    = round(calc_ma20(df['Close']).iloc[-1], 2)
 
         # SL = שפל נר הכניסה
@@ -1416,7 +1954,6 @@ def analyze():
                     try:
                         rev = qe.loc['Total Revenue', col] if 'Total Revenue' in qe.index else None
                         net = qe.loc['Net Income', col] if 'Net Income' in qe.index else None
-                        eps_row = [r for r in qe.index if 'EPS' in str(r) or 'Diluted' in str(r)]
                         earnings_data.append({
                             'date': str(col.date()) if hasattr(col, 'date') else str(col)[:10],
                             'revenue': int(rev) if rev is not None and pd.notna(rev) else None,
@@ -1501,6 +2038,9 @@ def analyze():
             'rsi':    [round(x, 2) if pd.notna(x) else None for x in rsi_14],
         }
 
+        # ── תבניות גרף קלאסיות ──
+        chart_patterns = detect_chart_patterns(df)
+
         # ── ניתוח גרף מקצועי + פונדמנטלים ──
         chart_analysis = generate_chart_analysis(
             df, ticker, info, current_price, trend, candle, volume, ma20, cci, bullish, bearish, gaps=gaps
@@ -1560,6 +2100,7 @@ def analyze():
             'psych_warnings': psych_warnings,
             'style': style,
             'chart_analysis': chart_analysis,
+            'chart_patterns': chart_patterns,
         }
         cache_set(f'analyze_{ticker}_{style}', result)
         return jsonify(result)
@@ -2026,24 +2567,32 @@ def world_news():
                     headers={'User-Agent': 'Mozilla/5.0'})
                 root = ET.fromstring(req.content)
                 for item in root.findall('.//item')[:5]:
-                    title = item.findtext('title', '')
-                    desc  = item.findtext('description', '')
-                    link  = item.findtext('link', '')
-                    live_news.append({'title': title, 'desc': desc[:200], 'link': link, 'source': source})
+                    title_en = item.findtext('title', '')
+                    desc_en  = item.findtext('description', '')
+                    link     = item.findtext('link', '')
+                    # תרגם כותרת לעברית
+                    title_he = translate_he(title_en) if title_en else title_en
+                    live_news.append({
+                        'title': title_he,
+                        'title_en': title_en,
+                        'desc': desc_en[:200],
+                        'link': link,
+                        'source': source,
+                    })
             except Exception:
                 pass
 
-        # התאם חדשות לאירועי מאקרו
+        # התאם חדשות לאירועי מאקרו (השוואה לפי אנגלית, הצגה בעברית)
         matched = []
         for event in MACRO_EVENTS:
             score = 0
             matched_titles = []
             for news in live_news:
-                text = (news['title'] + ' ' + news['desc']).lower()
+                text = (news['title_en'] + ' ' + news['desc']).lower()
                 hits = sum(1 for kw in event['keywords'] if kw.lower() in text)
                 if hits > 0:
                     score += hits
-                    matched_titles.append(news['title'])
+                    matched_titles.append(news['title'])   # כבר עברית
             if matched_titles:
                 matched.append({
                     'topic': event['topic'],
