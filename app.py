@@ -96,19 +96,63 @@ def calc_ma50(close):
     return close.rolling(window=50).mean()
 
 
-def calc_fibonacci(high_series, low_series):
-    """מחשב רמות פיבונאצ'י מהשיא לשפל האחרון"""
-    swing_high = high_series.max()
-    swing_low  = low_series.min()
+def calc_fibonacci(df_6mo):
+    """
+    פיבונאצ'י נכון — מזהה swing high ו-swing low אמיתיים ב-6 חודשים אחורה.
+    בטרנד עולה: מהשפל הגדול האחרון → לשיא האחרון.
+    בטרנד יורד: מהשיא הגדול האחרון → לשפל האחרון.
+    """
+    high  = df_6mo['High'].values.astype(float)
+    low   = df_6mo['Low'].values.astype(float)
+    n     = len(high)
+    if n < 20:
+        return None
+
+    window = 5  # מינימום נרות בכל צד לפיבוט משמעותי
+
+    # מציאת כל פיבוטי השיא והשפל
+    pivot_highs = []
+    pivot_lows  = []
+    for i in range(window, n - window):
+        if high[i] == max(high[i - window:i + window + 1]):
+            pivot_highs.append((i, high[i]))
+        if low[i] == min(low[i - window:i + window + 1]):
+            pivot_lows.append((i, low[i]))
+
+    if not pivot_highs or not pivot_lows:
+        # fallback: max/min פשוט
+        swing_high = float(df_6mo['High'].max())
+        swing_low  = float(df_6mo['Low'].min())
+        direction  = 'up'
+    else:
+        last_ph_i, last_ph_v = pivot_highs[-1]   # שיא פיבוט אחרון
+        last_pl_i, last_pl_v = pivot_lows[-1]    # שפל פיבוט אחרון
+
+        if last_ph_i > last_pl_i:
+            # השיא אחרי השפל → טרנד עולה: שפל → שיא
+            direction  = 'up'
+            swing_low  = last_pl_v
+            swing_high = last_ph_v
+        else:
+            # השפל אחרי השיא → טרנד יורד: שיא → שפל
+            direction  = 'down'
+            swing_high = last_ph_v
+            swing_low  = last_pl_v
+
     diff = swing_high - swing_low
+    if diff == 0:
+        return None
+
+    # רמות פיבו תמיד ביחס ל-swing_high → swing_low (גם בטרנד יורד)
     return {
-        'high': round(swing_high, 2),
-        'low':  round(swing_low, 2),
-        '236':  round(swing_high - diff * 0.236, 2),
-        '382':  round(swing_high - diff * 0.382, 2),
-        '500':  round(swing_high - diff * 0.500, 2),
-        '618':  round(swing_high - diff * 0.618, 2),
-        '786':  round(swing_high - diff * 0.786, 2),
+        'direction': direction,
+        'high':  round(swing_high, 2),
+        'low':   round(swing_low,  2),
+        '236':   round(swing_high - diff * 0.236, 2),
+        '382':   round(swing_high - diff * 0.382, 2),
+        '500':   round(swing_high - diff * 0.500, 2),
+        '618':   round(swing_high - diff * 0.618, 2),
+        '786':   round(swing_high - diff * 0.786, 2),
     }
 
 
@@ -1851,10 +1895,17 @@ def analyze():
         atr_val    = round(atr_series.iloc[-1], 2)
         atr_pct    = round(atr_val / current_price * 100, 2)
 
-        # פיבונאצ'י — מהשיא לשפל של 3 חודשים
-        fib = calc_fibonacci(df['High'], df['Low'])
-        # כמה % תיקנה המניה מהשיא (לפי 0.618)
-        fib_retrace = round((df['High'].max() - current_price) / (df['High'].max() - df['Low'].min()) * 100, 1) if df['High'].max() != df['Low'].min() else 0
+        # פיבונאצ'י — 6 חודשים, פיבוט אמיתי
+        try:
+            df_6mo = stock.history(period='6mo')
+        except Exception:
+            df_6mo = df
+        fib = calc_fibonacci(df_6mo if not df_6mo.empty else df)
+        # כמה % תיקנה המניה מהשיא (לפי מיקום בין high ל-low של הפיבו)
+        if fib and fib['high'] != fib['low']:
+            fib_retrace = round((fib['high'] - current_price) / (fib['high'] - fib['low']) * 100, 1)
+        else:
+            fib_retrace = 0
 
         # ── תוכנית מסחר (כניסה / יציאה / SL) ──
         entry_price = current_price

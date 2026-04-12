@@ -2200,6 +2200,13 @@
 
     const fib = d.fibonacci;
     const price = d.current_price;
+    if (!fib) { document.getElementById('fibLevels').innerHTML = '<span style="color:#8b949e;font-size:13px;">אין מספיק נתונים לפיבו</span>'; show('atrFibCard'); return; }
+
+    const fibDir = fib.direction === 'up' ? '⬆️ טרנד עולה' : '⬇️ טרנד יורד';
+    const fibRange = `<div style="font-size:11px;color:#8b949e;margin-bottom:8px;">
+      ${fibDir} · שפל <strong style="color:#e6edf3;">${fib.low}</strong> → שיא <strong style="color:#e6edf3;">${fib.high}</strong> (6 חודשים)
+    </div>`;
+
     const fibData = [
       {label: '23.6%', val: fib['236']},
       {label: '38.2%', val: fib['382']},
@@ -2207,13 +2214,14 @@
       {label: '61.8%', val: fib['618']},
       {label: '78.6%', val: fib['786']},
     ];
-    document.getElementById('fibLevels').innerHTML = fibData.map(f => {
+    document.getElementById('fibLevels').innerHTML = fibRange + fibData.map(f => {
       const near = Math.abs(f.val - price) / price < 0.02;
-      const bg   = near ? '#1a2510' : '#1f2428';
-      const col  = near ? '#3fb950' : '#8b949e';
-      const border = near ? '1px solid #3fb950' : '1px solid #30363d';
+      const golden = f.label === '50.0%' || f.label === '61.8%';
+      const bg   = near ? '#1a2510' : (golden ? '#1a1508' : '#1f2428');
+      const col  = near ? '#3fb950' : (golden ? '#e3b341' : '#8b949e');
+      const border = near ? '1px solid #3fb950' : (golden ? '1px solid #e3b34155' : '1px solid #30363d');
       return `<span style="background:${bg};border:${border};border-radius:6px;padding:4px 10px;font-size:13px;color:${col};">
-        ${f.label}: <strong>${f.val}</strong>${near ? ' 📍' : ''}
+        ${f.label}: <strong>${f.val}</strong>${near ? ' 📍' : ''}${golden && !near ? ' ⭐' : ''}
       </span>`;
     }).join('');
 
