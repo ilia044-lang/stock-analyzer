@@ -1254,7 +1254,10 @@
 
   <!-- Chart Analysis -->
   <div class="chart-analysis-card" id="chartAnalysisCard">
-    <div class="section-title">🧠 ניתוח גרף מקצועי — דעת מומחה</div>
+    <div class="section-title">🧠 ניתוח גרף — שיטת לייב 20</div>
+
+    <!-- צ'קליסט מיכה: 3 שאלות + גפים -->
+    <div id="mikhaChecklist" style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px;margin-bottom:14px;"></div>
 
     <!-- נר סגירה אחרון -->
     <div style="margin-top:14px;">
@@ -2600,12 +2603,76 @@
     show('chartsSection');
   }
 
-  // ── ניתוח גרף מקצועי ──
+  // ── ניתוח גרף — מח מיכה סטוק ──
   function renderChartAnalysis(d) {
     const ca = d.chart_analysis;
     if (!ca) return;
 
-    // נר סגירה
+    // ── 1. צ'קליסט לייב 20 (3 השאלות של מיכה) ──
+    const trend = d.trend || {};
+    const consec = ca.consecutive_days || trend.consecutive_days || 0;
+    const consecDir = ca.consecutive_dir || trend.consecutive_dir || 'none';
+    const ma20dist = ca.ma20_dist != null ? ca.ma20_dist : (d.ma20 ? d.ma20.distance_pct : 0);
+    const cciVal = d.cci ? d.cci.value : 0;
+    const rsiVal = ca.rsi ? ca.rsi.value : null;
+
+    // שאלה 1: ימים ירוקים רצופים
+    const q1ok  = !(consec >= 5 && consecDir === 'up');
+    const q1txt = consec >= 5 && consecDir === 'up'
+      ? `${consec} ימים ירוקים — לא הגיוני להיכנס`
+      : consec >= 5 && consecDir === 'down'
+      ? `${consec} ימים אדומים — אוסלד, שים לב`
+      : `${consec} יום(ים) רצופים ${consecDir === 'up' ? 'ירוק' : consecDir === 'down' ? 'אדום' : '—'} — בסדר`;
+
+    // שאלה 2: מרחק ממוצע 20
+    const q2ok  = Math.abs(ma20dist) < 10;
+    const ma20distAbs = Math.abs(ma20dist).toFixed(1);
+    const ma20dir = ma20dist > 0 ? 'מעל' : 'מתחת';
+    const q2txt = Math.abs(ma20dist) >= 10
+      ? `${ma20distAbs}% ${ma20dir} MA20 — מרחק גדול מדי`
+      : `${ma20distAbs}% ${ma20dir} MA20 — מרחק סביר`;
+
+    // שאלה 3: CCI
+    const q3ok  = !(cciVal > 150 || cciVal < -200);
+    const q3txt = cciVal > 150
+      ? `CCI = ${cciVal.toFixed(0)} — אוברבוט, לא עכשיו`
+      : cciVal < -100
+      ? `CCI = ${cciVal.toFixed(0)} — אוסלד, ממתין לחציית -100`
+      : `CCI = ${cciVal.toFixed(0)} — בטווח`;
+
+    // ווליום: עלייה עם ירידת ווליום
+    const weakVol = ca.rise_weak_vol;
+
+    const checkHtml = (ok, txt) =>
+      `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #21262d;">
+        <span style="font-size:16px;">${ok ? '✅' : '❌'}</span>
+        <span style="font-size:13px;color:${ok ? '#3fb950' : '#f85149'};">${txt}</span>
+      </div>`;
+
+    document.getElementById('mikhaChecklist').innerHTML =
+      `<div style="font-size:12px;font-weight:700;color:#8b949e;margin-bottom:6px;letter-spacing:1px;">3 שאלות לייב 20</div>` +
+      checkHtml(q1ok, q1txt) +
+      checkHtml(q2ok, q2txt) +
+      checkHtml(q3ok, q3txt) +
+      (weakVol ? checkHtml(false, 'עלייה עם ירידת ווליום — לא מאשר') : '') +
+      (rsiVal !== null ? checkHtml(!(rsiVal > 70), rsiVal > 70 ? `RSI = ${rsiVal} — אוברבוט` : rsiVal < 30 ? `RSI = ${rsiVal} — אוסלד (הזדמנות)` : `RSI = ${rsiVal} — ניטרלי`) : '');
+
+    // ── 2. גפים כמגנטים ──
+    const gapsDownTargets = ca.gaps_down_targets || [];
+    const gapsUpTargets   = ca.gaps_up_targets   || [];
+    let magnetsHtml = '';
+    if (gapsDownTargets.length || gapsUpTargets.length) {
+      magnetsHtml = '<div style="font-size:12px;font-weight:700;color:#8b949e;margin:10px 0 6px;letter-spacing:1px;">גפים פתוחים — מגנטים</div>';
+      gapsUpTargets.forEach(g => {
+        magnetsHtml += `<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#3fb950;padding:3px 0;">▲ גפ מעל: <strong>${g}</strong> — יעד עלייה</div>`;
+      });
+      gapsDownTargets.forEach(g => {
+        magnetsHtml += `<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#f85149;padding:3px 0;">▼ גפ מתחת: <strong>${g}</strong> — יעד תיקון</div>`;
+      });
+    }
+    document.getElementById('mikhaChecklist').innerHTML += magnetsHtml;
+
+    // ── 3. נר סגירה ──
     const pc = ca.prev_candle;
     const candleColor = pc.color === 'bullish' ? '#3fb950' : '#f85149';
     const candleHe    = pc.color === 'bullish' ? 'ירוק (בוליש)' : 'אדום (בריש)';
@@ -2623,20 +2690,20 @@
     ].map(s => `<div class="candle-stat"><div class="cs-label">${s.label}</div><div class="cs-val" style="color:${s.color}">${s.val}</div></div>`).join('');
     document.getElementById('candleTypeLabel').textContent = '📌 סוג נר: ' + pc.type;
 
-    // ממוצעים
+    // ── 4. ממוצעים ──
     document.getElementById('maTableRow').innerHTML = (ca.ma_table || []).map(m =>
       `<div class="ma-badge ${m.signal}">
         ${m.label}: ${m.value} (${m.above ? '▲' : '▼'} ${Math.abs(m.dist_pct)}%)
       </div>`
     ).join('');
 
-    // RSI
+    // ── 5. RSI ──
     const rsi = ca.rsi;
     const rsiColor = rsi.signal === 'bullish' ? '#3fb950' : rsi.signal === 'bearish' ? '#f85149' : '#8b949e';
     document.getElementById('rsiAnalysisRow').innerHTML =
       `<div style="font-size:13px;color:${rsiColor};">📊 ${rsi.description}</div>`;
 
-    // פריצה
+    // ── 6. פריצה ──
     const bo = ca.breakout;
     const boColor = bo.color === 'green' ? '#3fb950' : bo.color === 'yellow' ? '#e3b341' : '#f85149';
     const fill = document.getElementById('breakoutBarFill');
@@ -2646,7 +2713,7 @@
       `<span style="color:${boColor};font-weight:700;">${bo.label}</span> (${bo.score}/100)`;
     document.getElementById('breakoutSignals').textContent = bo.signals.join(' · ');
 
-    // פונדמנטלים
+    // ── 7. פונדמנטלים ──
     const f = ca.fundamental;
     const fundItems = [];
     if (f.sector)     fundItems.push({ label: 'סקטור', val: f.sector });
@@ -2667,10 +2734,10 @@
       </div>`
     ).join('');
 
-    // דעת מומחה
+    // ── 8. דעת מומחה ──
     document.getElementById('expertOpinion').textContent = ca.expert_opinion;
 
-    // המלצה
+    // ── 9. המלצה ──
     const vb = document.getElementById('verdictBox');
     vb.className = 'verdict-box ' + ca.verdict_color;
     vb.style.display = 'flex';

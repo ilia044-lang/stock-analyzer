@@ -719,10 +719,10 @@ def generate_narrative(ticker, company_name, current_price, currency,
     }
 
 
-def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volume, ma20, cci, bullish, bearish):
-    """ניתוח גרף מקצועי עם דעת מומחה, פונדמנטלים ופריצה"""
+def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volume, ma20, cci, bullish, bearish, gaps=None):
+    """ניתוח גרף לפי שיטת מיכה סטוק — לייב 20"""
 
-    # ── נר סגירה אחרון (מפורט) ──
+    # ── נר סגירה אחרון ──
     o1 = df['Open'].iloc[-1];  h1 = df['High'].iloc[-1]
     l1 = df['Low'].iloc[-1];   c1 = df['Close'].iloc[-1]
     v1 = df['Volume'].iloc[-1]
@@ -744,7 +744,7 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         'type':   candle['patterns'][0] if candle['patterns'] else 'נר רגיל',
     }
 
-    # ── טבלת ממוצעים ──
+    # ── ממוצעים ──
     ma50_s  = calc_ma50(df['Close'])
     ma20_v  = ma20['ma20']
     ma50_v  = round(ma50_s.iloc[-1], 2) if pd.notna(ma50_s.iloc[-1]) else None
@@ -761,13 +761,13 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
     rsi_s   = calc_rsi(df['Close'])
     rsi_val = round(rsi_s.iloc[-1], 1) if pd.notna(rsi_s.iloc[-1]) else None
     if rsi_val is not None:
-        if rsi_val < 30:   rsi_sig = 'bullish'; rsi_desc = f'RSI = {rsi_val} — אוסלד (קנייה יתר הפוכה), מניה זולה יחסית'
+        if rsi_val < 30:   rsi_sig = 'bullish'; rsi_desc = f'RSI = {rsi_val} — אוסלד, מניה זולה יחסית'
         elif rsi_val > 70: rsi_sig = 'bearish'; rsi_desc = f'RSI = {rsi_val} — אוברבוט, זהירות מתיקון'
         else:              rsi_sig = 'neutral';  rsi_desc = f'RSI = {rsi_val} — טווח ניטרלי'
     else:
         rsi_sig = 'neutral'; rsi_desc = 'RSI לא זמין'
 
-    # ── ניתוח פריצה ──
+    # ── פריצה ──
     high_5d = df['High'].iloc[-5:].max()
     low_5d  = df['Low'].iloc[-5:].min()
     consolidation_pct = round((high_5d - low_5d) / current_price * 100, 1)
@@ -801,7 +801,7 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
     elif breakout_score >= 40: bo_label = 'פריצה אפשרית — עקוב';   bo_color = 'yellow'
     else:                      bo_label = 'אין סימני פריצה ברורים'; bo_color = 'red'
 
-    # ── פונדמנטלי קצר ──
+    # ── פונדמנטלי ──
     sector    = info.get('sector', 'לא ידוע')
     mcap      = info.get('marketCap', None)
     pe        = info.get('trailingPE', None)
@@ -832,51 +832,319 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         'analyst_rating': rating,
     }
 
-    # ── דעת מומחה ──
-    lines = []
-    if trend['signal'] == 'bullish' and ma50_v and current_price > ma50_v:
-        lines.append(f"מבנה הגרף של {ticker} בריא — המחיר מעל ממוצע 20 ו-50, הטרנד עולה.")
-    elif trend['signal'] == 'bearish':
-        lines.append(f"מבנה הגרף של {ticker} חלש — המחיר מתחת לממוצעים, הטרנד יורד.")
+    # ══════════════════════════════════════════════════════════════════
+    # ── מח מיכה סטוק — לייב 20 ──
+    # שיטת שלוש השאלות:
+    #  1. האם מספר ימי העלייה הרצופים הגיוני?
+    #  2. האם המרחק לממוצע 20 הגיוני?
+    #  3. האם ה-CCI מצביע לקנות?
+    # ══════════════════════════════════════════════════════════════════
+
+    ma20_dist   = float(ma20['distance_pct'])   # + = מעל, - = מתחת
+    cci_val_raw = float(cci['value'])
+    consec_days = trend.get('consecutive_days', 0)
+    consec_dir  = trend.get('consecutive_dir', 'none')
+
+    # ── גפים פתוחים כמגנטים ──
+    gaps_down_levels = []   # גפים פתוחים מתחת למחיר = יעדי תיקון
+    gaps_up_levels   = []   # גפים פתוחים מעל למחיר = יעדי עלייה
+    if gaps:
+        gaps_down_levels = [g['level'] for g in gaps.get('gaps_down', []) if g['level'] < current_price]
+        gaps_up_levels   = [g['level'] for g in gaps.get('gaps_up', [])   if g['level'] > current_price]
     else:
-        lines.append(f"מבנה הגרף של {ticker} מעורב — תנועה צידית ללא כיוון ברור.")
+        # מחשב ידנית
+        lookback = min(30, len(df) - 1)
+        for i in range(len(df) - lookback, len(df)):
+            if i <= 0: continue
+            prev_h = float(df['High'].iloc[i - 1])
+            prev_l = float(df['Low'].iloc[i - 1])
+            curr_o = float(df['Open'].iloc[i])
+            if curr_o > prev_h * 1.002:
+                if float(df['Low'].iloc[i:].min()) > prev_h:
+                    if prev_h < current_price:
+                        gaps_down_levels.append(round(prev_h, 2))
+            elif curr_o < prev_l * 0.998:
+                if float(df['High'].iloc[i:].max()) < prev_l:
+                    if prev_l > current_price:
+                        gaps_up_levels.append(round(prev_l, 2))
 
-    ccolor = 'ירוק' if prev_candle['color'] == 'bullish' else 'אדום'
-    vol_q  = 'גבוה' if vol_r > 1.2 else ('נמוך' if vol_r < 0.8 else 'ממוצע')
-    lines.append(f"נר סגירה אחרון {ccolor}: גוף {prev_candle['body_pct']}%, "
-                 f"פתיחה {prev_candle['open']} סגירה {prev_candle['close']}. "
-                 f"ווליום {vol_r:.1f}x ממוצע — {vol_q}.")
+    # ── זיהוי: עלייה עם ירידת ווליום (סיגנל חולשה) ──
+    rise_weak_vol = (
+        c1 > o1 and
+        len(df) >= 3 and
+        float(df['Volume'].iloc[-1]) < float(df['Volume'].iloc[-2]) and
+        float(df['Volume'].iloc[-2]) < float(df['Volume'].iloc[-3])
+    )
 
-    lines.append(f"{rsi_desc}. {cci['description']}.")
+    # ── הגדרת מצב לפי שיטת מיכה ──
 
-    if breakout_score >= 50:
-        lines.append(f"שים לב: {' | '.join(bo_signals)} — המניה על הרדאר לפריצה.")
-    elif near_resistance:
-        lines.append(f"המניה קרובה להתנגדות {resistance_level} — מעקב צמוד.")
+    # מצב A: מורחק מעל ממוצע 20 + ימים ירוקים רבים = "לא נכנסים"
+    is_extended_overbought = (
+        (consec_days >= 7 and consec_dir == 'up') or
+        (consec_days >= 5 and consec_dir == 'up' and ma20_dist > 10) or
+        (cci_val_raw > 150 and rsi_val and rsi_val > 70 and ma20_dist > 8)
+    )
 
+    # מצב B: ריקושט — מניה ירדה ומתייצבת (כמו CRCL בלייב)
+    # קריטריונים: RSI נמוך, CCI לא בקיצון חמור ועולה, ירידה מודרטה
+    cci_series_full = calc_cci(df['High'], df['Low'], df['Close'])
+    cci_prev  = float(cci_series_full.iloc[-2]) if len(df) > 2 else cci_val_raw
+    cci_prev2 = float(cci_series_full.iloc[-3]) if len(df) > 3 else cci_prev
+    cci_rising = cci_val_raw > cci_prev  # CCI עולה ביום האחרון
+    cci_rising_2d = cci_val_raw > cci_prev2  # CCI עולה ב-2 ימים
+    monthly_drop = trend.get('monthly_change', 0)
+    is_recovery_setup = (
+        not is_extended_overbought and
+        rsi_val and rsi_val < 38 and
+        ma20_dist < -4 and
+        # CCI לא בקיצון חמור מדי — מתחת -150 חייב לעלות כבר
+        (cci_val_raw > -150 or (cci_val_raw > -220 and cci_rising_2d)) and
+        # לא ירידה חופשית עם מגמה ירדנית קיצונית (כמו PLTR -15%)
+        not (monthly_drop < -12 and bearish >= 2 and not cci_rising_2d)
+    )
+
+    # מצב C: חזרה לממוצע 20 מלמעלה = "הנקודה המעניינת"
+    is_near_ma20 = (
+        not is_extended_overbought and
+        -4 <= ma20_dist <= 6 and
+        trend['signal'] == 'bullish'
+    )
+
+    # מצב D: פריצה אפשרית
+    is_breakout_candidate = (
+        not is_extended_overbought and
+        not is_recovery_setup and
+        breakout_score >= 50
+    )
+
+    # מצב E: מגמה יורדת ברורה
+    monthly_drop_abs = abs(trend.get('monthly_change', 0))
+    is_downtrend = (
+        not is_recovery_setup and
+        trend['signal'] == 'bearish' and
+        (
+            bearish >= 3 or
+            (bearish >= 2 and monthly_drop_abs > 10) or   # ירידה חדה עם 2+ bearish
+            (bearish >= 2 and ma20_dist < -10)            # מרחק גדול מממוצע 20 עם מגמה יורדת
+        )
+    )
+
+    # ════════════════════════════════
+    # ── דעת מומחה בסגנון מיכה ──
+    # ════════════════════════════════
+    lines = []
+
+    if is_extended_overbought:
+        # מיכה: "תספרו ימים, תבדקו מרחק ממוצע 20, תשאלו האם הגיוני"
+        if consec_days >= 7 and consec_dir == 'up':
+            lines.append(
+                f"בואו נספור — {consec_days} ימים ירוקים רצופים ב-{ticker}. "
+                f"תשאלו את עצמכם: האם הגיוני {consec_days} ימים ירוקים? "
+                f"שנית — מרחק ממוצע 20: {ma20_dist:+.1f}%. האם הגיוני מרחק כזה גדול? "
+                f"שלישית — CCI = {cci_val_raw:.0f}. האם מצביע לקנות? "
+                f"כל התשובות — לא. לפי לייב 20, זה לא פעולה חכמה להיכנס פה."
+            )
+        elif ma20_dist > 10:
+            lines.append(
+                f"{ticker} נמצאת {ma20_dist:+.1f}% מעל ממוצע 20. "
+                f"{consec_days} ימים ירוקים ו-CCI = {cci_val_raw:.0f}. "
+                f"שלוש השאלות — לא, לא, לא. "
+                f"להיכנס פה זה לרדוף אחרי הרכבת. אין פספוס — תמיד יש מניות."
+            )
+        else:
+            lines.append(
+                f"{ticker} — CCI = {cci_val_raw:.0f}, RSI = {rsi_val}, {ma20_dist:+.1f}% ממוצע 20. "
+                f"שלושת המדדים בקיצון בוליש בו-זמנית. "
+                f"זה לא הזמן לקנות — זה הזמן לחכות לתיקון."
+            )
+
+        # יעד לתיקון: גפ פתוח מתחת או ממוצע 20
+        if gaps_down_levels:
+            nearest_gap = max(gaps_down_levels)
+            lines.append(
+                f"יש גפ פתוח ב-{nearest_gap} — גפ משמש כמגנט. "
+                f"אני מעריך תיקון לפחות לכיוון {nearest_gap}."
+            )
+        ma20_target = round(ma20_v, 2)
+        lines.append(
+            f"ממוצע 20 ב-{ma20_target} הוא המגנט הראשי. "
+            f"שמו התראה שם ותחכו לנר שינוי כיוון — דוגי, פטיש, בולי שרמי — עם ווליום."
+        )
+        if rise_weak_vol:
+            lines.append("עלייה תוך כדי ירידת ווליום — אין ביטחון אמיתי בעלייה הזו.")
+
+        verdict = f"חכה לתיקון — {consec_days} ימי עלייה, {ma20_dist:+.1f}% ממוצע 20"
+        vc = 'red'
+        vd = (f"מניה מורחקת מממוצע 20. לפי לייב 20 — לא נכנסים כרגע. "
+              f"חכה לתיקון לכיוון {ma20_target} ולנר שינוי כיוון.")
+
+    elif is_recovery_setup:
+        # מיכה: "מניה יורדת ומתייצבת — הזדמנות. The wider the base the higher to space."
+        lines.append(
+            f"{ticker} ירדה חזק — {ma20_dist:.1f}% מתחת לממוצע 20. "
+            f"RSI = {rsi_val} — קרוב לאזור אוסלד. CCI = {cci_val_raw:.0f}."
+        )
+        if consolidation_pct < 8:
+            lines.append(
+                f"הבסיס מצטמצם — תנודתיות של {consolidation_pct}% ב-5 ימים אחרונים. "
+                f"'The wider the base the higher to space' — "
+                f"אני רושם אותה."
+            )
+        else:
+            lines.append(f"עדיין לא ייצבה בסיס ברור — תנודתיות {consolidation_pct}% גבוהה. מחכים.")
+
+        if cci_rising and cci_val_raw > -200:
+            lines.append(f"CCI מתחיל לעלות — מתקרבים לחציית -100. זה האות שאנחנו מחכים לו.")
+
+        if candle.get('signal') == 'bullish':
+            lines.append(
+                f"נר חיובי: {candle['description']}. "
+                f"קונים מתחילים להיכנס. מעודד."
+            )
+        elif candle.get('signal') == 'bearish':
+            lines.append("נר אדום — עוד לא סיימנו. ממשיכים לחכות לנר שינוי כיוון.")
+
+        ma20_target = round(ma20_v, 2)
+        if gaps_up_levels:
+            first_target = min(gaps_up_levels)
+            lines.append(
+                f"יעד ראשון — ממוצע 20 ב-{ma20_target}. "
+                f"יעד שני — גפ פתוח ב-{first_target}."
+            )
+        else:
+            lines.append(f"יעד: ממוצע 20 ב-{ma20_target}. סטופ מתחת לשפל האחרון ({round(l1,2)}).")
+
+        verdict = "מסתמן ריקושט — חכה לנר אישור"
+        vc = 'yellow'
+        vd = (f"מניה ירדה ומתייצבת. RSI = {rsi_val} — אוסלד. "
+              f"חכה לנר שינוי כיוון עם ווליום לפני כניסה. יעד: MA20 ב-{ma20_target}.")
+
+    elif is_near_ma20 and not is_extended_overbought:
+        # מיכה: "פה זה מעניין — קרוב לממוצע 20"
+        lines.append(
+            f"{ticker} נמצאת {ma20_dist:+.1f}% מעל ממוצע 20. "
+            f"זה האזור המעניין — מניות שחוזרות לבדוק את ממוצע 20 זה בדיוק מה שאנחנו מחפשים."
+        )
+
+        if candle.get('signal') == 'bullish':
+            lines.append(
+                f"נר חיובי ב-{candle['description']} — קונים מגיבים לממוצע 20. מעודד."
+            )
+        elif candle.get('signal') == 'bearish':
+            lines.append(
+                f"נר שלילי — לחץ מוכרים בממוצע 20. לא שבר עדיין, אבל שמים עין."
+            )
+
+        if volume.get('signal') == 'bullish' and vol_trend_up:
+            lines.append("ווליום עולה — קונים מגיעים. אישור לכיוון.")
+        elif rise_weak_vol:
+            lines.append("עלייה עם ירידת ווליום — לא מאשר. ממתין לווליום.")
+
+        if gaps_down_levels:
+            nearest_gap = max(gaps_down_levels)
+            lines.append(f"גפ פתוח ב-{nearest_gap} — תמיכה / מגנט אפשרי למטה.")
+
+        if bullish >= 4:
+            lines.append(f"{bullish}/6 אינדיקטורים בוליש — תמונה טובה.")
+            verdict = "כניסה אפשרית — ליד ממוצע 20"
+            vc = 'green'
+            vd = (f"מניה חזרה לבדוק ממוצע 20 ({round(ma20_v,2)}). "
+                  f"כניסה חלקית עם סטופ מתחת לממוצע ב-{round(ma20_v*0.98,2)}.")
+        else:
+            verdict = "עקוב — מתקרב לאזור כניסה"
+            vc = 'yellow'
+            vd = f"מניה בדרך לממוצע 20. חכה לנר חיובי עם ווליום לפני כניסה."
+
+    elif is_breakout_candidate:
+        # מיכה: "שימו התראה. אם פורצת עם ווליום — נכנסים. בלי ווליום — לא."
+        lines.append(
+            f"תסתכלו על הגרף של {ticker} — "
+            f"קונסולידציה {consolidation_pct}% ב-5 ימים. "
+        )
+        if near_resistance:
+            lines.append(
+                f"קרובה להתנגדות {resistance_level}. "
+                f"אם תפרוץ עם ווליום — נכנסים. "
+                f"אם פורצת בלי ווליום — אפס. לא נכנסים."
+            )
+        if bo_signals:
+            lines.append(f"סיגנלים: {' | '.join(bo_signals)}.")
+        lines.append(
+            f"מה אני הייתי עושה? שם התראה בפריצה. "
+            f"רואים ווליום? נכנסים עם סטופ הדוק. לא רואים? ממשיכים הלאה."
+        )
+
+        verdict = "פריצה אפשרית — שים התראה"
+        vc = 'yellow'
+        vd = f"סטאפ פריצה מתבשל. פריצה עם ווליום = כניסה. בלי ווליום = לא."
+
+    elif is_downtrend:
+        # מיכה: "אין טרייד. ממתינים."
+        lines.append(
+            f"{ticker} במגמה יורדת — {trend['monthly_change']:+.1f}% בחודש. "
+        )
+        if cci_val_raw < -100:
+            if cci_rising:
+                lines.append(
+                    f"CCI = {cci_val_raw:.0f} ומתחיל לעלות — מתקרבים לחציית -100. "
+                    f"זה האות שאנחנו מחכים לו. עדיין לא הגיע."
+                )
+            else:
+                lines.append(
+                    f"CCI = {cci_val_raw:.0f} — אוסלד קיצוני, עדיין יורד. "
+                    f"ממתינים לחציית -100 כלפי מעלה."
+                )
+        if gaps_up_levels:
+            lines.append(f"יש גפ פתוח מעל ב-{min(gaps_up_levels)} — יעד לריקושט עתידי.")
+
+        lines.append("כרגע אין טרייד. תמיד יש מניות — ממשיכים הלאה.")
+
+        verdict = "אין כניסה — מגמה יורדת" if bearish >= 4 else "זהירות — מגמה שלילית"
+        vc = 'red'
+        vd = "מגמה יורדת ברורה. המתן לשינוי כיוון מאושר לפני כל כניסה."
+
+    else:
+        # מצב מעורב
+        lines.append(
+            f"{ticker} — תמונה לא חד-משמעית. "
+            f"מרחק ממוצע 20: {ma20_dist:+.1f}%, CCI = {cci_val_raw:.0f}, RSI = {rsi_val if rsi_val else 'N/A'}."
+        )
+        if ma20_dist > 5:
+            lines.append(f"מרחק {ma20_dist:+.1f}% ממוצע 20 — לא בנקודת כניסה מיטבית.")
+        elif ma20_dist < -3:
+            lines.append(f"מחיר {abs(ma20_dist):.1f}% מתחת לממוצע 20 — הממוצע הוא המגנט.")
+        if rise_weak_vol:
+            lines.append("עלייה עם ירידת ווליום — לא מאשר את הכיוון.")
+        if gaps_down_levels:
+            lines.append(f"גפ פתוח מתחת ב-{max(gaps_down_levels)} — מגנט לתיקון.")
+        lines.append("אין פה כרגע טרייד ברור. ממשיכים לנטר.")
+
+        verdict = "שקול — אין כיוון ברור"
+        vc = 'yellow'
+        vd = "תמונה מעורבת. המתן לסיגנל ברור יותר לפי שלוש השאלות."
+
+    # ── פונדמנטלי (קצר) ──
     pe_v = pe if pe else None
     if pe_v and 0 < pe_v < 15:
-        lines.append(f"מבחינה פונדמנטלית: P/E={pe_v:.1f} — נחשב זול. סקטור: {sector}.")
-    elif pe_v and pe_v > 40:
-        lines.append(f"מבחינה פונדמנטלית: P/E={pe_v:.1f} — גבוה, ציפיות גדולות במחיר. סקטור: {sector}.")
+        lines.append(f"פונדמנטלי: P/E={pe_v:.1f} — זול יחסית. סקטור: {sector}.")
+    elif pe_v and pe_v > 50:
+        lines.append(f"פונדמנטלי: P/E={pe_v:.1f} — ציפיות גדולות במחיר. סקטור: {sector}.")
     elif cap_s:
-        lines.append(f"מבחינה פונדמנטלית: שווי שוק {cap_s}. סקטור: {sector}.")
+        lines.append(f"שווי שוק: {cap_s}. סקטור: {sector}.")
 
-    if bullish >= 5:
-        verdict = 'שווה — סטאפ חזק';  vc = 'green'
-        vd = 'רוב האינדיקטורים תומכים בעלייה. כניסה מלאה עם ניהול סיכון.'
-    elif bullish >= 4:
-        verdict = 'שווה — כניסה חלקית'; vc = 'green'
-        vd = 'תמונה טובה אך לא מושלמת. כניסה חלקית ומעקב.'
-    elif bearish >= 4:
-        verdict = 'לא שווה — תמונה בריש'; vc = 'red'
-        vd = 'רוב האינדיקטורים שליליים. לא להיכנס כרגע.'
-    elif breakout_score >= 60:
-        verdict = 'שקול — פריצה פוטנציאלית'; vc = 'yellow'
-        vd = 'ישנם סימני פריצה — כדאי לעקוב מקרוב.'
+    # ── קביעת situation label ──
+    if is_extended_overbought:
+        situation = 'extended_overbought'
+    elif is_recovery_setup:
+        situation = 'recovery_setup'
+    elif is_near_ma20:
+        situation = 'near_ma20'
+    elif is_breakout_candidate:
+        situation = 'breakout_candidate'
+    elif is_downtrend:
+        situation = 'downtrend'
     else:
-        verdict = 'שקול — אין כיוון ברור'; vc = 'yellow'
-        vd = 'תמונה מעורבת. המתן לסיגנל ברור יותר.'
+        situation = 'mixed'
 
     return {
         'prev_candle': {k: (bool(v) if isinstance(v, (bool, np.bool_)) else v) for k, v in prev_candle.items()},
@@ -892,6 +1160,13 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         'fundamental': fundamental,
         'expert_opinion': ' '.join(lines),
         'verdict': verdict, 'verdict_color': vc, 'verdict_detail': vd,
+        'situation': situation,
+        'ma20_dist': round(ma20_dist, 1),
+        'consecutive_days': int(consec_days),
+        'consecutive_dir': consec_dir,
+        'gaps_down_targets': sorted(gaps_down_levels, reverse=True)[:3],
+        'gaps_up_targets': sorted(gaps_up_levels)[:3],
+        'rise_weak_vol': bool(rise_weak_vol),
     }
 
 
@@ -1228,7 +1503,7 @@ def analyze():
 
         # ── ניתוח גרף מקצועי + פונדמנטלים ──
         chart_analysis = generate_chart_analysis(
-            df, ticker, info, current_price, trend, candle, volume, ma20, cci, bullish, bearish
+            df, ticker, info, current_price, trend, candle, volume, ma20, cci, bullish, bearish, gaps=gaps
         )
 
         # Support/resistance levels (simple: recent swing highs/lows)
