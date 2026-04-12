@@ -10,15 +10,35 @@ def _ticker(symbol):
     return yf.Ticker(symbol)
 
 def translate_he(text):
-    """תרגום לעברית דרך MyMemory (חינם)"""
+    """תרגום לעברית — מנסה כמה ממשקים בזה אחר זה"""
+    if not text or not text.strip():
+        return text
+
+    # 1. Google Translate (ללא מפתח — endpoint ציבורי)
     try:
-        url = 'https://api.mymemory.translated.net/get'
-        r = requests.get(url, params={'q': text[:400], 'langpair': 'en|he'}, timeout=5)
-        result = r.json().get('responseData', {}).get('translatedText', '')
+        import urllib.parse
+        encoded = urllib.parse.quote(text[:500])
+        url = (f'https://translate.googleapis.com/translate_a/single'
+               f'?client=gtx&sl=en&tl=he&dt=t&q={encoded}')
+        r = requests.get(url, timeout=6, headers={'User-Agent': 'Mozilla/5.0'})
+        data = r.json()
+        parts = [seg[0] for seg in data[0] if seg[0]]
+        result = ''.join(parts).strip()
         if result and result != text:
             return result
     except Exception:
         pass
+
+    # 2. MyMemory (גיבוי — מוגבל יומי)
+    try:
+        url = 'https://api.mymemory.translated.net/get'
+        r = requests.get(url, params={'q': text[:400], 'langpair': 'en|he'}, timeout=5)
+        result = r.json().get('responseData', {}).get('translatedText', '')
+        if result and result != text and 'MYMEMORY WARNING' not in result:
+            return result
+    except Exception:
+        pass
+
     return text
 from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
                          get_sector_performance, get_upcoming_events,
@@ -157,6 +177,7 @@ def detect_chart_patterns(df):
                 ),
                 'target': breakout_target,
                 'key_level': round(cup_right, 2),
+                'what_it_means': 'ירידה ועלייה בצורת U = ספל. תיקון קטן לאחר = ידית. ככל שהספל רחב יותר — הפריצה חזקה יותר.',
             })
 
     # ════════════════════════════════════════
@@ -185,6 +206,7 @@ def detect_chart_patterns(df):
                         ),
                         'target': target,
                         'key_level': round(neckline, 2),
+                        'what_it_means': 'שלושה שיאים: השני הכי גבוה = ראש. שניים בצדדים = כתפיים. שבירת קו הצוואר = אות מכירה חזק.',
                     })
                     break
 
@@ -213,6 +235,7 @@ def detect_chart_patterns(df):
                         ),
                         'target': target,
                         'key_level': round(neckline, 2),
+                        'what_it_means': 'שלושה שפלים: השני הכי נמוך = ראש. שניים בצדדים = כתפיים. פריצת קו הצוואר למעלה = אות קנייה חזק.',
                     })
                     break
 
@@ -238,6 +261,7 @@ def detect_chart_patterns(df):
                     ),
                     'target': round(res_flat * 1.08, 2),
                     'key_level': round(res_flat, 2),
+                    'what_it_means': 'התנגדות אופקית קבועה + שפלים עולים = לחץ קנייה מצטבר. ככל שהמחיר מתכווץ — הפריצה קרובה.',
                 })
 
     # ════════════════════════════════════════
@@ -262,6 +286,7 @@ def detect_chart_patterns(df):
                     ),
                     'target': round(sup_flat * 0.92, 2),
                     'key_level': round(sup_flat, 2),
+                    'what_it_means': 'תמיכה אופקית קבועה + שיאים יורדים = לחץ מכירה מצטבר. שבירת התמיכה = צניחה.',
                 })
 
     # ════════════════════════════════════════
@@ -290,6 +315,7 @@ def detect_chart_patterns(df):
                     ),
                     'target': None,
                     'key_level': apex,
+                    'what_it_means': 'שיאים יורדים + שפלים עולים = השוק בלחץ. הפריצה בקרוב — לא ידוע לאיזה כיוון. חכה לאישור.',
                 })
 
     # ════════════════════════════════════════
@@ -320,6 +346,7 @@ def detect_chart_patterns(df):
                 ),
                 'target': target,
                 'key_level': round(max(high[-7:]), 2),
+                'what_it_means': 'עמוד עלייה חד + תיקון קטן צידי = הפסקה לפני המשך. הדגל תמיד "מוריד" — כניסה בפריצה מעל הדגל.',
             })
 
     # ════════════════════════════════════════
@@ -343,6 +370,7 @@ def detect_chart_patterns(df):
                 ),
                 'target': target,
                 'key_level': round(peak_between, 2),
+                'what_it_means': 'שני שפלים זהים = רמת תמיכה חזקה. השוק ניסה לרדת פעמיים ונכשל. פריצה כלפי מעלה = שינוי מגמה.',
             })
 
     # ════════════════════════════════════════
@@ -366,6 +394,7 @@ def detect_chart_patterns(df):
                 ),
                 'target': target,
                 'key_level': round(trough_between, 2),
+                'what_it_means': 'שני שיאים זהים = התנגדות חזקה. השוק ניסה לפרוץ פעמיים ונכשל. שבירה כלפי מטה = ירידה חזקה.',
             })
 
     # ════════════════════════════════════════
@@ -387,6 +416,7 @@ def detect_chart_patterns(df):
                 ),
                 'target': None,
                 'key_level': round(low_10, 2),
+                'what_it_means': 'ירידה חדה ואז עלייה חדה = V. יכול להיות ריקושט אמיתי עם ווליום, או dead-cat bounce. חובה לבדוק ווליום.',
             })
 
     # ════════════════════════════════════════
@@ -410,6 +440,7 @@ def detect_chart_patterns(df):
                 ),
                 'target': round(max(high[-20:]) * 1.05, 2),
                 'key_level': round(max(high[-20:]), 2),
+                'what_it_means': 'מחיר תקוע בטווח צר עם ווליום יורד = לחץ מצטבר. ככל שהבסיס רחב יותר — הפריצה חזקה יותר.',
             })
 
     return patterns
