@@ -2202,8 +2202,13 @@ def analyze():
         cci_series  = calc_cci(df['High'], df['Low'], df['Close'], period=14)
         rsi_series  = calc_rsi(df['Close'])
 
-        # גרף — שנה מלאה (df_1y כבר נטען לתבניות גרף)
+        # גרף + תבניות — שנה מלאה
+        try:
+            df_1y = stock.history(period='1y')
+        except Exception:
+            df_1y = df
         chart_df = df_1y if (not df_1y.empty and len(df_1y) > len(df)) else df
+
         chart_ma20 = calc_ma20(chart_df['Close'])
         chart_ma50 = calc_ma50(chart_df['Close'])
         chart_cci  = calc_cci(chart_df['High'], chart_df['Low'], chart_df['Close'])
@@ -2222,12 +2227,8 @@ def analyze():
             'rsi':    [round(x, 2) if pd.notna(x) else None for x in chart_rsi],
         }
 
-        # ── תבניות גרף קלאסיות — שנה אחת לראייה מלאה ──
-        try:
-            df_1y = stock.history(period='1y')
-        except Exception:
-            df_1y = df
-        chart_patterns = detect_chart_patterns(df_1y if not df_1y.empty else df)
+        # ── תבניות גרף קלאסיות ──
+        chart_patterns = detect_chart_patterns(chart_df)
 
         # ── ניתוח גרף מקצועי + פונדמנטלים ──
         chart_analysis = generate_chart_analysis(
