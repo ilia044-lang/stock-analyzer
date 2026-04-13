@@ -1205,23 +1205,44 @@
 
   <!-- Earnings -->
   <div id="earningsCard" style="display:none;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:18px 22px;margin-bottom:16px;">
-    <div class="section-title">📋 דוחות רבעוניים</div>
-    <div id="nextEarningsBox" style="display:none;background:#1a2510;border:1px solid #3fb950;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:14px;">
-      📅 <strong>הדוח הבא:</strong> <span id="nextEarningsDate" style="color:#3fb950;font-weight:700;font-size:16px;"></span>
-      <span style="color:#8b949e;font-size:12px;margin-right:8px;">— שים לב לווליום גבוה סביב תאריך זה</span>
+    <div class="section-title">📋 דוחות רבעוניים — שיטת מיכה סטוק</div>
+
+    <!-- הדוח הבא -->
+    <div id="nextEarningsBox" style="display:none;margin-bottom:14px;">
+      <div id="nextEarningsInner" style="border-radius:8px;padding:12px 16px;font-size:14px;"></div>
     </div>
+
+    <!-- תחזיות לדוח הבא -->
+    <div id="earningsEstBox" style="display:none;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#c9d1d9;">
+      <span style="color:#8b949e;font-size:11px;display:block;margin-bottom:6px;letter-spacing:1px;">תחזיות קונסנזוס לדוח הבא</span>
+      <div id="earningsEstContent" style="display:flex;gap:20px;flex-wrap:wrap;"></div>
+    </div>
+
+    <!-- beat rate -->
+    <div id="beatRateBox" style="display:none;margin-bottom:14px;font-size:13px;color:#c9d1d9;"></div>
+
+    <!-- טבלת היסטוריה -->
     <div style="overflow-x:auto;">
       <table id="earningsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead>
-          <tr style="color:#8b949e;border-bottom:1px solid #21262d;">
-            <th style="text-align:right;padding:8px 12px;">רבעון</th>
-            <th style="text-align:left;padding:8px 12px;">הכנסות</th>
-            <th style="text-align:left;padding:8px 12px;">רווח נקי</th>
-            <th style="text-align:left;padding:8px 12px;">מגמה</th>
+          <tr style="color:#8b949e;border-bottom:1px solid #21262d;font-size:11px;letter-spacing:0.5px;">
+            <th style="text-align:right;padding:8px 10px;white-space:nowrap;">רבעון</th>
+            <th style="text-align:center;padding:8px 10px;white-space:nowrap;">EPS צפי</th>
+            <th style="text-align:center;padding:8px 10px;white-space:nowrap;">EPS בפועל</th>
+            <th style="text-align:center;padding:8px 10px;white-space:nowrap;">ביט / מיס</th>
+            <th style="text-align:center;padding:8px 10px;white-space:nowrap;">הפתעה</th>
+            <th style="text-align:left;padding:8px 10px;white-space:nowrap;">הכנסות</th>
+            <th style="text-align:left;padding:8px 10px;white-space:nowrap;">שינוי</th>
           </tr>
         </thead>
         <tbody id="earningsBody"></tbody>
       </table>
+    </div>
+
+    <!-- אזהרת מיכה -->
+    <div style="margin-top:14px;background:#1a0e00;border:1px solid #e3b34155;border-radius:8px;padding:10px 14px;font-size:12px;color:#e3b341;line-height:1.6;">
+      ⚠️ <strong>מיכה סטוק:</strong> "לא מהמרים על דיווח תוצאות — הסיכון לא לטובתכם.
+      מספיק ירידה אחת שתחטפו ותזכרו את זה לעד. חכו ליום אחרי הדוח ותראו את תגובת השוק."
     </div>
   </div>
 
@@ -2382,34 +2403,105 @@
 
   function renderEarnings(d) {
     let hasContent = false;
+
+    // ── הדוח הבא ──
     if (d.next_earnings) {
-      document.getElementById('nextEarningsDate').textContent = d.next_earnings;
+      const today   = new Date();
+      const eDateParts = d.next_earnings.split('-');
+      const eDate   = new Date(+eDateParts[0], +eDateParts[1]-1, +eDateParts[2]);
+      const daysLeft = Math.round((eDate - today) / 86400000);
+      const urgent   = daysLeft >= 0 && daysLeft <= 7;
+      const near     = daysLeft >= 0 && daysLeft <= 14;
+      const bg       = urgent ? '#1a0000' : near ? '#1a1000' : '#0d1117';
+      const border   = urgent ? '#f85149' : near ? '#e3b341' : '#3fb950';
+      const timeStr  = d.next_earnings_time ? ` · ${d.next_earnings_time}` : '';
+      const moveStr  = d.expected_move_pct  ? ` | תנועה צפויה: <strong style="color:#e3b341;">±${d.expected_move_pct}%</strong>` : '';
+      const daysTxt  = daysLeft < 0 ? '' : daysLeft === 0 ? ' — <strong style="color:#f85149;">היום!</strong>'
+                     : ` — עוד <strong style="color:${urgent?'#f85149':near?'#e3b341':'#3fb950'};">${daysLeft} ימים</strong>`;
+      document.getElementById('nextEarningsInner').innerHTML =
+        `<div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:12px 16px;">
+          📅 <strong>הדוח הבא:</strong>
+          <span style="color:${border};font-weight:700;font-size:15px;margin-right:6px;">${d.next_earnings}${timeStr}</span>
+          ${daysTxt}${moveStr}
+          ${urgent ? '<div style="margin-top:6px;font-size:12px;color:#f85149;">⚠️ לא להיכנס לפוזיציה פתוחה לפני הדוח — סיכון גבוה לתנועה חדה!</div>' : ''}
+        </div>`;
       document.getElementById('nextEarningsBox').style.display = 'block';
       hasContent = true;
     }
+
+    // ── תחזיות לדוח הבא ──
+    const estParts = [];
+    if (d.eps_next_est != null)  estParts.push(`<span>📊 EPS צפוי: <strong style="color:#58a6ff;">${d.eps_next_est > 0 ? '+' : ''}${d.eps_next_est}</strong></span>`);
+    if (d.rev_next_high != null && d.rev_next_low != null) {
+      estParts.push(`<span>💰 הכנסות צפויות: <strong style="color:#58a6ff;">${fmtB(d.rev_next_low)} – ${fmtB(d.rev_next_high)}</strong></span>`);
+    } else if (d.rev_next_high != null) {
+      estParts.push(`<span>💰 הכנסות צפויות: <strong style="color:#58a6ff;">${fmtB(d.rev_next_high)}</strong></span>`);
+    }
+    if (estParts.length > 0) {
+      document.getElementById('earningsEstContent').innerHTML = estParts.join('');
+      document.getElementById('earningsEstBox').style.display = 'block';
+    }
+
+    // ── beat rate ──
+    if (d.beat_rate != null && d.earnings && d.earnings.length > 0) {
+      const total  = d.earnings.filter(e => e.beat != null).length;
+      const beats  = d.earnings.filter(e => e.beat === true).length;
+      const col    = d.beat_rate >= 75 ? '#3fb950' : d.beat_rate >= 50 ? '#e3b341' : '#f85149';
+      const emoji  = d.beat_rate >= 75 ? '✅' : d.beat_rate >= 50 ? '⚠️' : '❌';
+      document.getElementById('beatRateBox').innerHTML =
+        `${emoji} הכתה ציפיות EPS ב-<strong style="color:${col};">${beats} מתוך ${total} רבעונים (${d.beat_rate}%)</strong>
+         <span style="color:#8b949e;font-size:11px;margin-right:8px;">— ביט = בפועל ≥ צפי</span>`;
+      document.getElementById('beatRateBox').style.display = 'block';
+      hasContent = true;
+    }
+
+    // ── טבלת היסטוריה ──
     if (d.earnings && d.earnings.length > 0) {
       const rows = d.earnings.map((e, i) => {
-        const rev = fmt(e.revenue);
-        const net = e.net_income;
-        const netFmt = fmt(net);
-        const netColor = net !== null ? (net >= 0 ? '#3fb950' : '#f85149') : '#8b949e';
-        const prev = d.earnings[i+1];
-        let trend = '';
+        const prev    = d.earnings[i + 1];
+        const epsEst  = e.eps_estimate != null ? e.eps_estimate : '—';
+        const epsAct  = e.eps_actual   != null ? e.eps_actual   : '—';
+        const epsColor= e.eps_actual != null ? (e.eps_actual >= 0 ? '#3fb950' : '#f85149') : '#8b949e';
+        const beatBadge = e.beat === true
+          ? '<span style="background:#1a2510;color:#3fb950;border:1px solid #3fb950;border-radius:4px;padding:2px 8px;font-size:11px;">ביט ✅</span>'
+          : e.beat === false
+          ? '<span style="background:#1a0000;color:#f85149;border:1px solid #f85149;border-radius:4px;padding:2px 8px;font-size:11px;">מיס ❌</span>'
+          : '<span style="color:#8b949e;">—</span>';
+        const surpriseCol = e.surprise_pct != null
+          ? (e.surprise_pct > 0 ? '#3fb950' : e.surprise_pct < 0 ? '#f85149' : '#8b949e') : '#8b949e';
+        const surpriseTxt = e.surprise_pct != null
+          ? `<span style="color:${surpriseCol};font-weight:700;">${e.surprise_pct > 0 ? '+' : ''}${e.surprise_pct}%</span>` : '—';
+        const rev     = e.revenue != null ? fmtB(e.revenue) : '—';
+        let revChg = '—';
         if (prev && e.revenue && prev.revenue) {
           const chg = ((e.revenue - prev.revenue) / Math.abs(prev.revenue) * 100).toFixed(1);
-          trend = `<span style="color:${chg>=0?'#3fb950':'#f85149'}">${chg>=0?'+':''}${chg}%</span>`;
+          revChg = `<span style="color:${chg>=0?'#3fb950':'#f85149'}">${chg>=0?'+':''}${chg}%</span>`;
         }
         return `<tr style="border-bottom:1px solid #21262d;">
-          <td style="padding:8px 12px;color:#8b949e;">${e.date}</td>
-          <td style="padding:8px 12px;">${rev}</td>
-          <td style="padding:8px 12px;color:${netColor};font-weight:700;">${netFmt}</td>
-          <td style="padding:8px 12px;">${trend}</td>
+          <td style="padding:8px 10px;color:#8b949e;white-space:nowrap;">${e.date}</td>
+          <td style="padding:8px 10px;text-align:center;color:#8b949e;">${epsEst}</td>
+          <td style="padding:8px 10px;text-align:center;color:${epsColor};font-weight:700;">${epsAct}</td>
+          <td style="padding:8px 10px;text-align:center;">${beatBadge}</td>
+          <td style="padding:8px 10px;text-align:center;">${surpriseTxt}</td>
+          <td style="padding:8px 10px;">${rev}</td>
+          <td style="padding:8px 10px;">${revChg}</td>
         </tr>`;
       }).join('');
       document.getElementById('earningsBody').innerHTML = rows;
       hasContent = true;
     }
+
     if (hasContent) show('earningsCard');
+  }
+
+  function fmtB(n) {
+    if (n == null) return '—';
+    const abs = Math.abs(n);
+    const sign = n < 0 ? '-' : '';
+    if (abs >= 1e12) return sign + (abs/1e12).toFixed(2) + 'T';
+    if (abs >= 1e9)  return sign + (abs/1e9).toFixed(2)  + 'B';
+    if (abs >= 1e6)  return sign + (abs/1e6).toFixed(1)  + 'M';
+    return sign + abs.toLocaleString();
   }
 
   function renderNews(d) {

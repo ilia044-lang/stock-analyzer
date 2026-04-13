@@ -2025,47 +2025,149 @@ def analyze():
         except Exception:
             pass
 
-        # ── דוחות רבעוניים ──
-        earnings_data = []
-        next_earnings = None
+        # ── דוחות רבעוניים מורחב — שיטת מיכה סטוק ──
+        earnings_data   = []
+        next_earnings   = None
+        next_earnings_time = None
+        eps_next_est    = None
+        rev_next_high   = None
+        rev_next_low    = None
+        expected_move_pct = None
+
+        # 1. היסטוריית EPS beat/miss
         try:
-            # דוחות היסטוריים
-            qe = stock.quarterly_income_stmt
-            if qe is not None and not qe.empty:
-                for col in qe.columns[:4]:
+            ed_df = stock.earnings_dates
+            if ed_df is not None and not ed_df.empty:
+                now_utc  = pd.Timestamp.now(tz='UTC')
+                past_ed  = ed_df[ed_df.index <= now_utc].head(8)
+                for idx, row in past_ed.iterrows():
+                    eps_est = row.get('EPS Estimate', None)
+                    eps_act = row.get('Reported EPS', None)
+                    surprise = row.get('Surprise(%)', None)
+                    beat_eps = None
+                    if (eps_est is not None and eps_act is not None
+                            and pd.notna(eps_est) and pd.notna(eps_act)):
+                        beat_eps = float(eps_act) >= float(eps_est)
+                    earnings_data.append({
+                        'date': str(idx.date()),
+                        'eps_estimate': round(float(eps_est), 2) if eps_est is not None and pd.notna(eps_est) else None,
+                        'eps_actual':   round(float(eps_act), 2) if eps_act is not None and pd.notna(eps_act) else None,
+                        'surprise_pct': round(float(surprise), 1) if surprise is not None and pd.notna(surprise) else None,
+                        'beat': beat_eps,
+                    })
+                future_ed = ed_df[ed_df.index > now_utc]
+                if not future_ed.empty:
+                    next_dt = future_ed.index[-1]
+                    next_earnings = str(next_dt.date())
                     try:
-                        rev = qe.loc['Total Revenue', col] if 'Total Revenue' in qe.index else None
-                        net = qe.loc['Net Income', col] if 'Net Income' in qe.index else None
-                        earnings_data.append({
-                            'date': str(col.date()) if hasattr(col, 'date') else str(col)[:10],
-                            'revenue': int(rev) if rev is not None and pd.notna(rev) else None,
-                            'net_income': int(net) if net is not None and pd.notna(net) else None,
-                        })
+                        hour = next_dt.hour
+                        next_earnings_time = 'לפני פתיחה' if hour < 12 else 'אחרי סגירה'
                     except Exception:
                         pass
         except Exception:
             pass
 
+        # 2. הכנסות + רווח נקי רבעוניים — ממזג עם earnings_data
         try:
-            # תאריך הדוח הבא
+            qe = stock.quarterly_income_stmt
+            if qe is not None and not qe.empty:
+                rev_list = []
+                for col in qe.columns[:8]:
+                    date_key = str(col.date()) if hasattr(col, 'date') else str(col)[:10]
+                    rev = qe.loc['Total Revenue', col] if 'Total Revenue' in qe.index else None
+                    net = qe.loc['Net Income',    col] if 'Net Income'    in qe.index else None
+                    rev_list.append({
+                        'date':       date_key,
+                        'revenue':    int(rev) if rev is not None and pd.notna(rev) else None,
+                        'net_income': int(net) if net is not None and pd.notna(net) else None,
+                    })
+                for item in earnings_data:
+                    for rl in rev_list:
+                        try:
+                            d1 = datetime.date.fromisoformat(item['date'])
+                            d2 = datetime.date.fromisoformat(rl['date'])
+                            if abs((d1 - d2).days) < 50:
+                                item['revenue']    = rl['revenue']
+                                item['net_income'] = rl['net_income']
+                                break
+                        except Exception:
+                            pass
+                if not earnings_data:
+                    earnings_data = rev_list[:4]
+        except Exception:
+            pass
+
+        # 3. calendar — הדוח הבא + תחזיות
+        try:
             cal = stock.calendar
             if cal is not None:
                 if isinstance(cal, dict):
                     ed = cal.get('Earnings Date', None)
-                    if ed is not None:
+                    if ed is not None and next_earnings is None:
                         if hasattr(ed, '__iter__') and not isinstance(ed, str):
                             ed = list(ed)
                             next_earnings = str(ed[0])[:10] if ed else None
                         else:
                             next_earnings = str(ed)[:10]
+                    for k in ('Earnings EPS', 'EPS Estimate', 'EPS Average'):
+                        v = cal.get(k)
+                        if v is not None:
+                            try:
+                                if pd.notna(v):
+                                    eps_next_est = round(float(v), 2)
+                                    break
+                            except Exception:
+                                pass
+                    rh = cal.get('Revenue High')
+                    rl = cal.get('Revenue Low')
+                    if rh is not None:
+                        try:
+                            if pd.notna(rh): rev_next_high = int(rh)
+                        except Exception:
+                            pass
+                    if rl is not None:
+                        try:
+                            if pd.notna(rl): rev_next_low = int(rl)
+                        except Exception:
+                            pass
                 elif hasattr(cal, 'loc'):
                     try:
-                        ed = cal.loc['Earnings Date']
-                        next_earnings = str(ed.iloc[0])[:10] if hasattr(ed, 'iloc') else str(ed)[:10]
+                        if next_earnings is None:
+                            ed = cal.loc['Earnings Date']
+                            next_earnings = str(ed.iloc[0])[:10] if hasattr(ed, 'iloc') else str(ed)[:10]
+                    except Exception:
+                        pass
+                    try:
+                        ep = cal.loc['EPS Estimate']
+                        eps_next_est = round(float(ep.iloc[0] if hasattr(ep, 'iloc') else ep), 2)
+                    except Exception:
+                        pass
+                    try:
+                        rh = cal.loc['Revenue High']
+                        rev_next_high = int(rh.iloc[0] if hasattr(rh, 'iloc') else rh)
+                        rl2 = cal.loc['Revenue Low']
+                        rev_next_low  = int(rl2.iloc[0] if hasattr(rl2, 'iloc') else rl2)
                     except Exception:
                         pass
         except Exception:
             pass
+
+        # 4. תנועה צפויה — ממוצע הפתעות עבר + ATR
+        try:
+            surprises = [abs(e['surprise_pct']) for e in earnings_data
+                         if e.get('surprise_pct') is not None and pd.notna(e['surprise_pct'])]
+            if surprises:
+                avg_surp = sum(surprises) / len(surprises)
+                expected_move_pct = round(max(atr_pct * 2, avg_surp * 0.8), 1)
+            else:
+                expected_move_pct = round(atr_pct * 2.5, 1)
+        except Exception:
+            pass
+
+        # 5. beat rate
+        eps_beats = sum(1 for e in earnings_data if e.get('beat') is True)
+        eps_total = sum(1 for e in earnings_data if e.get('beat') is not None)
+        beat_rate = round(eps_beats / eps_total * 100) if eps_total > 0 else None
 
         # ── שורט ──
         short_pct = None
@@ -2120,8 +2222,12 @@ def analyze():
             'rsi':    [round(x, 2) if pd.notna(x) else None for x in rsi_14],
         }
 
-        # ── תבניות גרף קלאסיות ──
-        chart_patterns = detect_chart_patterns(df)
+        # ── תבניות גרף קלאסיות — שנה אחת לראייה מלאה ──
+        try:
+            df_1y = stock.history(period='1y')
+        except Exception:
+            df_1y = df
+        chart_patterns = detect_chart_patterns(df_1y if not df_1y.empty else df)
 
         # ── ניתוח גרף מקצועי + פונדמנטלים ──
         chart_analysis = generate_chart_analysis(
@@ -2174,6 +2280,12 @@ def analyze():
             'news': news_list,
             'earnings': earnings_data,
             'next_earnings': next_earnings,
+            'next_earnings_time': next_earnings_time,
+            'eps_next_est': eps_next_est,
+            'rev_next_high': rev_next_high,
+            'rev_next_low': rev_next_low,
+            'expected_move_pct': expected_move_pct,
+            'beat_rate': beat_rate,
             'short_pct': short_pct,
             'short_shares': short_shares,
             'short_ratio': short_ratio,
