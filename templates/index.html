@@ -455,6 +455,15 @@
     }
     .chart-container { width: 100%; }
 
+    /* ── Period buttons ── */
+    .period-btn {
+      background: #21262d; color: #8b949e; border: 1px solid #30363d;
+      border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .period-btn:hover { background: #2d333b; color: #e6edf3; }
+    .active-period { background: #1f6feb !important; color: #ffffff !important; border-color: #1f6feb !important; }
+
     /* ── Chart Analysis ── */
     .chart-analysis-card {
       display: none;
@@ -1255,21 +1264,33 @@
   <!-- Professional Chart -->
   <div class="charts-section" id="chartsSection">
     <div class="chart-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-        <div class="section-title" style="margin:0;">📊 גרף מקצועי — נרות + MA20 + MA50 + ווליום</div>
-        <div style="display:flex;gap:6px;">
-          <span style="font-size:12px;color:#f0883e;">━ MA20</span>
-          <span style="font-size:12px;color:#58a6ff;margin-right:8px;">━ MA50</span>
+      <!-- כותרת + legend + כפתורי תקופה -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div class="section-title" style="margin:0 0 4px 0;">📊 גרף מקצועי</div>
+          <div style="display:flex;gap:14px;font-size:12px;">
+            <span style="color:#f0883e;">━ MA20</span>
+            <span style="color:#58a6ff;">━ MA50</span>
+            <span style="color:#3fb950;">▮ עלייה</span>
+            <span style="color:#f85149;">▮ ירידה</span>
+          </div>
+        </div>
+        <!-- כפתורי תקופה -->
+        <div id="periodBtns" style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="setChartPeriod('1M')" data-period="1M" class="period-btn">1M</button>
+          <button onclick="setChartPeriod('3M')" data-period="3M" class="period-btn active-period">3M</button>
+          <button onclick="setChartPeriod('6M')" data-period="6M" class="period-btn">6M</button>
+          <button onclick="setChartPeriod('1Y')" data-period="1Y" class="period-btn">1Y</button>
         </div>
       </div>
-      <div class="chart-container" id="candleChart"></div>
-      <div class="chart-container" style="margin-top:4px;" id="volumeChart"></div>
+      <div id="candleChart" style="width:100%;"></div>
+      <div id="volumeChart" style="width:100%;margin-top:2px;"></div>
     </div>
-    <!-- RSI -->
+    <!-- RSI + CCI -->
     <div class="chart-card">
       <div class="section-title">📈 RSI(14) + CCI(14)</div>
-      <div class="chart-container" id="rsiChart"></div>
-      <div class="chart-container" id="cciChart"></div>
+      <div id="rsiChart" style="width:100%;"></div>
+      <div id="cciChart" style="width:100%;margin-top:2px;"></div>
     </div>
   </div>
 
@@ -2571,144 +2592,194 @@
     show('slCard');
   }
 
+  // ── נתוני גרף גלובלים לשימוש בכפתורי תקופה ──
+  let _chartData = null;
+  let _chartGaps = null;
+  let _chartTicker = '';
+
   function renderCharts(d) {
-    const ch = d.chart;
-    const isDark = true;
-    const layout = {
+    _chartData   = d.chart;
+    _chartGaps   = d.gaps;
+    _chartTicker = d.ticker;
+    _buildCharts('3M');
+    show('chartsSection');
+  }
+
+  function setChartPeriod(p) {
+    document.querySelectorAll('.period-btn').forEach(b => {
+      b.classList.toggle('active-period', b.dataset.period === p);
+    });
+    _buildCharts(p);
+  }
+
+  function _buildCharts(period) {
+    if (!_chartData) return;
+    const ch  = _chartData;
+    const n   = ch.dates.length;
+
+    // חישוב מספר הנרות לפי תקופה
+    const bars = { '1M': 22, '3M': 66, '6M': 132, '1Y': 252 };
+    const take = Math.min(bars[period] || 66, n);
+    const sl   = n - take;  // start index
+
+    const dates  = ch.dates.slice(sl);
+    const open   = ch.open.slice(sl);
+    const high   = ch.high.slice(sl);
+    const low    = ch.low.slice(sl);
+    const close  = ch.close.slice(sl);
+    const volume = ch.volume.slice(sl);
+    const ma20   = ch.ma20.slice(sl);
+    const ma50   = ch.ma50.slice(sl);
+    const rsi    = ch.rsi  ? ch.rsi.slice(sl)  : [];
+    const cci    = ch.cci  ? ch.cci.slice(sl)  : [];
+
+    const BASE = {
       paper_bgcolor: '#0d1117',
       plot_bgcolor:  '#0d1117',
-      font: { color: '#e6edf3', size: 12 },
-      xaxis: { gridcolor: '#21262d', color: '#8b949e', rangeslider: { visible: false } },
-      yaxis: { gridcolor: '#21262d', color: '#8b949e' },
-      margin: { l: 50, r: 20, t: 20, b: 40 },
-      showlegend: true,
-      legend: { bgcolor: '#161b22', bordercolor: '#30363d', borderwidth: 1 }
+      font:   { color: '#c9d1d9', size: 11, family: 'inherit' },
+      xaxis:  { gridcolor: '#1c2128', color: '#8b949e', zeroline: false,
+                rangeslider: { visible: false },
+                showspikes: true, spikecolor: '#484f58', spikewidth: 1, spikesnap: 'cursor', spikedash: 'solid' },
+      yaxis:  { gridcolor: '#1c2128', color: '#8b949e', zeroline: false,
+                showspikes: true, spikecolor: '#484f58', spikewidth: 1 },
+      hoverdistance: 50,
+      spikedistance: 50,
+      hovermode: 'x unified',
     };
 
-    // ── Candle chart ──
-    const candleTrace = {
-      type: 'candlestick',
-      x: ch.dates,
-      open: ch.open, high: ch.high, low: ch.low, close: ch.close,
-      name: d.ticker,
-      increasing: { line: { color: '#3fb950' }, fillcolor: '#3fb950' },
-      decreasing: { line: { color: '#f85149' }, fillcolor: '#f85149' },
-    };
-    const ma20Trace = {
-      type: 'scatter',
-      x: ch.dates, y: ch.ma20,
-      name: 'ממוצע 20',
-      line: { color: '#f0883e', width: 2, dash: 'dot' },
-      mode: 'lines',
-    };
+    const CFG = { responsive: true, displayModeBar: true,
+                  modeBarButtonsToRemove: ['autoScale2d','lasso2d','select2d','toImage'],
+                  displaylogo: false };
 
-    // Add gap lines
-    const shapes = [];
-    if (d.gaps.gaps_up.length) {
-      d.gaps.gaps_up.forEach(g => {
-        shapes.push({
-          type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1],
-          y0: g.level, y1: g.level,
-          line: { color: '#3fb950', width: 1, dash: 'dash' }
+    // ──────────────── נרות ────────────────
+    const gapShapes = [];
+    if (_chartGaps) {
+      (_chartGaps.gaps_up   || []).forEach(g => gapShapes.push({
+        type:'line', x0:dates[0], x1:dates[dates.length-1], y0:g.level, y1:g.level,
+        line:{ color:'#3fb95066', width:1.5, dash:'dot' }
+      }));
+      (_chartGaps.gaps_down || []).forEach(g => gapShapes.push({
+        type:'line', x0:dates[0], x1:dates[dates.length-1], y0:g.level, y1:g.level,
+        line:{ color:'#f8514966', width:1.5, dash:'dot' }
+      }));
+    }
+
+    Plotly.react('candleChart',
+      [
+        { type:'candlestick', x:dates, open, high, low, close,
+          name:_chartTicker,
+          increasing:{ line:{ color:'#2ea043', width:1 }, fillcolor:'#2ea043' },
+          decreasing:{ line:{ color:'#da3633', width:1 }, fillcolor:'#da3633' },
+          whiskerwidth: 0.3,
+          hoverinfo: 'x+y' },
+        { type:'scatter', x:dates, y:ma20, name:'MA20', mode:'lines',
+          line:{ color:'#f0883e', width:1.8 }, hovertemplate:'MA20: %{y:.2f}<extra></extra>' },
+        { type:'scatter', x:dates, y:ma50, name:'MA50', mode:'lines',
+          line:{ color:'#58a6ff', width:1.8 }, hovertemplate:'MA50: %{y:.2f}<extra></extra>' },
+      ],
+      { ...BASE, height:440,
+        margin:{ l:55, r:16, t:12, b:8 },
+        shapes: gapShapes,
+        legend:{ x:0.01, y:0.99, bgcolor:'rgba(13,17,23,0.8)', bordercolor:'#30363d',
+                 borderwidth:1, font:{ size:11 } },
+        yaxis:{ ...BASE.yaxis, autorange:true, fixedrange:false },
+        xaxis:{ ...BASE.xaxis, fixedrange:false },
+      }, CFG);
+
+    // ──────────────── ווליום ────────────────
+    const volColors = close.map((c,i) => c >= (open[i] ?? c) ? '#2ea04366' : '#da363366');
+    Plotly.react('volumeChart',
+      [{ type:'bar', x:dates, y:volume, name:'Volume',
+         marker:{ color:volColors }, hovertemplate:'Vol: %{y:.2s}<extra></extra>' }],
+      { ...BASE, height:120,
+        margin:{ l:55, r:16, t:2, b:32 },
+        showlegend:false,
+        yaxis:{ ...BASE.yaxis, tickformat:'.2s', fixedrange:true },
+        xaxis:{ ...BASE.xaxis, fixedrange:false },
+      }, CFG);
+
+    // ──────────────── RSI ────────────────
+    if (rsi.length) {
+      Plotly.react('rsiChart',
+        [{ type:'scatter', x:dates, y:rsi, name:'RSI(14)', mode:'lines',
+           line:{ color:'#d2a8ff', width:2 },
+           hovertemplate:'RSI: %{y:.1f}<extra></extra>' }],
+        { ...BASE, height:150,
+          margin:{ l:55, r:16, t:8, b:8 },
+          showlegend:false,
+          shapes:[
+            { type:'rect',  x0:dates[0], x1:dates[dates.length-1], y0:70, y1:100,
+              fillcolor:'rgba(248,81,73,0.07)', line:{width:0} },
+            { type:'rect',  x0:dates[0], x1:dates[dates.length-1], y0:0,  y1:30,
+              fillcolor:'rgba(63,185,80,0.07)',  line:{width:0} },
+            { type:'line',  x0:dates[0], x1:dates[dates.length-1], y0:70, y1:70,
+              line:{color:'#f85149',width:1,dash:'dash'} },
+            { type:'line',  x0:dates[0], x1:dates[dates.length-1], y0:30, y1:30,
+              line:{color:'#3fb950',width:1,dash:'dash'} },
+          ],
+          yaxis:{ ...BASE.yaxis, range:[0,100], fixedrange:true,
+            tickvals:[0,30,50,70,100], ticktext:['0','30','50','70','100'] },
+          xaxis:{ ...BASE.xaxis, fixedrange:false },
+          annotations:[
+            { x:dates[dates.length-1], y:70, xanchor:'right', yanchor:'bottom',
+              text:'אוברבוט 70', showarrow:false, font:{color:'#f85149',size:9} },
+            { x:dates[dates.length-1], y:30, xanchor:'right', yanchor:'top',
+              text:'אוסלד 30',    showarrow:false, font:{color:'#3fb950',size:9} },
+          ],
+        }, CFG);
+    }
+
+    // ──────────────── CCI ────────────────
+    if (cci.length) {
+      Plotly.react('cciChart',
+        [{ type:'scatter', x:dates, y:cci, name:'CCI(14)', mode:'lines',
+           line:{ color:'#e3b341', width:2 },
+           hovertemplate:'CCI: %{y:.0f}<extra></extra>' }],
+        { ...BASE, height:150,
+          margin:{ l:55, r:16, t:4, b:36 },
+          showlegend:false,
+          shapes:[
+            { type:'line', x0:dates[0], x1:dates[dates.length-1], y0: 150, y1: 150,
+              line:{color:'#f85149',width:1,dash:'dash'} },
+            { type:'line', x0:dates[0], x1:dates[dates.length-1], y0: 100, y1: 100,
+              line:{color:'#f0883e',width:1,dash:'dot'} },
+            { type:'line', x0:dates[0], x1:dates[dates.length-1], y0:   0, y1:   0,
+              line:{color:'#484f58',width:1} },
+            { type:'line', x0:dates[0], x1:dates[dates.length-1], y0:-100, y1:-100,
+              line:{color:'#58a6ff',width:1,dash:'dot'} },
+            { type:'line', x0:dates[0], x1:dates[dates.length-1], y0:-200, y1:-200,
+              line:{color:'#3fb950',width:1,dash:'dash'} },
+          ],
+          yaxis:{ ...BASE.yaxis, fixedrange:true },
+          xaxis:{ ...BASE.xaxis, fixedrange:false },
+          annotations:[
+            { x:dates[dates.length-1], y: 150, xanchor:'right', text:'+150', showarrow:false, font:{color:'#f85149',size:9} },
+            { x:dates[dates.length-1], y: 100, xanchor:'right', text:'+100', showarrow:false, font:{color:'#f0883e',size:9} },
+            { x:dates[dates.length-1], y:-100, xanchor:'right', text:'-100', showarrow:false, font:{color:'#58a6ff',size:9} },
+            { x:dates[dates.length-1], y:-200, xanchor:'right', text:'-200', showarrow:false, font:{color:'#3fb950',size:9} },
+          ],
+        }, CFG);
+    }
+
+    // ── סינכרון zoom בין כל הגרפים ──
+    ['candleChart','volumeChart','rsiChart','cciChart'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || !el._fullLayout) return;
+      el.on('plotly_relayout', ev => {
+        const upd = {};
+        if (ev['xaxis.range[0]'] !== undefined) {
+          upd['xaxis.range[0]'] = ev['xaxis.range[0]'];
+          upd['xaxis.range[1]'] = ev['xaxis.range[1]'];
+        } else if (ev['xaxis.autorange']) {
+          upd['xaxis.autorange'] = true;
+        }
+        if (!Object.keys(upd).length) return;
+        ['candleChart','volumeChart','rsiChart','cciChart'].forEach(other => {
+          if (other !== id && document.getElementById(other)?._fullLayout)
+            Plotly.relayout(other, upd);
         });
       });
-    }
-    if (d.gaps.gaps_down.length) {
-      d.gaps.gaps_down.forEach(g => {
-        shapes.push({
-          type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1],
-          y0: g.level, y1: g.level,
-          line: { color: '#f85149', width: 1, dash: 'dash' }
-        });
-      });
-    }
-
-    // Add MA50 trace
-    const ma50Trace = {
-      type: 'scatter',
-      x: ch.dates, y: ch.ma50,
-      name: 'MA50',
-      line: { color: '#58a6ff', width: 2, dash: 'dot' },
-      mode: 'lines',
-    };
-
-    Plotly.newPlot('candleChart', [candleTrace, ma20Trace, ma50Trace], {
-      ...layout,
-      shapes,
-      height: 400,
-      legend: { x: 0, y: 1, bgcolor: 'rgba(0,0,0,0)', font: { size: 11 } },
-    }, { responsive: true, displayModeBar: false });
-
-    // ── Volume chart ──
-    const volColors = ch.close.map((c,i) => i === 0 ? '#8b949e' : (c >= ch.open[i] ? '#3fb950' : '#f85149'));
-    const volTrace = {
-      type: 'bar',
-      x: ch.dates, y: ch.volume,
-      name: 'ווליום',
-      marker: { color: volColors },
-    };
-    Plotly.newPlot('volumeChart', [volTrace], {
-      ...layout,
-      height: 140,
-      showlegend: false,
-      margin: { l: 50, r: 20, t: 4, b: 40 },
-      yaxis: { ...layout.yaxis, tickformat: '.2s' }
-    }, { responsive: true, displayModeBar: false });
-
-    // ── RSI chart ──
-    if (ch.rsi) {
-      const rsiTrace = {
-        type: 'scatter', x: ch.dates, y: ch.rsi,
-        name: 'RSI(14)', line: { color: '#d2a8ff', width: 2 }, mode: 'lines',
-      };
-      const rsiShapes = [
-        { type: 'rect', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 70, y1: 100,
-          fillcolor: 'rgba(248,81,73,0.07)', line: { width: 0 } },
-        { type: 'rect', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 0, y1: 30,
-          fillcolor: 'rgba(63,185,80,0.07)', line: { width: 0 } },
-        { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 70, y1: 70,
-          line: { color: '#f85149', width: 1, dash: 'dash' } },
-        { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 30, y1: 30,
-          line: { color: '#3fb950', width: 1, dash: 'dash' } },
-        { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 50, y1: 50,
-          line: { color: '#484f58', width: 1 } },
-      ];
-      Plotly.newPlot('rsiChart', [rsiTrace], {
-        ...layout, height: 160, showlegend: false,
-        margin: { l: 50, r: 20, t: 10, b: 20 },
-        shapes: rsiShapes,
-        yaxis: { ...layout.yaxis, range: [0, 100] },
-        annotations: [
-          { x: ch.dates[ch.dates.length-1], y: 70, xanchor: 'right', text: 'אוברבוט 70', showarrow: false, font: { color: '#f85149', size: 10 } },
-          { x: ch.dates[ch.dates.length-1], y: 30, xanchor: 'right', text: 'אוסלד 30', showarrow: false, font: { color: '#3fb950', size: 10 } },
-        ]
-      }, { responsive: true, displayModeBar: false });
-    }
-
-    // ── CCI chart ──
-    const cciTrace = {
-      type: 'scatter', x: ch.dates, y: ch.cci,
-      name: 'CCI(14)', line: { color: '#e3b341', width: 2 }, mode: 'lines',
-    };
-    const cciShapes = [
-      { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 100, y1: 100,
-        line: { color: '#3fb950', width: 1, dash: 'dash' } },
-      { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: -100, y1: -100,
-        line: { color: '#f85149', width: 1, dash: 'dash' } },
-      { type: 'line', x0: ch.dates[0], x1: ch.dates[ch.dates.length-1], y0: 0, y1: 0,
-        line: { color: '#484f58', width: 1 } },
-    ];
-    Plotly.newPlot('cciChart', [cciTrace], {
-      ...layout, height: 160, showlegend: false,
-      margin: { l: 50, r: 20, t: 4, b: 40 },
-      shapes: cciShapes,
-      annotations: [
-        { x: ch.dates[ch.dates.length-1], y: 100, xanchor: 'right', text: '+100', showarrow: false, font: { color: '#3fb950', size: 10 } },
-        { x: ch.dates[ch.dates.length-1], y: -100, xanchor: 'right', text: '-100', showarrow: false, font: { color: '#f85149', size: 10 } },
-      ]
-    }, { responsive: true, displayModeBar: false });
-
-    show('chartsSection');
+    });
   }
 
   // ── תבניות גרף ──

@@ -2202,24 +2202,24 @@ def analyze():
         cci_series  = calc_cci(df['High'], df['Low'], df['Close'], period=14)
         rsi_series  = calc_rsi(df['Close'])
 
-        display_n = min(60, len(df))
-        df14    = df.iloc[-display_n:]
-        ma20_14 = ma20_series.iloc[-display_n:]
-        ma50_14 = ma50_series.iloc[-display_n:]
-        cci_14  = cci_series.iloc[-display_n:]
-        rsi_14  = rsi_series.iloc[-display_n:]
+        # גרף — שנה מלאה (df_1y כבר נטען לתבניות גרף)
+        chart_df = df_1y if (not df_1y.empty and len(df_1y) > len(df)) else df
+        chart_ma20 = calc_ma20(chart_df['Close'])
+        chart_ma50 = calc_ma50(chart_df['Close'])
+        chart_cci  = calc_cci(chart_df['High'], chart_df['Low'], chart_df['Close'])
+        chart_rsi  = calc_rsi(chart_df['Close'])
 
         chart = {
-            'dates':  [str(d.date()) for d in df14.index],
-            'open':   df14['Open'].round(2).tolist(),
-            'high':   df14['High'].round(2).tolist(),
-            'low':    df14['Low'].round(2).tolist(),
-            'close':  df14['Close'].round(2).tolist(),
-            'volume': df14['Volume'].tolist(),
-            'ma20':   [round(x, 2) if pd.notna(x) else None for x in ma20_14],
-            'ma50':   [round(x, 2) if pd.notna(x) else None for x in ma50_14],
-            'cci':    [round(x, 2) if pd.notna(x) else None for x in cci_14],
-            'rsi':    [round(x, 2) if pd.notna(x) else None for x in rsi_14],
+            'dates':  [str(d.date()) for d in chart_df.index],
+            'open':   chart_df['Open'].round(2).tolist(),
+            'high':   chart_df['High'].round(2).tolist(),
+            'low':    chart_df['Low'].round(2).tolist(),
+            'close':  chart_df['Close'].round(2).tolist(),
+            'volume': chart_df['Volume'].tolist(),
+            'ma20':   [round(x, 2) if pd.notna(x) else None for x in chart_ma20],
+            'ma50':   [round(x, 2) if pd.notna(x) else None for x in chart_ma50],
+            'cci':    [round(x, 2) if pd.notna(x) else None for x in chart_cci],
+            'rsi':    [round(x, 2) if pd.notna(x) else None for x in chart_rsi],
         }
 
         # ── תבניות גרף קלאסיות — שנה אחת לראייה מלאה ──
