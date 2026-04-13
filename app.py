@@ -2034,70 +2034,91 @@ def analyze():
         rev_next_low    = None
         expected_move_pct = None
 
-        # 1. היסטוריית EPS beat/miss
+        # 1. quarterly_income_stmt — הכי אמין: revenue + EPS בפועל + net income
+        try:
+            qe = stock.quarterly_income_stmt
+            if qe is not None and not qe.empty:
+                for col in qe.columns[:8]:
+                    date_key = str(col.date()) if hasattr(col, 'date') else str(col)[:10]
+                    rev = qe.loc['Total Revenue', col] if 'Total Revenue' in qe.index else None
+                    net = qe.loc['Net Income',    col] if 'Net Income'    in qe.index else None
+                    eps_act = None
+                    for eps_row in ('Basic EPS', 'Diluted EPS'):
+                        if eps_row in qe.index:
+                            v = qe.loc[eps_row, col]
+                            if v is not None and pd.notna(v):
+                                eps_act = round(float(v), 2)
+                                break
+                    # דלג על שורות ריקות לחלוטין
+                    if rev is None and net is None and eps_act is None:
+                        continue
+                    earnings_data.append({
+                        'date':         date_key,
+                        'revenue':      int(rev) if rev is not None and pd.notna(rev) else None,
+                        'net_income':   int(net) if net is not None and pd.notna(net) else None,
+                        'eps_actual':   eps_act,
+                        'eps_estimate': None,
+                        'surprise_pct': None,
+                        'beat':         None,
+                    })
+        except Exception:
+            pass
+
+        # 2. earnings_dates — EPS צפי vs בפועל + beat/miss (דורש lxml)
         try:
             ed_df = stock.earnings_dates
             if ed_df is not None and not ed_df.empty:
-                now_utc  = pd.Timestamp.now(tz='UTC')
-                past_ed  = ed_df[ed_df.index <= now_utc].head(8)
+                now_utc = pd.Timestamp.now(tz='UTC')
+                past_ed = ed_df[ed_df.index <= now_utc].head(8)
                 for idx, row in past_ed.iterrows():
-                    eps_est = row.get('EPS Estimate', None)
-                    eps_act = row.get('Reported EPS', None)
+                    eps_est  = row.get('EPS Estimate', None)
+                    eps_act  = row.get('Reported EPS', None)
                     surprise = row.get('Surprise(%)', None)
                     beat_eps = None
                     if (eps_est is not None and eps_act is not None
                             and pd.notna(eps_est) and pd.notna(eps_act)):
                         beat_eps = float(eps_act) >= float(eps_est)
-                    earnings_data.append({
-                        'date': str(idx.date()),
-                        'eps_estimate': round(float(eps_est), 2) if eps_est is not None and pd.notna(eps_est) else None,
-                        'eps_actual':   round(float(eps_act), 2) if eps_act is not None and pd.notna(eps_act) else None,
-                        'surprise_pct': round(float(surprise), 1) if surprise is not None and pd.notna(surprise) else None,
-                        'beat': beat_eps,
-                    })
+                    date_key = str(idx.date())
+                    # מחפש ערך קיים ב-earnings_data ומעשיר אותו
+                    matched = False
+                    for item in earnings_data:
+                        try:
+                            if abs((datetime.date.fromisoformat(item['date']) -
+                                    datetime.date.fromisoformat(date_key)).days) < 50:
+                                if eps_est is not None and pd.notna(eps_est):
+                                    item['eps_estimate'] = round(float(eps_est), 2)
+                                if eps_act is not None and pd.notna(eps_act):
+                                    item['eps_actual'] = round(float(eps_act), 2)
+                                if surprise is not None and pd.notna(surprise):
+                                    item['surprise_pct'] = round(float(surprise), 1)
+                                item['beat'] = beat_eps
+                                matched = True
+                                break
+                        except Exception:
+                            pass
+                    if not matched:
+                        earnings_data.append({
+                            'date':         date_key,
+                            'eps_estimate': round(float(eps_est), 2) if eps_est is not None and pd.notna(eps_est) else None,
+                            'eps_actual':   round(float(eps_act), 2) if eps_act is not None and pd.notna(eps_act) else None,
+                            'surprise_pct': round(float(surprise), 1) if surprise is not None and pd.notna(surprise) else None,
+                            'beat':         beat_eps,
+                            'revenue':      None,
+                            'net_income':   None,
+                        })
+                # תאריך הדוח הבא
                 future_ed = ed_df[ed_df.index > now_utc]
                 if not future_ed.empty:
                     next_dt = future_ed.index[-1]
                     next_earnings = str(next_dt.date())
                     try:
-                        hour = next_dt.hour
-                        next_earnings_time = 'לפני פתיחה' if hour < 12 else 'אחרי סגירה'
+                        next_earnings_time = 'לפני פתיחה' if next_dt.hour < 12 else 'אחרי סגירה'
                     except Exception:
                         pass
         except Exception:
             pass
 
-        # 2. הכנסות + רווח נקי רבעוניים — ממזג עם earnings_data
-        try:
-            qe = stock.quarterly_income_stmt
-            if qe is not None and not qe.empty:
-                rev_list = []
-                for col in qe.columns[:8]:
-                    date_key = str(col.date()) if hasattr(col, 'date') else str(col)[:10]
-                    rev = qe.loc['Total Revenue', col] if 'Total Revenue' in qe.index else None
-                    net = qe.loc['Net Income',    col] if 'Net Income'    in qe.index else None
-                    rev_list.append({
-                        'date':       date_key,
-                        'revenue':    int(rev) if rev is not None and pd.notna(rev) else None,
-                        'net_income': int(net) if net is not None and pd.notna(net) else None,
-                    })
-                for item in earnings_data:
-                    for rl in rev_list:
-                        try:
-                            d1 = datetime.date.fromisoformat(item['date'])
-                            d2 = datetime.date.fromisoformat(rl['date'])
-                            if abs((d1 - d2).days) < 50:
-                                item['revenue']    = rl['revenue']
-                                item['net_income'] = rl['net_income']
-                                break
-                        except Exception:
-                            pass
-                if not earnings_data:
-                    earnings_data = rev_list[:4]
-        except Exception:
-            pass
-
-        # 3. calendar — הדוח הבא + תחזיות
+        # 3. calendar — הדוח הבא + תחזיות (Earnings Average = EPS קונסנזוס)
         try:
             cal = stock.calendar
             if cal is not None:
@@ -2109,7 +2130,8 @@ def analyze():
                             next_earnings = str(ed[0])[:10] if ed else None
                         else:
                             next_earnings = str(ed)[:10]
-                    for k in ('Earnings EPS', 'EPS Estimate', 'EPS Average'):
+                    # EPS estimate — מנסה כמה שמות אפשריים
+                    for k in ('Earnings Average', 'Earnings EPS', 'EPS Estimate', 'EPS Average'):
                         v = cal.get(k)
                         if v is not None:
                             try:
@@ -2138,8 +2160,10 @@ def analyze():
                     except Exception:
                         pass
                     try:
-                        ep = cal.loc['EPS Estimate']
-                        eps_next_est = round(float(ep.iloc[0] if hasattr(ep, 'iloc') else ep), 2)
+                        for k in ('Earnings Average', 'EPS Estimate'):
+                            ep = cal.loc[k]
+                            eps_next_est = round(float(ep.iloc[0] if hasattr(ep, 'iloc') else ep), 2)
+                            break
                     except Exception:
                         pass
                     try:
