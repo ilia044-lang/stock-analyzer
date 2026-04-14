@@ -6,175 +6,195 @@
   <title>מנתח מניות - שיטת מיכה סטוקס</title>
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
   <style>
+    /* ══════════════════════════════════════
+       Apple Light Design System (apple.com)
+       ══════════════════════════════════════ */
+    :root {
+      /* ── Backgrounds — Apple signature light grays ── */
+      --bg:    #f2f2f7;   /* Apple page background */
+      --bg2:   #ffffff;   /* card / panel surface */
+      --bg3:   #f2f2f7;   /* slightly recessed input/cell */
+      --bg4:   #e5e5ea;   /* highest elevation */
+      --sep:   rgba(0,0,0,0.14);   /* borders — visible but not heavy */
+      --sep2:  rgba(0,0,0,0.07);
+
+      /* ── Text — full contrast on light bg ── */
+      --label:  #1d1d1f;   /* primary — 16.75:1 contrast on white ✓ */
+      --label2: #3a3a3c;   /* secondary — 10.7:1 ✓ (was too light) */
+      --label3: #6e6e73;   /* tertiary — 4.6:1 ✓ (was #86868b = 3.3:1 ✗) */
+
+      /* ── Accent — Apple HIG palette ── */
+      --blue:       #0071e3;
+      --blue-dim:   rgba(0,113,227,0.10);
+      --green:      #34c759;
+      --green-dim:  rgba(52,199,89,0.12);
+      --red:        #ff3b30;
+      --red-dim:    rgba(255,59,48,0.10);
+      --orange:     #c2410c;        /* dark orange — 4.8:1 contrast on white ✓ */
+      --orange-dim: rgba(194,65,12,0.10);
+      --yellow:     #92400e;        /* dark amber — 7.5:1 contrast on white ✓ */
+      --yellow-dim: rgba(146,64,14,0.09);
+      --purple:     #7c3aed;        /* dark purple — readable on white ✓ */
+      --teal:       #32ade6;
+
+      /* ── Radii & shadows ── */
+      --r-sm:  10px;
+      --r-md:  14px;
+      --r-lg:  18px;
+      --r-xl:  22px;
+      --shadow:    0 2px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+      --shadow-sm: 0 1px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --glow-blue:  0 0 0 3px rgba(0,113,227,0.18);
+      --glow-green: 0 0 0 3px rgba(52,199,89,0.18);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+                   'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      background-image: radial-gradient(ellipse 100% 60% at 50% 0%, rgba(0,113,227,0.05) 0%, transparent 65%);
+      background-attachment: fixed;
+      color: var(--label);
       direction: rtl;
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* ── Header ── */
     header {
-      background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
-      border-bottom: 1px solid #21262d;
-      padding: 20px 32px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 18px 32px;
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 4px 20px rgba(0,0,0,0.08);
     }
-    header .logo { font-size: 28px; }
-    header h1 { font-size: 22px; font-weight: 700; color: #58a6ff; }
-    header p  { font-size: 13px; color: #8b949e; margin-top: 2px; }
+    header .logo { font-size: 26px; }
+    header h1 { font-size: 20px; font-weight: 700; color: var(--label); letter-spacing: -0.3px; }
+    header p  { font-size: 12px; color: var(--label2); margin-top: 1px; }
 
     /* ── Search ── */
     .search-section {
-      max-width: 900px;
-      margin: 32px auto;
+      max-width: 860px;
+      margin: 36px auto;
       padding: 0 20px;
     }
-    .search-box {
-      display: flex;
-      gap: 12px;
-    }
+    .search-box { display: flex; gap: 10px; }
     .search-box input {
       flex: 1;
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 10px;
-      padding: 14px 20px;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-radius: var(--r-lg);
+      padding: 15px 22px;
       font-size: 18px;
-      color: #e6edf3;
+      font-family: inherit;
+      color: var(--label);
       outline: none;
       text-transform: uppercase;
-      letter-spacing: 2px;
-      transition: border-color .2s;
+      letter-spacing: 3px;
+      transition: border-color .2s, box-shadow .2s;
     }
-    .search-box input:focus { border-color: #58a6ff; }
-    .search-box input::placeholder { letter-spacing: 0; color: #484f58; font-size: 14px; }
+    .search-box input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(0,113,227,0.18);
+    }
+    .search-box input::placeholder { letter-spacing: 0; color: var(--label3); font-size: 14px; }
     .search-box button {
-      background: #238636;
+      background: #0071e3;
       border: none;
-      border-radius: 10px;
-      padding: 14px 28px;
-      font-size: 16px;
-      font-weight: 700;
+      border-radius: var(--r-lg);
+      padding: 15px 30px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
       color: #fff;
       cursor: pointer;
-      transition: background .2s;
+      transition: filter .15s, transform .1s;
       white-space: nowrap;
+      letter-spacing: -0.2px;
     }
-    .search-box button:hover { background: #2ea043; }
-    .search-box button:disabled { background: #21262d; cursor: not-allowed; }
+    .search-box button:hover   { filter: brightness(1.08); }
+    .search-box button:active  { transform: scale(0.97); }
+    .search-box button:disabled{ background: var(--bg4); color: var(--label3); cursor: not-allowed; }
 
-    .examples { margin-top: 10px; color: #8b949e; font-size: 13px; }
+    .examples { margin-top: 12px; color: var(--label3); font-size: 13px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
     .examples span {
-      background: #21262d;
-      border-radius: 6px;
-      padding: 2px 8px;
-      margin: 0 4px;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-radius: 20px;
+      padding: 3px 12px;
+      margin: 0 2px;
       cursor: pointer;
-      transition: background .2s;
+      color: var(--label2);
+      transition: all .15s;
+      font-size: 12px;
     }
-    .examples span:hover { background: #30363d; color: #e6edf3; }
+    .examples span:hover { background: var(--blue-dim); color: var(--blue); border-color: var(--blue); }
 
     /* ── Page layout with sidebar ── */
     .page-layout {
-      display: flex;
-      gap: 20px;
-      max-width: 1500px;
-      margin: 0 auto;
-      padding: 0 20px;
-      align-items: flex-start;
+      display: flex; gap: 20px;
+      max-width: 1500px; margin: 0 auto;
+      padding: 0 20px; align-items: flex-start;
     }
-    .main { flex: 1; min-width: 0; padding: 0 0 40px; }
+    .main { flex: 1; min-width: 0; padding: 0 0 60px; }
 
     /* ── Checklist Sidebar ── */
     .cl-sidebar {
-      display: none;
-      width: 270px;
-      flex-shrink: 0;
-      position: sticky;
-      top: 16px;
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      overflow: hidden;
-      font-size: 13px;
+      display: none; width: 270px; flex-shrink: 0;
+      position: sticky; top: 72px;
+      background: var(--bg2); border: 1px solid var(--sep);
+      border-radius: var(--r-lg); overflow: hidden; font-size: 13px;
+      box-shadow: var(--shadow);
     }
     .cl-header {
-      background: linear-gradient(135deg, #1a2535, #0d1117);
-      padding: 10px 14px;
-      text-align: center;
-      border-bottom: 1px solid #30363d;
+      background: var(--bg3); padding: 12px 14px;
+      text-align: center; border-bottom: 1px solid var(--sep);
     }
-    .cl-header .cl-title { font-size: 13px; font-weight: 800; color: #58a6ff; }
-    .cl-header .cl-ticker { font-size: 18px; font-weight: 900; color: #e6edf3; margin-top: 2px; letter-spacing: 2px; }
+    .cl-header .cl-title  { font-size: 11px; font-weight: 600; color: var(--label2); letter-spacing: 0.5px; text-transform: uppercase; }
+    .cl-header .cl-ticker { font-size: 20px; font-weight: 700; color: var(--label); margin-top: 3px; letter-spacing: 2px; }
     .cl-table { width: 100%; border-collapse: collapse; }
     .cl-table th {
-      background: #0d1117;
-      color: #8b949e;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 6px 8px;
-      text-align: center;
-      border-bottom: 1px solid #21262d;
+      background: var(--bg); color: var(--label3); font-size: 10px; font-weight: 600;
+      padding: 6px 8px; text-align: center; border-bottom: 1px solid var(--sep2);
+      text-transform: uppercase; letter-spacing: 0.5px;
     }
     .cl-table th.cl-label { text-align: right; padding-right: 10px; }
     .cl-table td {
-      padding: 8px 6px;
-      border-bottom: 1px solid #1a1f28;
-      text-align: center;
-      vertical-align: middle;
+      padding: 8px 6px; border-bottom: 1px solid var(--sep2);
+      text-align: center; vertical-align: middle;
     }
     .cl-table td.cl-row-label {
-      text-align: right;
-      padding-right: 10px;
-      padding-left: 4px;
-      color: #c9d1d9;
-      font-size: 12px;
-      line-height: 1.35;
+      text-align: right; padding-right: 10px; padding-left: 4px;
+      color: var(--label2); font-size: 12px; line-height: 1.35;
     }
-    .cl-table td.cl-num {
-      color: #484f58;
-      font-size: 11px;
-      font-weight: 700;
-      width: 22px;
-    }
+    .cl-table td.cl-num { color: var(--label3); font-size: 11px; font-weight: 600; width: 22px; }
     .cl-box {
-      width: 22px; height: 22px;
-      border-radius: 5px;
-      border: 2px solid #30363d;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      transition: all .3s;
-      background: #0d1117;
+      width: 22px; height: 22px; border-radius: 6px;
+      border: 1.5px solid var(--sep); display: inline-flex;
+      align-items: center; justify-content: center;
+      font-size: 13px; transition: all .25s; background: var(--bg3);
     }
-    .cl-box.checked-bull { background: #0f2d1a; border-color: #3fb950; }
-    .cl-box.checked-bear { background: #2d1717; border-color: #f85149; }
-    .cl-box.checked-neut { background: #1a1f2e; border-color: #e3b341; }
-    .cl-separator td { background: #0d1117; padding: 5px 8px; color: #8b949e; font-size: 11px; font-weight: 700; }
-    .cl-footer {
-      padding: 10px 12px;
-      border-top: 1px solid #21262d;
-      background: #0d1117;
-    }
-    .cl-sl-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-    .cl-sl-label { font-size: 12px; font-weight: 700; color: #e3b341; }
-    .cl-sl-val   { font-size: 14px; font-weight: 800; color: #f85149; }
+    .cl-box.checked-bull { background: var(--green-dim); border-color: var(--green); }
+    .cl-box.checked-bear { background: var(--red-dim);   border-color: var(--red);   }
+    .cl-box.checked-neut { background: var(--yellow-dim);border-color: var(--yellow);}
+    .cl-separator td { background: var(--bg); padding: 5px 8px; color: var(--label3); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .cl-footer { padding: 12px; border-top: 1px solid var(--sep); background: var(--bg); }
+    .cl-sl-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .cl-sl-label { font-size: 11px; font-weight: 600; color: var(--orange); }
+    .cl-sl-val   { font-size: 14px; font-weight: 700; color: var(--red); }
     .cl-score-bar { margin-top: 8px; }
-    .cl-score-title { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
-    .cl-bar-wrap { height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; }
-    .cl-bar-fill { height: 100%; border-radius: 4px; transition: width .6s; }
+    .cl-score-title { font-size: 10px; color: var(--label3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .cl-bar-wrap { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+    .cl-bar-fill { height: 100%; border-radius: 3px; transition: width .6s; }
 
     @media (max-width: 900px) {
       .page-layout { flex-direction: column-reverse; }
@@ -183,252 +203,184 @@
 
     /* ── Market Overview Bar ── */
     .market-bar {
-      background: #0d1117;
-      border-bottom: 1px solid #21262d;
-      padding: 10px 20px;
+      background: rgba(255,255,255,0.88); backdrop-filter: blur(14px) saturate(180%);
+      border-bottom: 1px solid rgba(0,0,0,0.08); padding: 10px 20px;
     }
     .market-bar-inner {
-      max-width: 1500px;
-      margin: 0 auto;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: stretch;
+      max-width: 1500px; margin: 0 auto;
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;
     }
     .mbar-pill {
-      background: #161b22;
-      border: 1px solid #21262d;
-      border-radius: 8px;
-      padding: 6px 12px;
-      font-size: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 110px;
-      cursor: default;
+      background: var(--bg2); border: 1px solid var(--sep);
+      border-radius: var(--r-sm); padding: 7px 14px; font-size: 12px;
+      display: flex; flex-direction: column; gap: 2px; min-width: 110px; cursor: default;
+      transition: border-color .15s, box-shadow .15s;
     }
-    .mbar-pill:hover { border-color: #58a6ff; }
-    .mbar-label { color: #8b949e; font-size: 10px; }
+    .mbar-pill:hover { border-color: var(--blue); }
+    .mbar-label { color: var(--label3); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
     .mbar-val   { font-weight: 700; font-size: 14px; }
-    .mbar-sub   { font-size: 10px; }
+    .mbar-sub   { font-size: 10px; color: var(--label2); }
 
     /* ── Market Detail Panels ── */
-    .market-panels {
-      max-width: 1500px;
-      margin: 16px auto 0;
-      padding: 0 20px;
-      display: none;
-    }
-    .market-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .mcard {
-      background: #161b22;
-      border: 1px solid #21262d;
-      border-radius: 12px;
-      padding: 16px;
-    }
-    .mcard-title { font-size: 12px; color: #8b949e; margin-bottom: 6px; }
-    .mcard-val   { font-size: 26px; font-weight: 800; }
-    .mcard-sub   { font-size: 12px; margin-top: 3px; }
-    .mcard-explain { font-size: 11px; color: #6e7681; margin-top: 8px; line-height: 1.5; border-top: 1px solid #21262d; padding-top: 8px; }
-    .sector-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #1a1f28; font-size:13px; }
-    .sector-bar-wrap { width:80px; height:5px; background:#21262d; border-radius:3px; overflow:hidden; }
-    .sector-bar-fill { height:5px; border-radius:3px; }
-    .event-item { background:#111820; border-radius:7px; padding:8px 12px; margin-bottom:7px; border-right:3px solid; }
-    .event-item.fomc    { border-color:#e3b341; }
-    .event-item.holiday { border-color:#58a6ff; }
-    .event-item.economic{ border-color:#9ec6f0; }
-    .event-item.earnings{ border-color:#3fb950; }
-    .event-title { font-size:13px; color:#e6edf3; }
-    .event-meta  { font-size:11px; color:#8b949e; margin-top:3px; }
-    .event-explain { font-size:11px; color:#6e7681; margin-top:3px; line-height:1.4; }
+    .market-panels { max-width: 1500px; margin: 16px auto 0; padding: 0 20px; display: none; }
+    .market-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .mcard { background: var(--bg2); border: 1px solid var(--sep); border-radius: var(--r-md); padding: 18px; box-shadow: var(--shadow-sm); }
+    .mcard-title { font-size: 11px; color: var(--label3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .mcard-val   { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .mcard-sub   { font-size: 12px; margin-top: 4px; color: var(--label2); }
+    .mcard-explain { font-size: 11px; color: var(--label3); margin-top: 10px; line-height: 1.6; border-top: 1px solid var(--sep); padding-top: 10px; }
+    .sector-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--sep2); font-size:13px; }
+    .sector-bar-wrap { width:80px; height:4px; background:var(--bg3); border-radius:2px; overflow:hidden; }
+    .sector-bar-fill { height:4px; border-radius:2px; }
+    .event-item { background:var(--bg3); border-radius:var(--r-sm); padding:10px 14px; margin-bottom:8px; border-right:3px solid; }
+    .event-item.fomc    { border-color: var(--yellow); }
+    .event-item.holiday { border-color: var(--blue);   }
+    .event-item.economic{ border-color: var(--purple);  }
+    .event-item.earnings{ border-color: var(--green);  }
+    .event-title { font-size:13px; color:var(--label); font-weight:500; }
+    .event-meta  { font-size:11px; color:var(--label2); margin-top:3px; }
+    .event-explain { font-size:11px; color:var(--label3); margin-top:3px; line-height:1.4; }
 
     /* ── Market Drivers ── */
-    .drivers-section {
-      max-width: 1500px;
-      margin: 0 auto 0;
-      padding: 0 20px 4px;
-    }
-    .drivers-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 12px;
-      margin-bottom: 4px;
-    }
+    .drivers-section { max-width: 1500px; margin: 0 auto; padding: 0 20px 4px; }
+    .drivers-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 4px; }
     .driver-card {
-      background: #161b22;
-      border-radius: 12px;
-      padding: 16px;
-      border-right: 4px solid;
-      position: relative;
-      overflow: hidden;
+      background: var(--bg2); border-radius: var(--r-md); padding: 18px;
+      border-right: 3px solid; position: relative; overflow: hidden;
+      border: 1px solid var(--sep); border-right-width: 3px;
     }
-    .driver-card.high   { border-color: #f85149; background: #1a0d0d; }
-    .driver-card.medium { border-color: #e3b341; background: #1a1400; }
-    .driver-card.low    { border-color: #3fb950; background: #0d1a10; }
+    .driver-card.high   { border-right-color: var(--red);    background: rgba(255,59,48,0.06);  }
+    .driver-card.medium { border-right-color: var(--orange);  background: rgba(255,159,10,0.07); }
+    .driver-card.low    { border-right-color: var(--green);  background: rgba(52,199,89,0.06);  }
     .driver-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
-    .driver-name   { font-size:14px; font-weight:700; color:#e6edf3; }
-    .driver-alert  { font-size:11px; padding:2px 8px; border-radius:10px; background:#21262d; }
-    .driver-price  { font-size:22px; font-weight:800; margin-bottom:2px; }
-    .driver-change { font-size:13px; font-weight:700; margin-bottom:10px; }
-    .driver-explain { font-size:12px; color:#8b949e; line-height:1.6; border-top:1px solid #21262d; padding-top:10px; }
-    .driver-title-bar {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 12px;
-    }
-    .driver-pulse {
-      width: 8px; height: 8px; border-radius: 50%; background: #f0883e;
-      animation: pulse 1.5s infinite;
-    }
+    .driver-name   { font-size:14px; font-weight:600; color:var(--label); }
+    .driver-alert  { font-size:10px; padding:2px 9px; border-radius:20px; background:var(--bg3); color:var(--label2); }
+    .driver-price  { font-size:24px; font-weight:700; margin-bottom:2px; letter-spacing: -0.5px; }
+    .driver-change { font-size:13px; font-weight:600; margin-bottom:10px; }
+    .driver-explain { font-size:12px; color:var(--label2); line-height:1.6; border-top:1px solid var(--sep); padding-top:10px; }
+    .driver-title-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .driver-pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); animation: pulse 1.5s infinite; }
 
     /* ── Loading ── */
-    .loading {
-      display: none;
-      text-align: center;
-      padding: 60px;
-      color: #8b949e;
-    }
+    .loading { display: none; text-align: center; padding: 80px; color: var(--label2); }
     .spinner {
-      width: 48px; height: 48px;
-      border: 4px solid #21262d;
-      border-top-color: #58a6ff;
+      width: 44px; height: 44px;
+      border: 3px solid var(--bg3);
+      border-top-color: var(--blue);
       border-radius: 50%;
-      animation: spin .8s linear infinite;
-      margin: 0 auto 16px;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 20px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Error ── */
     .error-box {
-      display: none;
-      background: #2d1f1f;
-      border: 1px solid #f85149;
-      border-radius: 10px;
-      padding: 16px 20px;
-      color: #f85149;
-      margin-bottom: 20px;
+      display: none; background: var(--red-dim);
+      border: 1px solid var(--red); border-radius: var(--r-md);
+      padding: 16px 20px; color: var(--red); margin-bottom: 20px;
+      font-size: 14px;
     }
 
     /* ── Stock header card ── */
     .stock-header {
-      display: none;
-      background: #161b22;
-      border: 1px solid #21262d;
-      border-radius: 12px;
-      padding: 20px 24px;
-      margin-bottom: 20px;
-      display: none;
-      align-items: center;
-      gap: 24px;
+      display: none; background: var(--bg2);
+      border: 1px solid var(--sep); border-radius: var(--r-lg);
+      padding: 22px 26px; margin-bottom: 18px;
+      display: none; align-items: center; gap: 22px;
+      box-shadow: var(--shadow-sm);
     }
     .stock-ticker-badge {
-      background: #1f3a5f;
-      border: 1px solid #58a6ff;
-      border-radius: 8px;
-      padding: 8px 16px;
-      font-size: 22px;
-      font-weight: 800;
-      color: #58a6ff;
-      letter-spacing: 2px;
+      background: var(--blue-dim); border: 1px solid var(--blue);
+      border-radius: var(--r-sm); padding: 8px 18px;
+      font-size: 22px; font-weight: 700; color: var(--blue); letter-spacing: 3px;
+      box-shadow: var(--glow-blue);
     }
-    .stock-name { font-size: 18px; font-weight: 600; }
-    .stock-price { font-size: 28px; font-weight: 700; margin-right: auto; }
-    .stock-change { font-size: 15px; margin-top: 4px; }
-    .pos { color: #3fb950; }
-    .neg { color: #f85149; }
+    .stock-name  { font-size: 17px; font-weight: 500; color: var(--label); }
+    .stock-price { font-size: 30px; font-weight: 700; margin-right: auto; letter-spacing: -1px; }
+    .stock-change{ font-size: 15px; margin-top: 3px; font-weight: 500; }
+    .pos { color: var(--green); }
+    .neg { color: var(--red);   }
 
     /* ── Style buttons ── */
-    .style-btn { background:#21262d; border:1px solid #30363d; color:#8b949e; border-radius:6px; padding:4px 12px; cursor:pointer; font-size:12px; }
-    .style-btn:hover { border-color:#58a6ff; color:#58a6ff; }
-    .active-style { background:#1f3a5f; border-color:#58a6ff; color:#58a6ff; font-weight:700; }
+    .style-btn { background:var(--bg2); border:1px solid var(--sep); color:var(--label2); border-radius:20px; padding:4px 14px; cursor:pointer; font-size:12px; font-family:inherit; transition:all .15s; }
+    .style-btn:hover { border-color:var(--blue); color:var(--blue); }
+    .active-style { background:var(--blue-dim); border-color:var(--blue); color:var(--blue); font-weight:700; }
 
     /* ── Psych warnings ── */
-    .psych-card { display:none; background:#2d1f0e; border:1px solid #e3b341; border-radius:10px; padding:14px 18px; margin-bottom:16px; }
-    .psych-item { font-size:13px; color:#e3b341; margin-bottom:6px; line-height:1.5; }
+    .psych-card { display:none; background:var(--orange-dim); border:1px solid var(--orange); border-radius:var(--r-md); padding:14px 18px; margin-bottom:16px; }
+    .psych-item { font-size:13px; color:var(--orange); margin-bottom:6px; line-height:1.6; }
 
     /* ── Macro card ── */
-    .macro-card { background:#161b22; border:1px solid #21262d; border-radius:12px; padding:18px; margin-bottom:20px; }
-    .macro-alert { padding:10px 14px; border-radius:8px; margin-bottom:8px; font-size:13px; line-height:1.5; }
-    .macro-alert.danger     { background:#3d1010; border:1px solid #f85149; color:#ff7b72; }
-    .macro-alert.warning    { background:#2d1f0e; border:1px solid #e3b341; color:#e3b341; }
-    .macro-alert.opportunity{ background:#0f2d1a; border:1px solid #3fb950; color:#3fb950; }
-    .macro-alert.info       { background:#1f2428; border:1px solid #58a6ff; color:#79c0ff; }
-    .macro-theme { background:#0d1117; border:1px solid #21262d; border-radius:8px; padding:10px 14px; margin-bottom:8px; }
-    .macro-theme-title { font-weight:700; font-size:14px; margin-bottom:4px; }
-    .macro-theme-exp { font-size:12px; color:#8b949e; margin-bottom:4px; }
-    .macro-theme-tickers { font-size:12px; color:#58a6ff; }
+    .macro-card { background:var(--bg2); border:1px solid var(--sep); border-radius:var(--r-md); padding:18px; margin-bottom:18px; box-shadow:var(--shadow-sm); }
+    .macro-alert { padding:12px 16px; border-radius:var(--r-sm); margin-bottom:8px; font-size:13px; line-height:1.6; }
+    .macro-alert.danger      { background:var(--red-dim);    border:1px solid var(--red);    color:var(--red);    }
+    .macro-alert.warning     { background:var(--orange-dim); border:1px solid var(--orange); color:var(--orange); }
+    .macro-alert.opportunity { background:var(--green-dim);  border:1px solid var(--green);  color:var(--green);  }
+    .macro-alert.info        { background:var(--blue-dim);   border:1px solid var(--blue);   color:var(--blue);   }
+    .macro-theme { background:var(--bg3); border:1px solid var(--sep); border-radius:var(--r-sm); padding:12px 14px; margin-bottom:8px; }
+    .macro-theme-title { font-weight:600; font-size:14px; margin-bottom:4px; }
+    .macro-theme-exp   { font-size:12px; color:var(--label2); margin-bottom:4px; line-height:1.5; }
+    .macro-theme-tickers { font-size:12px; color:var(--blue); }
 
     /* ── AI Assistant ── */
-    .assistant-card { background:#161b22; border:1px solid #21262d; border-radius:12px; padding:18px; margin-bottom:20px; }
+    .assistant-card { background:var(--bg2); border:1px solid var(--sep); border-radius:var(--r-md); padding:18px; margin-bottom:18px; box-shadow:var(--shadow-sm); }
     .assistant-input-row { display:flex; gap:8px; margin-bottom:12px; }
-    .assistant-input { flex:1; background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:10px 14px; color:#e6edf3; font-size:14px; }
-    .assistant-input:focus { outline:none; border-color:#58a6ff; }
-    .assistant-send { background:#238636; border:none; color:#fff; border-radius:8px; padding:10px 18px; cursor:pointer; font-size:14px; font-weight:700; }
-    .assistant-send:hover { background:#2ea043; }
-    .assistant-answer { background:#0d1117; border-radius:8px; padding:14px; font-size:13px; color:#e6edf3; line-height:1.7; white-space:pre-wrap; min-height:60px; }
-    .assistant-loading { color:#58a6ff; font-size:13px; }
+    .assistant-input { flex:1; background:var(--bg3); border:1px solid var(--sep); border-radius:var(--r-sm); padding:11px 16px; color:var(--label); font-size:14px; font-family:inherit; outline:none; transition:border-color .15s; }
+    .assistant-input:focus { border-color:var(--blue); }
+    .assistant-send { background:#0071e3; border:none; color:#fff; border-radius:var(--r-sm); padding:11px 20px; cursor:pointer; font-size:14px; font-weight:600; font-family:inherit; transition:filter .15s; }
+    .assistant-send:hover { filter:brightness(1.08); }
+    .assistant-answer { background:var(--bg3); border-radius:var(--r-sm); padding:14px 16px; font-size:13px; color:var(--label); line-height:1.8; white-space:pre-wrap; min-height:60px; }
+    .assistant-loading { color:var(--blue); font-size:13px; }
 
     /* ── Recommendation ── */
-    .rec-card {
-      display: none;
-      border-radius: 12px;
-      padding: 20px 24px;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    .rec-card.strong-buy  { background: #0f2d1a; border: 2px solid #3fb950; }
-    .rec-card.buy         { background: #122320; border: 2px solid #2ea043; }
-    .rec-card.neutral     { background: #1f2428; border: 2px solid #8b949e; }
-    .rec-card.sell        { background: #2d1717; border: 2px solid #f85149; }
-    .rec-card.strong-sell { background: #3d1010; border: 2px solid #ff7b72; }
-    .rec-text { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
-    .rec-score { font-size: 15px; color: #8b949e; }
-    .score-pills { display: flex; justify-content: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
-    .pill {
-      border-radius: 20px;
-      padding: 4px 14px;
-      font-size: 14px;
-      font-weight: 700;
-    }
-    .pill.bull { background: #0f2d1a; color: #3fb950; border: 1px solid #3fb950; }
-    .pill.bear { background: #2d1717; color: #f85149; border: 1px solid #f85149; }
-    .pill.neut { background: #1f2428; color: #8b949e; border: 1px solid #8b949e; }
+    .rec-card { display: none; border-radius: var(--r-lg); padding: 22px 26px; margin-bottom: 18px; text-align: center; border: 1px solid; }
+    .rec-card.strong-buy  { background: var(--green-dim); border-color: var(--green); box-shadow: var(--shadow-sm); }
+    .rec-card.buy         { background: var(--green-dim); border-color: var(--green); box-shadow: var(--shadow-sm); }
+    .rec-card.neutral     { background: var(--bg2);       border-color: var(--sep);   box-shadow: var(--shadow-sm); }
+    .rec-card.sell        { background: var(--red-dim);   border-color: var(--red);   box-shadow: var(--shadow-sm); }
+    .rec-card.strong-sell { background: var(--red-dim);   border-color: var(--red);   box-shadow: var(--shadow-sm); }
+    .rec-text  { font-size: 22px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+    .rec-score { font-size: 14px; color: var(--label2); }
+    .score-pills { display: flex; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .pill { border-radius: 20px; padding: 4px 16px; font-size: 13px; font-weight: 600; }
+    .pill.bull { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+    .pill.bear { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red);   }
+    .pill.neut { background: var(--bg3);       color: var(--label2);border: 1px solid var(--sep);   }
 
     /* ── Checklist ── */
     .checklist-card {
       display: none;
-      background: #161b22;
-      border: 1px solid #21262d;
-      border-radius: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-radius: var(--r-lg);
       padding: 20px 24px;
       margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
     }
     .section-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
-      color: #58a6ff;
+      color: var(--blue);
       margin-bottom: 16px;
       display: flex;
       align-items: center;
       gap: 8px;
+      letter-spacing: -0.2px;
     }
     .checklist-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 12px;
+      gap: 10px;
     }
     .check-item {
-      background: #0d1117;
-      border-radius: 10px;
+      background: var(--bg2);
+      border-radius: var(--r-md);
       padding: 14px 16px;
-      border: 1px solid #21262d;
+      border: 1px solid var(--sep);
       display: flex;
       gap: 14px;
       align-items: flex-start;
+      transition: border-color .15s;
     }
     .check-icon {
       font-size: 22px;
@@ -437,41 +389,43 @@
       margin-top: 2px;
     }
     .check-content { flex: 1; }
-    .check-num    { font-size: 11px; color: #8b949e; margin-bottom: 2px; }
-    .check-title  { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-    .check-desc   { font-size: 13px; color: #8b949e; line-height: 1.5; }
-    .check-item.bullish { border-color: #3fb950; }
-    .check-item.bearish { border-color: #f85149; }
-    .check-item.neutral { border-color: #e3b341; }
+    .check-num    { font-size: 11px; color: var(--label3); margin-bottom: 2px; }
+    .check-title  { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--label); }
+    .check-desc   { font-size: 13px; color: var(--label2); line-height: 1.5; }
+    .check-item.bullish { border-color: var(--green); background: rgba(52,199,89,0.08); }
+    .check-item.bearish { border-color: var(--red);   background: rgba(255,59,48,0.07); }
+    .check-item.neutral { border-color: var(--yellow); background: rgba(255,204,0,0.08); }
 
     /* ── Charts ── */
     .charts-section { display: none; }
     .chart-card {
-      background: #161b22;
-      border: 1px solid #21262d;
-      border-radius: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-radius: var(--r-lg);
       padding: 16px;
       margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
     }
     .chart-container { width: 100%; }
 
     /* ── Period buttons ── */
     .period-btn {
-      background: #21262d; color: #8b949e; border: 1px solid #30363d;
-      border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600;
-      cursor: pointer; transition: all 0.15s;
+      background: var(--bg3); color: var(--label2); border: 1px solid var(--sep);
+      border-radius: var(--r-sm); padding: 5px 14px; font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
     }
-    .period-btn:hover { background: #2d333b; color: #e6edf3; }
-    .active-period { background: #1f6feb !important; color: #ffffff !important; border-color: #1f6feb !important; }
+    .period-btn:hover { background: var(--bg4); color: var(--label); border-color: var(--blue); }
+    .active-period { background: var(--blue) !important; color: #fff !important; border-color: var(--blue) !important; }
 
     /* ── Chart Analysis ── */
     .chart-analysis-card {
       display: none;
-      background: #161b22;
-      border: 1px solid #21262d;
-      border-radius: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-radius: var(--r-lg);
       padding: 20px 24px;
       margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
     }
     .candle-detail-grid {
       display: grid;
@@ -480,47 +434,49 @@
       margin: 12px 0;
     }
     .candle-stat {
-      background: #0d1117;
-      border-radius: 8px;
+      background: var(--bg2);
+      border-radius: var(--r-sm);
       padding: 10px 14px;
-      border: 1px solid #30363d;
+      border: 1px solid var(--sep);
+      box-shadow: var(--shadow-sm);
     }
-    .candle-stat .cs-label { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
-    .candle-stat .cs-val   { font-size: 15px; font-weight: 700; }
+    .candle-stat .cs-label { font-size: 11px; color: var(--label3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .candle-stat .cs-val   { font-size: 15px; font-weight: 700; color: var(--label); }
     .ma-row {
       display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0;
     }
     .ma-badge {
       padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
     }
-    .ma-badge.bullish { background: #1a3a2a; color: #3fb950; border: 1px solid #3fb950; }
-    .ma-badge.bearish { background: #3a1a1a; color: #f85149; border: 1px solid #f85149; }
+    .ma-badge.bullish { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+    .ma-badge.bearish { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red);   }
     .expert-box {
-      background: #0d1117;
-      border-right: 3px solid #58a6ff;
-      padding: 12px 16px;
-      border-radius: 0 8px 8px 0;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-right: 3px solid var(--blue);
+      padding: 14px 18px;
+      border-radius: 0 var(--r-sm) var(--r-sm) 0;
       margin: 14px 0;
       font-size: 14px;
-      line-height: 1.7;
-      color: #c9d1d9;
+      line-height: 1.75;
+      color: var(--label2);
     }
     .verdict-box {
       display: flex; align-items: center; gap: 14px;
-      padding: 12px 18px; border-radius: 10px; margin-top: 14px;
+      padding: 14px 20px; border-radius: var(--r-md); margin-top: 14px;
     }
-    .verdict-box.green  { background: #1a3a2a; border: 1px solid #3fb950; }
-    .verdict-box.yellow { background: #2d2a1a; border: 1px solid #e3b341; }
-    .verdict-box.red    { background: #3a1a1a; border: 1px solid #f85149; }
+    .verdict-box.green  { background: linear-gradient(135deg,rgba(0,230,118,0.14),rgba(0,120,60,0.08)); border: 1px solid var(--green); box-shadow: var(--glow-green); }
+    .verdict-box.yellow { background: linear-gradient(135deg,rgba(255,234,0,0.12),rgba(160,110,0,0.06)); border: 1px solid var(--yellow); }
+    .verdict-box.red    { background: linear-gradient(135deg,rgba(255,82,82,0.14),rgba(150,20,20,0.08)); border: 1px solid var(--red);   box-shadow: 0 0 18px rgba(255,82,82,0.14); }
     .verdict-icon { font-size: 26px; }
-    .verdict-label { font-size: 16px; font-weight: 700; }
-    .verdict-detail { font-size: 13px; color: #8b949e; margin-top: 3px; }
+    .verdict-label { font-size: 16px; font-weight: 700; color: var(--label); }
+    .verdict-detail { font-size: 13px; color: var(--label2); margin-top: 3px; }
     .breakout-bar {
-      height: 8px; border-radius: 4px; background: #21262d; margin: 8px 0;
+      height: 6px; border-radius: 3px; background: var(--bg4); margin: 8px 0;
       overflow: hidden;
     }
     .breakout-bar-fill {
-      height: 100%; border-radius: 4px;
+      height: 100%; border-radius: 3px;
       transition: width .5s;
     }
     .fund-grid {
@@ -529,137 +485,143 @@
       gap: 8px; margin: 10px 0;
     }
     .fund-item {
-      background: #0d1117; border: 1px solid #21262d;
-      border-radius: 8px; padding: 8px 12px;
+      background: var(--bg2); border: 1px solid var(--sep);
+      border-radius: var(--r-sm); padding: 10px 14px;
+      box-shadow: var(--shadow-sm);
     }
-    .fund-item .fi-label { font-size: 11px; color: #8b949e; }
-    .fund-item .fi-val   { font-size: 14px; font-weight: 700; margin-top: 2px; }
+    .fund-item .fi-label { font-size: 11px; color: var(--label3); text-transform: uppercase; letter-spacing: 0.4px; }
+    .fund-item .fi-val   { font-size: 14px; font-weight: 700; margin-top: 3px; color: var(--label); }
 
     /* ── World News (macro) ── */
     .world-news-card {
-      background: #161b22;
-      border: 1px solid #21262d;
-      border-radius: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-radius: var(--r-lg);
       padding: 20px 24px;
       margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
     }
     .macro-event-block {
-      border: 1px solid #30363d;
-      border-radius: 10px;
+      border: 1px solid var(--sep);
+      border-radius: var(--r-md);
       padding: 14px 18px;
-      margin-bottom: 12px;
-      background: #0d1117;
+      margin-bottom: 10px;
+      background: var(--bg2);
+      box-shadow: var(--shadow-sm);
     }
     .macro-event-topic {
-      font-size: 16px; font-weight: 700; color: #f0883e; margin-bottom: 8px;
+      font-size: 15px; font-weight: 700; color: var(--orange); margin-bottom: 8px;
     }
     .macro-tip {
-      font-size: 13px; color: #8b949e; border-right: 2px solid #e3b341;
-      padding-right: 8px; margin: 8px 0;
+      font-size: 13px; color: var(--label2); border-right: 2px solid var(--yellow);
+      padding-right: 10px; margin: 8px 0; line-height: 1.6;
     }
     .ww-cols { display: flex; gap: 12px; margin-top: 10px; }
     .ww-col  { flex: 1; }
-    .ww-col-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
-    .ww-col.winners .ww-col-title { color: #3fb950; }
-    .ww-col.losers  .ww-col-title { color: #f85149; }
+    .ww-col-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .ww-col.winners .ww-col-title { color: var(--green); }
+    .ww-col.losers  .ww-col-title { color: var(--red);   }
     .ww-stock-row {
       display: flex; align-items: center; gap: 8px;
-      padding: 5px 8px; border-radius: 6px;
-      background: #161b22; margin-bottom: 4px;
-      cursor: pointer; transition: background .15s;
+      padding: 6px 10px; border-radius: var(--r-sm);
+      background: var(--bg2); margin-bottom: 4px;
+      cursor: pointer; transition: background .15s; border: 1px solid var(--sep);
     }
-    .ww-stock-row:hover { background: #21262d; }
+    .ww-stock-row:hover { background: var(--bg4); border-color: var(--blue); }
     .ww-ticker-badge {
       font-size: 11px; font-weight: 700;
-      padding: 2px 7px; border-radius: 4px;
-      background: #21262d; color: #58a6ff;
-      white-space: nowrap;
+      padding: 2px 8px; border-radius: 6px;
+      background: var(--blue-dim); color: var(--blue);
+      white-space: nowrap; border: 1px solid var(--blue);
     }
-    .ww-stock-name  { font-size: 12px; color: #8b949e; }
-    .ww-stock-reason{ font-size: 11px; color: #484f58; margin-top: 1px; }
+    .ww-stock-name  { font-size: 12px; color: var(--label2); }
+    .ww-stock-reason{ font-size: 11px; color: var(--label3); margin-top: 1px; }
     .live-news-item {
-      padding: 8px 0; border-bottom: 1px solid #21262d;
-      font-size: 13px; color: #c9d1d9; line-height: 1.5;
+      padding: 9px 0; border-bottom: 1px solid var(--sep2);
+      font-size: 13px; color: var(--label2); line-height: 1.55;
     }
-    .live-news-item .lni-source { font-size: 11px; color: #58a6ff; margin-bottom: 2px; }
+    .live-news-item .lni-source { font-size: 11px; color: var(--blue); margin-bottom: 2px; }
     .world-tabs {
       display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
     }
     .world-tab {
-      padding: 6px 16px; border-radius: 20px; font-size: 13px;
-      cursor: pointer; border: 1px solid #30363d;
-      background: #0d1117; color: #8b949e; transition: all .15s;
+      padding: 6px 18px; border-radius: 20px; font-size: 13px;
+      cursor: pointer; border: 1px solid var(--sep);
+      background: var(--bg3); color: var(--label2); transition: all .15s; font-family: inherit;
     }
-    .world-tab.active { background: #1f4068; color: #58a6ff; border-color: #58a6ff; }
+    .world-tab.active { background: var(--blue-dim); color: var(--blue); border-color: var(--blue); }
 
     /* ── Bulls/Bears ── */
     .control-card {
       display: none;
-      background: #161b22;
-      border: 1px solid #21262d;
-      border-radius: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-radius: var(--r-lg);
       padding: 20px 24px;
       margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
     }
     .control-bar {
-      height: 24px;
-      border-radius: 12px;
+      height: 22px;
+      border-radius: 11px;
       overflow: hidden;
       display: flex;
       margin-top: 12px;
     }
-    .bulls-bar { background: #3fb950; transition: width .6s; }
-    .bears-bar { background: #f85149; transition: width .6s; }
-    .neutral-bar { background: #8b949e; }
+    .bulls-bar { background: var(--green); transition: width .6s; }
+    .bears-bar { background: var(--red);   transition: width .6s; }
+    .neutral-bar { background: var(--label3); }
     .control-labels {
       display: flex;
       justify-content: space-between;
       margin-top: 8px;
       font-size: 13px;
+      color: var(--label2);
     }
 
     /* ── Narrative ── */
     .narrative-card {
       display: none;
-      background: #161b22;
-      border: 1px solid #21262d;
-      border-radius: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-radius: var(--r-lg);
       padding: 22px 26px;
       margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
     }
     .narrative-text {
       font-size: 15px;
-      line-height: 1.85;
-      color: #c9d1d9;
+      line-height: 1.9;
+      color: var(--label2);
       white-space: pre-line;
     }
-    .narrative-text strong { color: #e6edf3; }
+    .narrative-text strong { color: var(--label); }
 
     /* ── Position sizing ── */
     .position-card {
       display: none;
-      border-radius: 12px;
+      border-radius: var(--r-lg);
       padding: 18px 22px;
       margin-bottom: 20px;
-      display: none;
       align-items: center;
       gap: 20px;
     }
-    .position-card.pct-high  { background: #0f2d1a; border: 1px solid #3fb950; }
-    .position-card.pct-mid   { background: #1a2510; border: 1px solid #e3b341; }
-    .position-card.pct-low   { background: #1f2428; border: 1px solid #8b949e; }
-    .position-card.pct-zero  { background: #2d1717; border: 1px solid #f85149; }
+    .position-card.pct-high  { background: var(--green-dim); border: 1px solid var(--green); }
+    .position-card.pct-mid   { background: var(--yellow-dim); border: 1px solid var(--yellow); }
+    .position-card.pct-low   { background: var(--bg2); border: 1px solid var(--sep); }
+    .position-card.pct-zero  { background: var(--red-dim);   border: 1px solid var(--red);   }
     .position-gauge {
       width: 90px; height: 90px;
       border-radius: 50%;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       font-weight: 800; flex-shrink: 0;
+      background: var(--bg4);
     }
-    .position-gauge .pct-num { font-size: 26px; }
-    .position-gauge .pct-label { font-size: 11px; color: #8b949e; }
-    .position-info h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-    .position-info p  { font-size: 13px; color: #8b949e; line-height: 1.6; }
+    .position-gauge .pct-num { font-size: 26px; color: var(--label); }
+    .position-gauge .pct-label { font-size: 11px; color: var(--label3); }
+    .position-info h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--label); }
+    .position-info p  { font-size: 13px; color: var(--label2); line-height: 1.6; }
 
     /* ── Live badge ── */
     .live-badge {
@@ -667,16 +629,16 @@
       align-items: center;
       gap: 5px;
       font-size: 11px;
-      color: #3fb950;
-      background: #0f2d1a;
-      border: 1px solid #3fb950;
+      color: var(--green);
+      background: var(--green-dim);
+      border: 1px solid var(--green);
       border-radius: 20px;
-      padding: 2px 8px;
+      padding: 2px 10px;
       margin-right: 10px;
     }
     .live-dot {
       width: 7px; height: 7px;
-      background: #3fb950;
+      background: var(--green);
       border-radius: 50%;
       animation: pulse 1.5s infinite;
     }
@@ -688,11 +650,12 @@
     /* ── Diagnosis card ── */
     .diag-card {
       display: none;
-      background: #111820;
-      border: 1px solid #30363d;
-      border-radius: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--sep);
+      border-radius: var(--r-lg);
       padding: 20px 24px;
       margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
     }
     .diag-score-ring {
       width: 80px; height: 80px;
@@ -701,37 +664,38 @@
       align-items: center; justify-content: center;
       font-weight: 800;
       flex-shrink: 0;
-      border: 4px solid;
+      border: 3px solid;
     }
-    .diag-score-num   { font-size: 22px; }
-    .diag-score-label { font-size: 10px; color: #8b949e; margin-top: 2px; }
+    .diag-score-num   { font-size: 22px; color: var(--label); }
+    .diag-score-label { font-size: 10px; color: var(--label3); margin-top: 2px; }
     .diag-row { display: flex; gap: 16px; align-items: flex-start; margin-top: 14px; }
     .diag-col { flex: 1; }
-    .diag-col-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; }
+    .diag-col-title { font-size: 11px; font-weight: 700; margin-bottom: 8px; color: var(--label3); text-transform: uppercase; letter-spacing: 0.6px; }
     .diag-item {
       font-size: 13px;
-      padding: 7px 10px;
-      border-radius: 7px;
+      padding: 8px 12px;
+      border-radius: var(--r-sm);
       margin-bottom: 6px;
-      line-height: 1.45;
+      line-height: 1.5;
       display: flex;
       gap: 8px;
       align-items: flex-start;
     }
-    .diag-item.error   { background: #2d1717; border-right: 3px solid #f85149; color: #f8a5a0; }
-    .diag-item.warning { background: #2d2010; border-right: 3px solid #e3b341; color: #e3d080; }
-    .diag-item.info    { background: #161d2a; border-right: 3px solid #58a6ff; color: #9ec6f0; }
-    .diag-item.strength{ background: #0f2d1a; border-right: 3px solid #3fb950; color: #7fd99a; }
-    .diag-item.suggest { background: #1a1f2e; border-right: 3px solid #8b949e; color: #c9d1d9; }
+    .diag-item.error   { background: var(--red-dim);    border-right: 3px solid var(--red);    color: #c0392b;    }
+    .diag-item.warning { background: var(--orange-dim); border-right: 3px solid var(--orange); color: #d4800a; }
+    .diag-item.info    { background: var(--blue-dim);   border-right: 3px solid var(--blue);   color: #0058b8; }
+    .diag-item.strength{ background: var(--green-dim);  border-right: 3px solid var(--green);  color: #218838; }
+    .diag-item.suggest { background: var(--bg3); border-right: 3px solid var(--label3); color: var(--label2); }
 
     /* ── Trade plan card ── */
     .trade-card {
       display: none;
-      background: #0d1320;
-      border: 2px solid #58a6ff;
-      border-radius: 12px;
+      background: var(--bg2);
+      border: 1.5px solid var(--blue);
+      border-radius: var(--r-lg);
       padding: 20px 24px;
       margin-bottom: 20px;
+      box-shadow: var(--glow-blue), var(--shadow);
     }
     .trade-grid {
       display: grid;
@@ -740,32 +704,43 @@
       margin-top: 14px;
     }
     .trade-cell {
-      background: #161b22;
-      border-radius: 10px;
+      background: var(--bg2);
+      border-radius: var(--r-md);
       padding: 14px;
       text-align: center;
+      border: 1px solid var(--sep);
+      box-shadow: var(--shadow-sm);
     }
-    .trade-cell-label { font-size: 11px; color: #8b949e; margin-bottom: 6px; }
-    .trade-cell-value { font-size: 22px; font-weight: 800; }
-    .trade-cell-sub   { font-size: 11px; color: #8b949e; margin-top: 4px; }
+    .trade-cell-label { font-size: 11px; color: var(--label3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .trade-cell-value { font-size: 22px; font-weight: 800; color: var(--label); }
+    .trade-cell-sub   { font-size: 11px; color: var(--label3); margin-top: 4px; }
 
     /* ── SL suggestion ── */
     .sl-card {
       display: none;
-      background: #1a1000;
-      border: 1px solid #e3b341;
-      border-radius: 12px;
+      background: var(--orange-dim);
+      border: 1px solid var(--orange);
+      border-radius: var(--r-lg);
       padding: 16px 20px;
       margin-bottom: 20px;
       font-size: 14px;
     }
-    .sl-title { font-size: 15px; font-weight: 700; color: #e3b341; margin-bottom: 8px; }
+    .sl-title { font-size: 15px; font-weight: 700; color: var(--orange); margin-bottom: 8px; }
 
+    @media (max-width: 1024px) {
+      .page-layout { padding: 0 14px; }
+    }
     @media (max-width: 600px) {
       header { padding: 14px 16px; }
-      .search-section { padding: 0 12px; }
-      .main { padding: 0 12px 30px; }
-      .stock-price { font-size: 22px; }
+      header h1 { font-size: 16px; }
+      .search-section { padding: 0 12px; margin: 20px auto; }
+      .main { padding: 0 0 30px; }
+      .stock-header { flex-wrap: wrap; gap: 14px; }
+      .stock-price { font-size: 24px; margin-right: 0; }
+      .trade-grid { grid-template-columns: 1fr 1fr; }
+      .candle-detail-grid { grid-template-columns: 1fr 1fr; }
+      .checklist-grid { grid-template-columns: 1fr; }
+      .ww-cols { flex-direction: column; }
     }
   </style>
 </head>
@@ -777,8 +752,8 @@
     <h1>מנתח מניות — שיטת מיכה סטוקס</h1>
     <p>ניתוח אוטומטי לפי 6 פרמטרים: טרנד · נרות · ווליום · ממוצע 20 · גאפים · CCI</p>
   </div>
-  <div style="text-align:left;font-size:11px;color:#484f58;white-space:nowrap;">
-    <div style="font-weight:600;color:#8b949e;">© רייזמן איליה</div>
+  <div style="text-align:left;font-size:11px;color:var(--label3);white-space:nowrap;">
+    <div style="font-weight:600;color:var(--label2);">© רייזמן איליה</div>
     <div>כל הזכויות שמורות</div>
   </div>
 </header>
@@ -787,8 +762,8 @@
 <div class="drivers-section" id="driversSection" style="display:none;">
   <div class="driver-title-bar" style="padding-top:12px;">
     <div class="driver-pulse"></div>
-    <span style="font-size:14px;font-weight:700;color:#f0883e;">מה מניע את השוק עכשיו?</span>
-    <span style="font-size:11px;color:#484f58;" id="driversUpdated"></span>
+    <span style="font-size:14px;font-weight:700;color:var(--orange);">מה מניע את השוק עכשיו?</span>
+    <span style="font-size:11px;color:var(--label3);" id="driversUpdated"></span>
   </div>
   <div class="drivers-grid" id="driversGrid"></div>
 </div>
@@ -796,11 +771,11 @@
 <!-- ── Market Overview Bar ── -->
 <div class="market-bar">
   <div class="market-bar-inner" id="marketBar">
-    <div class="mbar-pill" style="color:#484f58;">
+    <div class="mbar-pill" style="color:var(--label3);">
       <span class="mbar-label">טוען נתוני שוק...</span>
     </div>
   </div>
-  <div style="text-align:left;padding:2px 12px;font-size:10px;color:#484f58;" id="marketLastUpdated"></div>
+  <div style="text-align:left;padding:2px 12px;font-size:10px;color:var(--label3);" id="marketLastUpdated"></div>
 </div>
 
 <!-- ── סקטורים תמיד גלויים ── -->
@@ -808,9 +783,9 @@
   <div class="mcard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div class="section-title" style="margin:0;">📊 סקטורים — לאן הכסף זורם היום?</div>
-      <div style="font-size:11px;color:#6e7681;">↑ כסף נכנס &nbsp;·&nbsp; ↓ כסף יוצא</div>
+      <div style="font-size:11px;color:var(--label3);">↑ כסף נכנס &nbsp;·&nbsp; ↓ כסף יוצא</div>
     </div>
-    <div id="sectorsList"><div style="color:#484f58;font-size:13px;">טוען...</div></div>
+    <div id="sectorsList"><div style="color:var(--label3);font-size:13px;">טוען...</div></div>
   </div>
 </div>
 
@@ -819,9 +794,9 @@
   <div class="mcard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div class="section-title" style="margin:0;">⏩ חוזים עתידיים — לאן השוק צפוי?</div>
-      <div style="font-size:11px;color:#6e7681;">נסחרים 24/7 · מראים כיוון פתיחה</div>
+      <div style="font-size:11px;color:var(--label3);">נסחרים 24/7 · מראים כיוון פתיחה</div>
     </div>
-    <div id="futuresList"><div style="color:#484f58;font-size:13px;">טוען...</div></div>
+    <div id="futuresList"><div style="color:var(--label3);font-size:13px;">טוען...</div></div>
   </div>
 </div>
 
@@ -830,9 +805,9 @@
   <div class="mcard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div class="section-title" style="margin:0;" id="extendedTitle">⚡ פרה-מרקט / אפטר-מרקט</div>
-      <div style="font-size:11px;color:#6e7681;" id="extendedSubtitle">ETFs מובילים · לפני/אחרי שעות רגילות</div>
+      <div style="font-size:11px;color:var(--label3);" id="extendedSubtitle">ETFs מובילים · לפני/אחרי שעות רגילות</div>
     </div>
-    <div id="extendedList"><div style="color:#484f58;font-size:13px;">טוען...</div></div>
+    <div id="extendedList"><div style="color:var(--label3);font-size:13px;">טוען...</div></div>
   </div>
 </div>
 
@@ -841,9 +816,9 @@
   <div class="mcard" id="calendarCard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div class="section-title" style="margin:0;">📅 אירועים קרובים — 10 ימים קדימה</div>
-      <div style="font-size:11px;color:#6e7681;">FOMC · NFP · עונת דוחות · חגים</div>
+      <div style="font-size:11px;color:var(--label3);">FOMC · NFP · עונת דוחות · חגים</div>
     </div>
-    <div id="eventsList"><div style="color:#484f58;font-size:13px;">טוען...</div></div>
+    <div id="eventsList"><div style="color:var(--label3);font-size:13px;">טוען...</div></div>
   </div>
 </div>
 
@@ -874,16 +849,16 @@
   <div class="world-news-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <div class="section-title" style="margin:0;">🌍 חדשות עולם — מי מרוויח ומי מפסיד</div>
-      <button onclick="loadWorldNews()" style="background:#21262d;border:1px solid #30363d;border-radius:8px;padding:5px 12px;color:#8b949e;font-size:12px;cursor:pointer;">רענן</button>
+      <button onclick="loadWorldNews()" style="background:var(--bg3);border:1px solid var(--sep);border-radius:8px;padding:5px 12px;color:var(--label2);font-size:12px;cursor:pointer;">רענן</button>
     </div>
-    <div style="font-size:12px;color:#6e7681;margin-bottom:14px;">לפי אירועים מאקרו — לחץ על מניה לניתוח מהיר</div>
+    <div style="font-size:12px;color:var(--label3);margin-bottom:14px;">לפי אירועים מאקרו — לחץ על מניה לניתוח מהיר</div>
     <div class="world-tabs" id="worldTabs">
       <div class="world-tab active" onclick="showWorldTab('live')">📡 חדשות חמות עכשיו</div>
       <div class="world-tab" onclick="showWorldTab('all')">📚 כל האירועים</div>
     </div>
     <div id="worldTabLive">
       <div id="worldMatchedEvents" style="margin-bottom:16px;"></div>
-      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:8px;">📰 כותרות עולם</div>
+      <div style="font-size:13px;font-weight:700;color:var(--label2);margin-bottom:8px;">📰 כותרות עולם</div>
       <div id="worldLiveNews"></div>
     </div>
     <div id="worldTabAll" style="display:none;">
@@ -897,15 +872,15 @@
   <div class="macro-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div class="section-title" style="margin:0;">🌍 מאקרו + הזדמנויות עולמיות</div>
-      <div style="font-size:11px;color:#6e7681;">לפי VIX, F&G, ריבית, ודולר</div>
+      <div style="font-size:11px;color:var(--label3);">לפי VIX, F&G, ריבית, ודולר</div>
     </div>
     <div id="macroAlerts"></div>
     <div style="margin-top:16px;">
-      <div style="font-weight:700;color:#e6edf3;margin-bottom:10px;">🔥 סקטורים חמים עכשיו</div>
+      <div style="font-weight:700;color:var(--label);margin-bottom:10px;">🔥 סקטורים חמים עכשיו</div>
       <div id="macroHotSectors"></div>
     </div>
     <div style="margin-top:16px;">
-      <div style="font-weight:700;color:#e6edf3;margin-bottom:10px;">📡 נושאים עולמיים — לאן הכסף הולך</div>
+      <div style="font-weight:700;color:var(--label);margin-bottom:10px;">📡 נושאים עולמיים — לאן הכסף הולך</div>
       <div id="macroThemes"></div>
     </div>
   </div>
@@ -918,7 +893,7 @@
   </div>
   <!-- בחירת סגנון מסחר -->
   <div style="display:flex;justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
-    <span style="color:#8b949e;font-size:13px;line-height:28px;">סגנון:</span>
+    <span style="color:var(--label2);font-size:13px;line-height:28px;">סגנון:</span>
     <button onclick="setStyle('day')"   id="btn-day"      class="style-btn">📅 יומי</button>
     <button onclick="setStyle('swing')" id="btn-swing"    class="style-btn active-style">🔄 סווינג (3-10 ימים)</button>
     <button onclick="setStyle('position')" id="btn-position" class="style-btn">📈 פוזיציה (חודש+)</button>
@@ -953,19 +928,19 @@
     <tbody>
       <tr>
         <td class="cl-num">1</td>
-        <td class="cl-row-label">טרנד המניה<br><span style="color:#484f58;font-size:10px;">חודש / שבוע</span></td>
+        <td class="cl-row-label">טרנד המניה<br><span style="color:var(--label3);font-size:10px;">חודש / שבוע</span></td>
         <td><span class="cl-box" id="cl1bull"></span></td>
         <td><span class="cl-box" id="cl1bear"></span></td>
       </tr>
       <tr>
         <td class="cl-num">2</td>
-        <td class="cl-row-label">תצורת הנר<br><span style="color:#484f58;font-size:10px;">שינוי כיוון / מומנטום</span></td>
+        <td class="cl-row-label">תצורת הנר<br><span style="color:var(--label3);font-size:10px;">שינוי כיוון / מומנטום</span></td>
         <td><span class="cl-box" id="cl2bull"></span></td>
         <td><span class="cl-box" id="cl2bear"></span></td>
       </tr>
       <tr>
         <td class="cl-num">3</td>
-        <td class="cl-row-label">ווליום<br><span style="color:#484f58;font-size:10px;">עלייה או ירידה</span></td>
+        <td class="cl-row-label">ווליום<br><span style="color:var(--label3);font-size:10px;">עלייה או ירידה</span></td>
         <td><span class="cl-box" id="cl3bull"></span></td>
         <td><span class="cl-box" id="cl3bear"></span></td>
       </tr>
@@ -977,21 +952,21 @@
       </tr>
       <tr>
         <td class="cl-num">5</td>
-        <td class="cl-row-label">גאפים<br><span style="color:#484f58;font-size:10px;">מעל או מתחת</span></td>
+        <td class="cl-row-label">גאפים<br><span style="color:var(--label3);font-size:10px;">מעל או מתחת</span></td>
         <td><span class="cl-box" id="cl5bull"></span></td>
         <td><span class="cl-box" id="cl5bear"></span></td>
       </tr>
       <tr>
         <td class="cl-num">6</td>
-        <td class="cl-row-label">CCI<br><span style="color:#484f58;font-size:10px;">כיוון וערך</span></td>
+        <td class="cl-row-label">CCI<br><span style="color:var(--label3);font-size:10px;">כיוון וערך</span></td>
         <td><span class="cl-box" id="cl6bull"></span></td>
         <td><span class="cl-box" id="cl6bear"></span></td>
       </tr>
       <tr class="cl-separator">
         <td colspan="4" style="padding:6px 10px;">
           <div style="display:flex;justify-content:space-between;">
-            <span>🐂 שוורים</span><span id="clBullCount" style="color:#3fb950;font-weight:800;"></span>
-            <span>🐻 דובים</span><span id="clBearCount" style="color:#f85149;font-weight:800;"></span>
+            <span>🐂 שוורים</span><span id="clBullCount" style="color:var(--green);font-weight:800;"></span>
+            <span>🐻 דובים</span><span id="clBearCount" style="color:var(--red);font-weight:800;"></span>
           </div>
         </td>
       </tr>
@@ -1005,7 +980,7 @@
       </tr>
       <tr>
         <td colspan="2" class="cl-row-label">תמיכות / התנגדויות<br>
-          <span id="clLevelsText" style="font-size:10px;color:#8b949e;"></span>
+          <span id="clLevelsText" style="font-size:10px;color:var(--label2);"></span>
         </td>
         <td><span class="cl-box" id="clSuppBull"></span></td>
         <td><span class="cl-box" id="clSuppBear"></span></td>
@@ -1018,8 +993,8 @@
       <span class="cl-sl-val" id="clSLVal">—</span>
     </div>
     <div class="cl-sl-row">
-      <span class="cl-sl-label" style="color:#3fb950;">🎯 יעד:</span>
-      <span style="font-size:14px;font-weight:800;color:#3fb950;" id="clTarget">—</span>
+      <span class="cl-sl-label" style="color:var(--green);">🎯 יעד:</span>
+      <span style="font-size:14px;font-weight:800;color:var(--green);" id="clTarget">—</span>
     </div>
     <div class="cl-score-bar">
       <div class="cl-score-title">ציון ניתוח: <strong id="clScoreNum"></strong></div>
@@ -1027,7 +1002,7 @@
         <div class="cl-bar-fill" id="clBarFill"></div>
       </div>
     </div>
-    <div style="margin-top:8px;font-size:10px;color:#484f58;text-align:center;">© רייזמן איליה · שיטת מיכה סטוקס</div>
+    <div style="margin-top:8px;font-size:10px;color:var(--label3);text-align:center;">© רייזמן איליה · שיטת מיכה סטוקס</div>
   </div>
 </div>
 
@@ -1050,18 +1025,18 @@
     <div style="margin-right:auto; text-align:left;">
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="stock-price" id="stockPrice"></div>
-        <canvas id="sparkline" width="80" height="36" style="display:none;"></canvas>
+        <canvas id="sparkline" style="display:none;width:90px;height:40px;"></canvas>
         <div class="live-badge" id="liveBadge" style="display:none;">
           <div class="live-dot"></div>LIVE
         </div>
       </div>
-      <div style="font-size:11px;color:#484f58;margin-top:4px;" id="lastUpdated"></div>
+      <div style="font-size:11px;color:var(--label3);margin-top:4px;" id="lastUpdated"></div>
     </div>
   </div>
 
   <!-- Psych Warnings -->
   <div class="psych-card" id="psychCard">
-    <div style="font-weight:700;color:#e3b341;margin-bottom:8px;">🧠 אזהרות פסיכולוגיות — לפי שיטת מיכה</div>
+    <div style="font-weight:700;color:var(--orange);margin-bottom:8px;">🧠 אזהרות פסיכולוגיות — לפי שיטת מיכה</div>
     <div id="psychList"></div>
   </div>
 
@@ -1074,14 +1049,14 @@
   <!-- Long / Short Direction -->
   <div id="directionCard" style="display:none; border-radius:12px; padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; gap:16px;">
     <div id="directionBadge" style="font-size:28px; font-weight:900; min-width:90px; text-align:center; border-radius:8px; padding:8px 14px;"></div>
-    <div id="directionReason" style="font-size:13px; color:#8b949e; line-height:1.6;"></div>
+    <div id="directionReason" style="font-size:13px; color:var(--label2); line-height:1.6;"></div>
   </div>
 
   <!-- Trade Plan -->
   <div class="trade-card" id="tradeCard">
     <div class="section-title">🎯 תוכנית מסחר — כניסה / יציאה / סטופ לוס</div>
     <div class="trade-grid" id="tradeGrid"></div>
-    <div id="tradeNote" style="margin-top:14px;font-size:13px;color:#8b949e;border-top:1px solid #21262d;padding-top:12px;"></div>
+    <div id="tradeNote" style="margin-top:14px;font-size:13px;color:var(--label2);border-top:1px solid var(--bg3);padding-top:12px;"></div>
   </div>
 
   <!-- Diagnosis -->
@@ -1090,11 +1065,11 @@
     <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
       <div class="diag-score-ring" id="diagRing">
         <span class="diag-score-num" id="diagScore"></span>
-        <span style="font-size:9px;color:#8b949e;">מתוך 100</span>
+        <span style="font-size:9px;color:var(--label2);">מתוך 100</span>
       </div>
       <div>
         <div id="diagScoreLabel" style="font-size:17px;font-weight:700;margin-bottom:4px;"></div>
-        <div style="font-size:13px;color:#8b949e;">הניתוח הזה עודכן ב-<span id="diagTime"></span></div>
+        <div style="font-size:13px;color:var(--label2);">הניתוח הזה עודכן ב-<span id="diagTime"></span></div>
       </div>
     </div>
     <div class="diag-row">
@@ -1147,40 +1122,40 @@
     </div>
     <div class="control-labels">
       <span class="pos" id="bullsLabel"></span>
-      <span style="color:#8b949e" id="neutralLabel"></span>
+      <span style="color:var(--label2)" id="neutralLabel"></span>
       <span class="neg" id="bearsLabel"></span>
     </div>
   </div>
 
   <!-- Contradictory warning -->
-  <div id="contradictoryCard" style="display:none;background:#2d1a00;border:2px solid #e3b341;border-radius:12px;padding:14px 20px;margin-bottom:20px;font-size:14px;">
+  <div id="contradictoryCard" style="display:none;background:var(--orange-dim);border:2px solid var(--yellow);border-radius:12px;padding:14px 20px;margin-bottom:20px;font-size:14px;">
     ⚠️ <strong>אזהרה: נתונים סותרים!</strong><br>
-    <span style="color:#c9d1d9;">הנר והווליום מסמנים כיוונים מנוגדים. לפי מיכה סטוקס — "כשיש נתונים סותרים אין מה להיכנס, חבל על האנרגיה." המתן לאישור ברור.</span>
+    <span style="color:var(--label2);">הנר והווליום מסמנים כיוונים מנוגדים. לפי מיכה סטוקס — "כשיש נתונים סותרים אין מה להיכנס, חבל על האנרגיה." המתן לאישור ברור.</span>
   </div>
 
   <!-- 5-day rule warning -->
-  <div id="fiveDayCard" style="display:none;background:#1a1f2e;border:2px solid #58a6ff;border-radius:12px;padding:14px 20px;margin-bottom:20px;font-size:14px;">
+  <div id="fiveDayCard" style="display:none;background:var(--bg2);border:2px solid var(--blue);border-radius:12px;padding:14px 20px;margin-bottom:20px;font-size:14px;">
     🔔 <strong id="fiveDayText"></strong><br>
-    <span style="color:#c9d1d9;">לפי כלל 5 הימים של לייב 20 — אחרי 5+ ימים רצופים באותו כיוון, צפה לשינוי. זה לא מוחלט, אבל ככל שיש יותר ימים — הסיכוי לשינוי גדל.</span>
+    <span style="color:var(--label2);">לפי כלל 5 הימים של לייב 20 — אחרי 5+ ימים רצופים באותו כיוון, צפה לשינוי. זה לא מוחלט, אבל ככל שיש יותר ימים — הסיכוי לשינוי גדל.</span>
   </div>
 
   <!-- ATR + Fibonacci -->
-  <div id="atrFibCard" style="display:none;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:16px 22px;margin-bottom:20px;">
+  <div id="atrFibCard" style="display:none;background:var(--bg2);border:1px solid var(--bg3);border-radius:12px;padding:16px 22px;margin-bottom:20px;">
     <div class="section-title">📐 ATR ופיבונאצ'י</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      <div style="background:#0d1117;border-radius:8px;padding:12px;">
-        <div style="font-size:12px;color:#8b949e;margin-bottom:4px;">ATR(14) — תנודתיות יומית</div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;">
+        <div style="font-size:12px;color:var(--label2);margin-bottom:4px;">ATR(14) — תנודתיות יומית</div>
         <div id="atrValue" style="font-size:20px;font-weight:700;"></div>
-        <div id="atrDesc" style="font-size:12px;color:#8b949e;margin-top:4px;"></div>
+        <div id="atrDesc" style="font-size:12px;color:var(--label2);margin-top:4px;"></div>
       </div>
-      <div style="background:#0d1117;border-radius:8px;padding:12px;">
-        <div style="font-size:12px;color:#8b949e;margin-bottom:4px;">תיקון פיבונאצ'י (3 חודשים)</div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;">
+        <div style="font-size:12px;color:var(--label2);margin-bottom:4px;">תיקון פיבונאצ'י (3 חודשים)</div>
         <div id="fibRetrace" style="font-size:20px;font-weight:700;"></div>
-        <div id="fibDesc" style="font-size:12px;color:#8b949e;margin-top:4px;"></div>
+        <div id="fibDesc" style="font-size:12px;color:var(--label2);margin-top:4px;"></div>
       </div>
     </div>
     <div style="margin-top:12px;">
-      <div style="font-size:12px;color:#8b949e;margin-bottom:8px;">רמות פיבונאצ'י עיקריות (שיא → שפל):</div>
+      <div style="font-size:12px;color:var(--label2);margin-bottom:8px;">רמות פיבונאצ'י עיקריות (שיא → שפל):</div>
       <div id="fibLevels" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
     </div>
   </div>
@@ -1192,28 +1167,28 @@
   </div>
 
   <!-- Short Interest -->
-  <div id="shortCard" style="display:none;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:18px 22px;margin-bottom:16px;">
+  <div id="shortCard" style="display:none;background:var(--bg2);border:1px solid var(--bg3);border-radius:12px;padding:18px 22px;margin-bottom:16px;">
     <div class="section-title">🐻 שורט אינטרסט</div>
     <div style="display:flex;gap:20px;flex-wrap:wrap;">
-      <div style="background:#0d1117;border-radius:8px;padding:12px 18px;flex:1;min-width:130px;text-align:center;">
-        <div style="font-size:11px;color:#8b949e;margin-bottom:4px;">% שורט מה-Float</div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px 18px;flex:1;min-width:130px;text-align:center;">
+        <div style="font-size:11px;color:var(--label2);margin-bottom:4px;">% שורט מה-Float</div>
         <div id="shortPct" style="font-size:26px;font-weight:800;"></div>
         <div id="shortPctLabel" style="font-size:11px;margin-top:3px;"></div>
       </div>
-      <div style="background:#0d1117;border-radius:8px;padding:12px 18px;flex:1;min-width:130px;text-align:center;">
-        <div style="font-size:11px;color:#8b949e;margin-bottom:4px;">ימים לכיסוי (Short Ratio)</div>
-        <div id="shortRatio" style="font-size:26px;font-weight:800;color:#e6edf3;"></div>
-        <div style="font-size:11px;color:#8b949e;margin-top:3px;">Days to Cover</div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px 18px;flex:1;min-width:130px;text-align:center;">
+        <div style="font-size:11px;color:var(--label2);margin-bottom:4px;">ימים לכיסוי (Short Ratio)</div>
+        <div id="shortRatio" style="font-size:26px;font-weight:800;color:var(--label);"></div>
+        <div style="font-size:11px;color:var(--label2);margin-top:3px;">Days to Cover</div>
       </div>
-      <div style="background:#0d1117;border-radius:8px;padding:12px 18px;flex:2;min-width:200px;">
-        <div style="font-size:11px;color:#8b949e;margin-bottom:6px;">מה זה אומר?</div>
-        <div id="shortExplain" style="font-size:13px;color:#c9d1d9;line-height:1.6;"></div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px 18px;flex:2;min-width:200px;">
+        <div style="font-size:11px;color:var(--label2);margin-bottom:6px;">מה זה אומר?</div>
+        <div id="shortExplain" style="font-size:13px;color:var(--label2);line-height:1.6;"></div>
       </div>
     </div>
   </div>
 
   <!-- Earnings -->
-  <div id="earningsCard" style="display:none;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:18px 22px;margin-bottom:16px;">
+  <div id="earningsCard" style="display:none;background:var(--bg2);border:1px solid var(--bg3);border-radius:12px;padding:18px 22px;margin-bottom:16px;">
     <div class="section-title">📋 דוחות רבעוניים — שיטת מיכה סטוק</div>
 
     <!-- הדוח הבא -->
@@ -1222,19 +1197,19 @@
     </div>
 
     <!-- תחזיות לדוח הבא -->
-    <div id="earningsEstBox" style="display:none;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#c9d1d9;">
-      <span style="color:#8b949e;font-size:11px;display:block;margin-bottom:6px;letter-spacing:1px;">תחזיות קונסנזוס לדוח הבא</span>
+    <div id="earningsEstBox" style="display:none;background:var(--bg);border:1px solid var(--sep);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--label2);">
+      <span style="color:var(--label2);font-size:11px;display:block;margin-bottom:6px;letter-spacing:1px;">תחזיות קונסנזוס לדוח הבא</span>
       <div id="earningsEstContent" style="display:flex;gap:20px;flex-wrap:wrap;"></div>
     </div>
 
     <!-- beat rate -->
-    <div id="beatRateBox" style="display:none;margin-bottom:14px;font-size:13px;color:#c9d1d9;"></div>
+    <div id="beatRateBox" style="display:none;margin-bottom:14px;font-size:13px;color:var(--label2);"></div>
 
     <!-- טבלת היסטוריה -->
     <div style="overflow-x:auto;">
       <table id="earningsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead>
-          <tr style="color:#8b949e;border-bottom:1px solid #21262d;font-size:11px;letter-spacing:0.5px;">
+          <tr style="color:var(--label2);border-bottom:1px solid var(--bg3);font-size:11px;letter-spacing:0.5px;">
             <th style="text-align:right;padding:8px 10px;white-space:nowrap;">רבעון</th>
             <th style="text-align:center;padding:8px 10px;white-space:nowrap;">EPS צפי</th>
             <th style="text-align:center;padding:8px 10px;white-space:nowrap;">EPS בפועל</th>
@@ -1249,14 +1224,14 @@
     </div>
 
     <!-- אזהרת מיכה -->
-    <div style="margin-top:14px;background:#1a0e00;border:1px solid #e3b34155;border-radius:8px;padding:10px 14px;font-size:12px;color:#e3b341;line-height:1.6;">
+    <div style="margin-top:14px;background:var(--orange-dim);border:1px solid var(--orange);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--orange);line-height:1.6;">
       ⚠️ <strong>מיכה סטוק:</strong> "לא מהמרים על דיווח תוצאות — הסיכון לא לטובתכם.
       מספיק ירידה אחת שתחטפו ותזכרו את זה לעד. חכו ליום אחרי הדוח ותראו את תגובת השוק."
     </div>
   </div>
 
   <!-- News -->
-  <div id="newsCard" style="display:none;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:18px 22px;margin-bottom:16px;">
+  <div id="newsCard" style="display:none;background:var(--bg2);border:1px solid var(--bg3);border-radius:12px;padding:18px 22px;margin-bottom:16px;">
     <div class="section-title">📰 חדשות שיכולות להזיז את המחיר</div>
     <div id="newsList"></div>
   </div>
@@ -1269,10 +1244,10 @@
         <div>
           <div class="section-title" style="margin:0 0 4px 0;">📊 גרף מקצועי</div>
           <div style="display:flex;gap:14px;font-size:12px;">
-            <span style="color:#f0883e;">━ MA20</span>
-            <span style="color:#58a6ff;">━ MA50</span>
-            <span style="color:#3fb950;">▮ עלייה</span>
-            <span style="color:#f85149;">▮ ירידה</span>
+            <span style="color:var(--orange);">━ MA20</span>
+            <span style="color:var(--blue);">━ MA50</span>
+            <span style="color:var(--green);">▮ עלייה</span>
+            <span style="color:var(--red);">▮ ירידה</span>
           </div>
         </div>
         <!-- כפתורי תקופה -->
@@ -1305,18 +1280,18 @@
     <div class="section-title">🧠 ניתוח גרף — שיטת לייב 20</div>
 
     <!-- צ'קליסט מיכה: 3 שאלות + גפים -->
-    <div id="mikhaChecklist" style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px;margin-bottom:14px;"></div>
+    <div id="mikhaChecklist" style="background:var(--bg2);border:1px solid var(--sep);border-radius:10px;padding:14px;margin-bottom:14px;"></div>
 
     <!-- נר סגירה אחרון -->
     <div style="margin-top:14px;">
-      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:8px;">🕯️ נר סגירה של יום המסחר האחרון</div>
+      <div style="font-size:13px;font-weight:700;color:var(--label2);margin-bottom:8px;">🕯️ נר סגירה של יום המסחר האחרון</div>
       <div class="candle-detail-grid" id="candleDetailGrid"></div>
-      <div id="candleTypeLabel" style="font-size:13px;color:#e3b341;margin-top:6px;"></div>
+      <div id="candleTypeLabel" style="font-size:13px;color:var(--orange);margin-top:6px;"></div>
     </div>
 
     <!-- ממוצעים -->
     <div style="margin-top:14px;">
-      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:6px;">📏 ממוצעים נעים</div>
+      <div style="font-size:13px;font-weight:700;color:var(--label2);margin-bottom:6px;">📏 ממוצעים נעים</div>
       <div class="ma-row" id="maTableRow"></div>
     </div>
 
@@ -1325,21 +1300,21 @@
 
     <!-- פריצה -->
     <div style="margin-top:14px;">
-      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:6px;">🚀 סבירות פריצה</div>
+      <div style="font-size:13px;font-weight:700;color:var(--label2);margin-bottom:6px;">🚀 סבירות פריצה</div>
       <div class="breakout-bar"><div class="breakout-bar-fill" id="breakoutBarFill"></div></div>
       <div id="breakoutLabel" style="font-size:13px;margin-top:4px;"></div>
-      <div id="breakoutSignals" style="font-size:12px;color:#8b949e;margin-top:4px;"></div>
+      <div id="breakoutSignals" style="font-size:12px;color:var(--label2);margin-top:4px;"></div>
     </div>
 
     <!-- פונדמנטלים -->
     <div style="margin-top:14px;">
-      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:6px;">📋 פונדמנטלי קצר</div>
+      <div style="font-size:13px;font-weight:700;color:var(--label2);margin-bottom:6px;">📋 פונדמנטלי קצר</div>
       <div class="fund-grid" id="fundamentalGrid"></div>
     </div>
 
     <!-- דעת מומחה -->
     <div style="margin-top:14px;">
-      <div style="font-size:13px;font-weight:700;color:#8b949e;margin-bottom:6px;">💬 דעתי האישית</div>
+      <div style="font-size:13px;font-weight:700;color:var(--label2);margin-bottom:6px;">💬 דעתי האישית</div>
       <div class="expert-box" id="expertOpinion"></div>
     </div>
 
@@ -1418,11 +1393,11 @@
       subEl.textContent   = 'אין נתוני פרה/אפטר מרקט כרגע · מחיר סגירה אחרון';
       document.getElementById('extendedList').innerHTML = closePrices.map(e => `
         <div style="display:flex;align-items:center;gap:14px;padding:9px 12px;border-radius:8px;
-                    margin-bottom:6px;background:#11182020;border:1px solid #21262d;">
-          <div style="min-width:130px;font-size:14px;font-weight:700;color:#e6edf3;">${e.name}</div>
-          <div style="font-size:13px;color:#8b949e;">${e.ticker}</div>
-          <div style="margin-right:auto;font-size:16px;font-weight:800;color:#8b949e;">$${e.regular}</div>
-          <div style="font-size:11px;color:#484f58;">סגירה אחרונה</div>
+                    margin-bottom:6px;background:var(--bg2)20;border:1px solid var(--bg3);">
+          <div style="min-width:130px;font-size:14px;font-weight:700;color:var(--label);">${e.name}</div>
+          <div style="font-size:13px;color:var(--label2);">${e.ticker}</div>
+          <div style="margin-right:auto;font-size:16px;font-weight:800;color:var(--label2);">$${e.regular}</div>
+          <div style="font-size:11px;color:var(--label3);">סגירה אחרונה</div>
         </div>`).join('');
       return;
     }
@@ -1445,30 +1420,30 @@
       const extChange = isAfter ? e.post_change : e.pre_change;
       const hasExt    = extPrice != null && extChange != null;
 
-      const chgCol  = !hasExt ? '#8b949e' : extChange >= 0 ? '#3fb950' : '#f85149';
+      const chgCol  = !hasExt ? 'var(--label2)' : extChange >= 0 ? 'var(--green)' : 'var(--red)';
       const arrow   = !hasExt ? '—' : extChange >= 0 ? '▲' : '▼';
       const sign    = hasExt && extChange >= 0 ? '+' : '';
-      const bgColor = !hasExt ? '#11182020' : extChange >= 0 ? '#0f2d1a20' : '#2d171720';
+      const bgColor = !hasExt ? 'var(--bg2)20' : extChange >= 0 ? 'var(--green-dim)20' : 'var(--red-dim)20';
       const tag     = isAfter ? 'אפטר' : 'פרה';
 
       return `
         <div style="display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:8px;
-                    margin-bottom:6px;background:${bgColor};border:1px solid #21262d;">
+                    margin-bottom:6px;background:${bgColor};border:1px solid var(--bg3);">
           <div style="min-width:120px;">
-            <div style="font-size:14px;font-weight:700;color:#e6edf3;">${e.name}</div>
-            <div style="font-size:11px;color:#6e7681;">${e.ticker}</div>
+            <div style="font-size:14px;font-weight:700;color:var(--label);">${e.name}</div>
+            <div style="font-size:11px;color:var(--label3);">${e.ticker}</div>
           </div>
           <div style="flex:1;">
-            <div style="font-size:11px;color:#6e7681;margin-bottom:2px;">סגירה רגילה</div>
-            <div style="font-size:14px;color:#8b949e;">$${e.regular ?? '—'}</div>
+            <div style="font-size:11px;color:var(--label3);margin-bottom:2px;">סגירה רגילה</div>
+            <div style="font-size:14px;color:var(--label2);">$${e.regular ?? '—'}</div>
           </div>
           ${hasExt ? `
           <div style="text-align:left;min-width:130px;">
-            <div style="font-size:11px;color:#6e7681;margin-bottom:2px;">${tag}-מרקט</div>
+            <div style="font-size:11px;color:var(--label3);margin-bottom:2px;">${tag}-מרקט</div>
             <div style="font-size:18px;font-weight:800;color:${chgCol};">${arrow} $${extPrice}</div>
             <div style="font-size:13px;font-weight:700;color:${chgCol};">${sign}${extChange.toFixed(2)}%</div>
           </div>` : `
-          <div style="text-align:left;min-width:130px;color:#484f58;font-size:12px;">
+          <div style="text-align:left;min-width:130px;color:var(--label3);font-size:12px;">
             אין נתוני ${tag}-מרקט
           </div>`}
         </div>`;
@@ -1483,15 +1458,15 @@
     const overallDown = futures.filter(f => f.change <= -0.5).length;
     let sentimentHtml = '';
     if (overallUp >= 3) {
-      sentimentHtml = `<div style="background:#0f2d1a;border:1px solid #3fb950;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:#3fb950;">
+      sentimentHtml = `<div style="background:var(--green-dim);border:1px solid var(--green);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--green);">
         📗 רוב החוזים עולים — השוק צפוי לפתוח בעלייה
       </div>`;
     } else if (overallDown >= 3) {
-      sentimentHtml = `<div style="background:#2d1717;border:1px solid #f85149;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:#f85149;">
+      sentimentHtml = `<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--red);">
         📕 רוב החוזים יורדים — השוק צפוי לפתוח בירידה
       </div>`;
     } else {
-      sentimentHtml = `<div style="background:#111820;border:1px solid #30363d;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:#8b949e;">
+      sentimentHtml = `<div style="background:var(--bg2);border:1px solid var(--sep);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--label2);">
         📊 החוזים מעורבים — כיוון הפתיחה לא חד-משמעי
       </div>`;
     }
@@ -1499,22 +1474,22 @@
     const rows = futures.map(f => {
       const sign = f.change >= 0 ? '+' : '';
       const arrow = f.change >= 0.5 ? '▲' : f.change <= -0.5 ? '▼' : '—';
-      const bg = f.change >= 0.5 ? '#0f2d1a20' : f.change <= -0.5 ? '#2d171720' : '#11182020';
+      const bg = f.change >= 0.5 ? 'var(--green-dim)20' : f.change <= -0.5 ? 'var(--red-dim)20' : 'var(--bg2)20';
       const price = f.price > 1000
         ? f.price.toLocaleString('en-US', {minimumFractionDigits:1, maximumFractionDigits:1})
         : f.price.toFixed(1);
       return `
         <div style="display:flex;align-items:center;gap:12px;padding:9px 12px;
-                    border-radius:8px;margin-bottom:6px;background:${bg};border:1px solid #21262d;">
+                    border-radius:8px;margin-bottom:6px;background:${bg};border:1px solid var(--bg3);">
           <div style="font-size:18px;width:28px;text-align:center;">${f.emoji}</div>
           <div style="flex:1;">
-            <div style="font-size:14px;font-weight:700;color:#e6edf3;">${f.name}</div>
-            <div style="font-size:11px;color:#6e7681;margin-top:2px;line-height:1.4;">${f.explain}</div>
+            <div style="font-size:14px;font-weight:700;color:var(--label);">${f.name}</div>
+            <div style="font-size:11px;color:var(--label3);margin-top:2px;line-height:1.4;">${f.explain}</div>
           </div>
           <div style="text-align:left;min-width:110px;">
             <div style="font-size:16px;font-weight:800;color:${f.color};">${arrow} ${price}</div>
             <div style="font-size:13px;font-weight:700;color:${f.color};">${sign}${f.change.toFixed(2)}%</div>
-            <div style="font-size:11px;color:#8b949e;">${f.direction}</div>
+            <div style="font-size:11px;color:var(--label2);">${f.direction}</div>
           </div>
         </div>`;
     }).join('');
@@ -1533,7 +1508,7 @@
       pills.push(`<div class="mbar-pill" style="border-color:${ms.color}20;cursor:default;">
         <span class="mbar-label">⏰ שעון ET: ${ms.time_et}</span>
         <span class="mbar-val" style="color:${ms.color};">${dot} ${ms.label}</span>
-        <span class="mbar-sub" style="color:#8b949e;">${ms.next_event}</span>
+        <span class="mbar-sub" style="color:var(--label2);">${ms.next_event}</span>
       </div>`);
     }
 
@@ -1571,8 +1546,8 @@
       const bot = d.sectors[d.sectors.length - 1];
       pills.push(`<div class="mbar-pill" onclick="toggleMarket()" title="לחץ לפרטים">
         <span class="mbar-label">📊 סקטורים</span>
-        <span class="mbar-val" style="color:#3fb950;font-size:12px;">${top.name} ${top.change >= 0 ? '+' : ''}${top.change.toFixed(2)}%</span>
-        <span class="mbar-sub" style="color:#f85149;">${bot.name} ${bot.change.toFixed(2)}%</span>
+        <span class="mbar-val" style="color:var(--green);font-size:12px;">${top.name} ${top.change >= 0 ? '+' : ''}${top.change.toFixed(2)}%</span>
+        <span class="mbar-sub" style="color:var(--red);">${bot.name} ${bot.change.toFixed(2)}%</span>
       </div>`);
     }
     // Futures summary pill
@@ -1594,10 +1569,10 @@
     // Next event
     if (d.events && d.events.length) {
       const ev = d.events[0];
-      const evColors = {fomc:'#e3b341', holiday:'#58a6ff', economic:'#9ec6f0', earnings:'#3fb950'};
+      const evColors = {fomc:'var(--yellow)', holiday:'var(--blue)', economic:'var(--blue)', earnings:'var(--green)'};
       pills.push(`<div class="mbar-pill" onclick="toggleMarket()" title="לחץ לפרטים">
         <span class="mbar-label">📅 אירוע קרוב</span>
-        <span class="mbar-val" style="color:${evColors[ev.type]||'#8b949e'};font-size:11px;line-height:1.3;">${ev.event.substring(0,35)}${ev.event.length>35?'…':''}</span>
+        <span class="mbar-val" style="color:${evColors[ev.type]||'var(--label2)'};font-size:11px;line-height:1.3;">${ev.event.substring(0,35)}${ev.event.length>35?'…':''}</span>
         <span class="mbar-sub">${ev.date_fmt} | בעוד ${ev.days_until} ימים</span>
       </div>`);
     }
@@ -1627,7 +1602,7 @@
       <div class="mcard-title">🎭 Fear & Greed Index (CNN)</div>
       <div class="mcard-val" style="color:${d.fg.color}">${d.fg.score.toFixed(0)}<span style="font-size:14px;">/100</span></div>
       <div class="mcard-sub" style="color:${d.fg.color}">${sign(d.fg.change)}${d.fg.change.toFixed(1)} שבועי | ${d.fg.label}</div>
-      <div style="margin:8px 0;background:#21262d;border-radius:4px;height:8px;overflow:hidden;">
+      <div style="margin:8px 0;background:var(--bg3);border-radius:4px;height:8px;overflow:hidden;">
         <div style="background:${d.fg.color};width:${d.fg.score}%;height:8px;border-radius:4px;transition:width .6s;"></div>
       </div>
       <div class="mcard-explain">${explainMap.fg}</div>
@@ -1653,16 +1628,16 @@
     if (d.sectors && d.sectors.length) {
       const maxAbs = Math.max(...d.sectors.map(s => Math.abs(s.change)), 0.1);
       document.getElementById('sectorsList').innerHTML = d.sectors.map(s => {
-        const col    = s.change >= 0 ? '#3fb950' : '#f85149';
-        const bg     = s.change >= 0 ? '#0f2d1a' : '#2d1717';
+        const col    = s.change >= 0 ? 'var(--green)' : 'var(--red)';
+        const bg     = s.change >= 0 ? 'var(--green-dim)' : 'var(--red-dim)';
         const sign   = s.change >= 0 ? '+' : '';
         const barPct = Math.round(Math.abs(s.change) / maxAbs * 100);
         const arrow  = s.change >= 0 ? '▲' : '▼';
         return `
         <div style="display:flex;align-items:center;gap:12px;padding:7px 10px;
                     border-radius:8px;margin-bottom:5px;background:${bg}20;">
-          <div style="min-width:170px;font-size:13px;color:#c9d1d9;">${s.name}</div>
-          <div style="flex:1;background:#21262d;border-radius:4px;height:10px;overflow:hidden;">
+          <div style="min-width:170px;font-size:13px;color:var(--label2);">${s.name}</div>
+          <div style="flex:1;background:var(--bg3);border-radius:4px;height:10px;overflow:hidden;">
             <div style="background:${col};width:${barPct}%;height:10px;border-radius:4px;transition:width .6s;"></div>
           </div>
           <div style="min-width:70px;text-align:left;font-size:15px;font-weight:800;color:${col};">
@@ -1673,7 +1648,7 @@
     }
 
     // אירועים
-    const evColors  = {fomc:'#e3b341', holiday:'#58a6ff', economic:'#9ec6f0', earnings:'#3fb950'};
+    const evColors  = {fomc:'var(--yellow)', holiday:'var(--blue)', economic:'var(--blue)', earnings:'var(--green)'};
     const evExplain = {
       fomc:     'החלטת ריבית — תנודתיות גבוהה · כדאי לסגור פוזיציות פתוחות לפני',
       holiday:  'הבורסה סגורה — אין מסחר',
@@ -1682,7 +1657,7 @@
     };
     if (d.events && d.events.length) {
       document.getElementById('eventsList').innerHTML = d.events.map(ev => {
-        const col  = evColors[ev.type] || '#8b949e';
+        const col  = evColors[ev.type] || 'var(--label2)';
         const expl = evExplain[ev.type] || '';
         const days = ev.days_until === 0 ? '🔴 היום!' : `בעוד ${ev.days_until} ימים`;
         return `<div class="event-item ${ev.type}">
@@ -1692,7 +1667,7 @@
         </div>`;
       }).join('');
     } else {
-      document.getElementById('eventsList').innerHTML = '<div style="color:#6e7681;font-size:13px;">אין אירועים ב-10 הימים הקרובים</div>';
+      document.getElementById('eventsList').innerHTML = '<div style="color:var(--label3);font-size:13px;">אין אירועים ב-10 הימים הקרובים</div>';
     }
   }
 
@@ -1721,20 +1696,20 @@
 
     document.getElementById('driversGrid').innerHTML = drivers.map(d => {
       const up      = d.change >= 0;
-      const chgCol  = up ? '#3fb950' : '#f85149';
+      const chgCol  = up ? 'var(--green)' : 'var(--red)';
       const sign    = up ? '+' : '';
       const priceStr = d.price > 1000
         ? d.price.toLocaleString('en-US', {minimumFractionDigits:1, maximumFractionDigits:1})
         : d.price.toFixed(2);
       const geo = d.geopolitical
-        ? `<div style="font-size:11px;color:#f0883e;margin-top:6px;">🌍 קשור לאירועים גיאופוליטיים</div>` : '';
+        ? `<div style="font-size:11px;color:var(--orange);margin-top:6px;">🌍 קשור לאירועים גיאופוליטיים</div>` : '';
       return `
         <div class="driver-card ${d.alert}">
           <div class="driver-header">
             <div class="driver-name">${d.emoji} ${d.name}</div>
             <div class="driver-alert">${d.alert_text}</div>
           </div>
-          <div class="driver-price" style="color:${chgCol};">${priceStr} <span style="font-size:12px;color:#8b949e;">${d.unit}</span></div>
+          <div class="driver-price" style="color:${chgCol};">${priceStr} <span style="font-size:12px;color:var(--label2);">${d.unit}</span></div>
           <div class="driver-change" style="color:${chgCol};">${sign}${d.change.toFixed(2)}% היום</div>
           <div class="driver-explain">${d.explanation}${geo}</div>
         </div>`;
@@ -1771,6 +1746,8 @@
       const cls  = d.change >= 0 ? 'pos' : 'neg';
       document.getElementById('stockChange').innerHTML =
         `<span class="${cls}">${sign}${d.change} (${sign}${d.change_pct}%)</span> שינוי יומי`;
+      // Redraw sparkline with updated direction color
+      if (_chartData && _chartData.close) drawSparkline(_chartData.close);
       const now = new Date();
       document.getElementById('lastUpdated').textContent =
         `עודכן: ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
@@ -1817,7 +1794,7 @@
           `<div class="macro-alert ${a.type}">${a.text}</div>`
         ).join('');
       } else {
-        alertsEl.innerHTML = '<div style="color:#8b949e;font-size:13px;">אין אזהרות מאקרו כרגע</div>';
+        alertsEl.innerHTML = '<div style="color:var(--label2);font-size:13px;">אין אזהרות מאקרו כרגע</div>';
       }
 
       // סקטורים חמים
@@ -1831,7 +1808,7 @@
           </div>`
         ).join('');
       } else {
-        hotEl.innerHTML = '<div style="color:#8b949e;font-size:13px;">השוק מאוזן כרגע, אין סקטור דומיננטי</div>';
+        hotEl.innerHTML = '<div style="color:var(--label2);font-size:13px;">השוק מאוזן כרגע, אין סקטור דומיננטי</div>';
       }
 
       // נושאים עולמיים
@@ -1841,7 +1818,7 @@
           `<div class="macro-theme">
             <div class="macro-theme-title">${t.theme}</div>
             <div class="macro-theme-exp">${t.explanation}</div>
-            <div class="macro-theme-exp" style="color:#e3b341;">📰 טריגר: ${t.trigger}</div>
+            <div class="macro-theme-exp" style="color:#b45309;">📰 טריגר: ${t.trigger}</div>
             <div class="macro-theme-tickers">📌 מניות: ${t.tickers}</div>
           </div>`
         ).join('');
@@ -2017,8 +1994,8 @@
 
     // ציון
     const score = d.diagnosis ? d.diagnosis.score : null;
-    const scoreColors = { green: '#3fb950', yellow: '#e3b341', orange: '#f0883e', red: '#f85149' };
-    const sc = d.diagnosis ? scoreColors[d.diagnosis.score_color] : '#8b949e';
+    const scoreColors = { green: 'var(--green)', yellow: 'var(--yellow)', orange: 'var(--orange)', red: 'var(--red)' };
+    const sc = d.diagnosis ? scoreColors[d.diagnosis.score_color] : 'var(--label2)';
     document.getElementById('clScoreNum').textContent = score !== null ? score + '/100' : '';
     document.getElementById('clScoreNum').style.color = sc;
     const fill = document.getElementById('clBarFill');
@@ -2033,8 +2010,8 @@
     if (!diag) return;
 
     const score = diag.score;
-    const colors = { green: '#3fb950', yellow: '#e3b341', orange: '#f0883e', red: '#f85149' };
-    const col = colors[diag.score_color] || '#8b949e';
+    const colors = { green: 'var(--green)', yellow: 'var(--orange)', orange: 'var(--orange)', red: 'var(--red)' };
+    const col = colors[diag.score_color] || 'var(--label2)';
 
     const ring = document.getElementById('diagRing');
     ring.style.borderColor = col;
@@ -2056,7 +2033,7 @@
 
     document.getElementById('diagStrengths').innerHTML =
       diag.strengths.length === 0
-        ? '<div class="diag-item info" style="color:#8b949e;">אין חוזקות בולטות כרגע</div>'
+        ? '<div class="diag-item info" style="color:var(--label2);">אין חוזקות בולטות כרגע</div>'
         : diag.strengths.map(s => `<div class="diag-item strength">⭐ ${s}</div>`).join('');
 
     document.getElementById('diagSuggestions').innerHTML =
@@ -2072,10 +2049,10 @@
     if (!tp) return;
     const cur = tp.currency || d.currency;
 
-    const rrColor = tp.rr === null ? '#8b949e'
-                  : tp.rr >= 2    ? '#3fb950'
-                  : tp.rr >= 1    ? '#e3b341'
-                  : '#f85149';
+    const rrColor = tp.rr === null ? 'var(--label2)'
+                  : tp.rr >= 2    ? 'var(--green)'
+                  : tp.rr >= 1    ? 'var(--yellow)'
+                  : 'var(--red)';
     const rrLabel = tp.rr === null ? 'N/A'
                   : tp.rr >= 2    ? '✅ יחס טוב'
                   : tp.rr >= 1    ? '⚠️ גבולי'
@@ -2084,22 +2061,22 @@
     document.getElementById('tradeGrid').innerHTML = `
       <div class="trade-cell">
         <div class="trade-cell-label">💰 מחיר כניסה</div>
-        <div class="trade-cell-value" style="color:#58a6ff;">${tp.entry} ${cur}</div>
+        <div class="trade-cell-value" style="color:var(--blue);">${tp.entry} ${cur}</div>
         <div class="trade-cell-sub">מחיר שוק נוכחי</div>
       </div>
       <div class="trade-cell">
         <div class="trade-cell-label">🛑 סטופ לוס (SL)</div>
-        <div class="trade-cell-value" style="color:#f85149;">${tp.sl} ${cur}</div>
+        <div class="trade-cell-value" style="color:var(--red);">${tp.sl} ${cur}</div>
         <div class="trade-cell-sub">שפל נר הכניסה</div>
       </div>
       <div class="trade-cell">
         <div class="trade-cell-label">🎯 יעד 1 — ממוצע 20</div>
-        <div class="trade-cell-value" style="color:#3fb950;">${tp.target1} ${cur}</div>
+        <div class="trade-cell-value" style="color:var(--green);">${tp.target1} ${cur}</div>
         <div class="trade-cell-sub">אפקט הגומיה</div>
       </div>
       <div class="trade-cell">
         <div class="trade-cell-label">🚀 יעד 2 — גאפ/התנגדות</div>
-        <div class="trade-cell-value" style="color:#e3b341;">${tp.target2} ${cur}</div>
+        <div class="trade-cell-value" style="color:var(--orange);">${tp.target2} ${cur}</div>
         <div class="trade-cell-sub">80% גאפים נסגרים</div>
       </div>
       <div class="trade-cell">
@@ -2109,14 +2086,14 @@
       </div>
       <div class="trade-cell">
         <div class="trade-cell-label">📉 סיכון לכניסה</div>
-        <div class="trade-cell-value" style="color:#f85149;">-${tp.risk} ${cur}</div>
+        <div class="trade-cell-value" style="color:var(--red);">-${tp.risk} ${cur}</div>
         <div class="trade-cell-sub">${tp.risk > 0 ? ((tp.risk / tp.entry * 100).toFixed(1) + '% מהמחיר') : ''}</div>
       </div>
     `;
 
     document.getElementById('tradeNote').innerHTML = `
-      <div style="color:#58a6ff;font-weight:700;margin-bottom:8px;">🕐 סגנון: ${tp.hold_desc || 'סווינג'}</div>
-      <strong style="color:#58a6ff;">כיצד לנהל את הפוזיציה לפי שיטת לייב 20:</strong><br>
+      <div style="color:var(--blue);font-weight:700;margin-bottom:8px;">🕐 סגנון: ${tp.hold_desc || 'סווינג'}</div>
+      <strong style="color:var(--blue);">כיצד לנהל את הפוזיציה לפי שיטת לייב 20:</strong><br>
       1️⃣ <strong>כניסה</strong> — קנה קרוב למחיר הנוכחי (${tp.entry} ${cur})<br>
       2️⃣ <strong>SL</strong> — שים סטופ לוס על ${tp.sl} ${cur} (שפל נר הכניסה). אם יצא — אין רגשות, יצא יצא.<br>
       3️⃣ <strong>ניהול</strong> — כשהמניה עולה, <strong>העלה את הSL</strong> (Trailing Stop) יחד עם המחיר. שמור על הרווח.<br>
@@ -2130,23 +2107,62 @@
   function drawSparkline(prices) {
     const canvas = document.getElementById('sparkline');
     if (!canvas || !prices || prices.length < 2) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
-    const min = Math.min(...prices), max = Math.max(...prices);
+
+    // הגדר גודל קבוע — לא תלוי ב-offsetWidth כי ה-canvas עדיין hidden
+    const W = 100, H = 44;
+    canvas.width  = W;
+    canvas.height = H;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.style.display = 'block';   // ← מציג לפני הציור!
+
+    const data = prices.slice(-30);
+    const ctx  = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+
+    const min   = Math.min(...data);
+    const max   = Math.max(...data);
     const range = max - min || 1;
-    const isUp = prices[prices.length - 1] >= prices[0];
-    const color = isUp ? '#3fb950' : '#f85149';
+    const isUp  = data[data.length - 1] >= data[0];
+
+    const lineColor = isUp ? '#34c759' : '#ff3b30';
+    const fillTop   = isUp ? 'rgba(52,199,89,0.22)' : 'rgba(255,59,48,0.22)';
+    const fillBot   = 'rgba(0,0,0,0)';
+    const pad = 4;
+
+    // נקודות ציור
+    const pts = data.map((p, i) => ({
+      x: pad + (i / (data.length - 1)) * (W - pad * 2),
+      y: H - pad - ((p - min) / range) * (H - pad * 2)
+    }));
+
+    // fill עם גרדיאנט
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, fillTop);
+    grad.addColorStop(1, fillBot);
     ctx.beginPath();
-    prices.forEach((p, i) => {
-      const x = (i / (prices.length - 1)) * w;
-      const y = h - ((p - min) / range) * (h - 4) - 2;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+    ctx.moveTo(pts[0].x, H);
+    pts.forEach(pt => ctx.lineTo(pt.x, pt.y));
+    ctx.lineTo(pts[pts.length - 1].x, H);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // קו ראשי
+    ctx.beginPath();
+    pts.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth   = 2;
+    ctx.lineJoin    = 'round';
+    ctx.lineCap     = 'round';
     ctx.stroke();
-    canvas.style.display = 'block';
+
+    // נקודה בסוף
+    const last = pts[pts.length - 1];
+    ctx.beginPath();
+    ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = lineColor;
+    ctx.fill();
   }
 
   function renderStockHeader(d) {
@@ -2182,23 +2198,23 @@
       const badge = document.getElementById('directionBadge');
       const reason = document.getElementById('directionReason');
       if (d.direction === 'long') {
-        dc.style.background = '#0f2d1a';
-        dc.style.border = '2px solid #3fb950';
+        dc.style.background = 'var(--green-dim)';
+        dc.style.border = '2px solid var(--green)';
         badge.textContent = '📈 לונג';
-        badge.style.background = '#1a4028';
-        badge.style.color = '#3fb950';
+        badge.style.background = 'var(--green-dim)';
+        badge.style.color = 'var(--green)';
       } else if (d.direction === 'short') {
-        dc.style.background = '#2d1717';
-        dc.style.border = '2px solid #f85149';
+        dc.style.background = 'var(--red-dim)';
+        dc.style.border = '2px solid var(--red)';
         badge.textContent = '📉 שורט';
-        badge.style.background = '#3d1010';
-        badge.style.color = '#f85149';
+        badge.style.background = 'var(--red-dim)';
+        badge.style.color = 'var(--red)';
       } else {
-        dc.style.background = '#1f2428';
-        dc.style.border = '2px solid #8b949e';
+        dc.style.background = 'var(--bg2)';
+        dc.style.border = '2px solid var(--label2)';
         badge.textContent = '⏸ המתן';
-        badge.style.background = '#2d333b';
-        badge.style.color = '#8b949e';
+        badge.style.background = 'var(--bg3)';
+        badge.style.color = 'var(--label2)';
       }
       reason.textContent = d.direction_reason || '';
       dc.style.display = 'flex';
@@ -2227,26 +2243,26 @@
     const fibc = document.getElementById('fibRetrace');
     fibc.textContent = `${retrace}%`;
     if (retrace >= 55 && retrace <= 68) {
-      fibc.style.color = '#3fb950';
+      fibc.style.color = 'var(--green)';
       document.getElementById('fibDesc').textContent = `קרוב לרמת 61.8% — אזור תיקון קלאסי (מיכה מחפש פה היפוך)`;
     } else if (retrace >= 35 && retrace <= 42) {
-      fibc.style.color = '#e3b341';
+      fibc.style.color = 'var(--yellow)';
       document.getElementById('fibDesc').textContent = `קרוב לרמת 38.2% — תמיכה/התנגדות משמעותית`;
     } else if (retrace > 68) {
-      fibc.style.color = '#f85149';
+      fibc.style.color = 'var(--red)';
       document.getElementById('fibDesc').textContent = `תיקון עמוק (${retrace}%) — מעבר ל-61.8%, לחכות לייצוב`;
     } else {
-      fibc.style.color = '#8b949e';
+      fibc.style.color = 'var(--label2)';
       document.getElementById('fibDesc').textContent = `תיקון ${retrace}% מהשיא`;
     }
 
     const fib = d.fibonacci;
     const price = d.current_price;
-    if (!fib) { document.getElementById('fibLevels').innerHTML = '<span style="color:#8b949e;font-size:13px;">אין מספיק נתונים לפיבו</span>'; show('atrFibCard'); return; }
+    if (!fib) { document.getElementById('fibLevels').innerHTML = '<span style="color:var(--label2);font-size:13px;">אין מספיק נתונים לפיבו</span>'; show('atrFibCard'); return; }
 
     const fibDir = fib.direction === 'up' ? '⬆️ טרנד עולה' : '⬇️ טרנד יורד';
-    const fibRange = `<div style="font-size:11px;color:#8b949e;margin-bottom:8px;">
-      ${fibDir} · שפל <strong style="color:#e6edf3;">${fib.low}</strong> → שיא <strong style="color:#e6edf3;">${fib.high}</strong> (6 חודשים)
+    const fibRange = `<div style="font-size:11px;color:var(--label2);margin-bottom:8px;">
+      ${fibDir} · שפל <strong style="color:var(--label);">${fib.low}</strong> → שיא <strong style="color:var(--label);">${fib.high}</strong> (6 חודשים)
     </div>`;
 
     const fibData = [
@@ -2259,9 +2275,9 @@
     document.getElementById('fibLevels').innerHTML = fibRange + fibData.map(f => {
       const near = Math.abs(f.val - price) / price < 0.02;
       const golden = f.label === '50.0%' || f.label === '61.8%';
-      const bg   = near ? '#1a2510' : (golden ? '#1a1508' : '#1f2428');
-      const col  = near ? '#3fb950' : (golden ? '#e3b341' : '#8b949e');
-      const border = near ? '1px solid #3fb950' : (golden ? '1px solid #e3b34155' : '1px solid #30363d');
+      const bg   = near ? 'var(--yellow-dim)' : (golden ? 'rgba(255,204,0,0.10)' : 'var(--bg3)');
+      const col  = near ? 'var(--green)' : (golden ? '#b8860b' : 'var(--label2)');
+      const border = near ? '1px solid var(--green)' : (golden ? '1px solid rgba(255,204,0,0.5)' : '1px solid var(--sep)');
       return `<span style="background:${bg};border:${border};border-radius:6px;padding:4px 10px;font-size:13px;color:${col};">
         ${f.label}: <strong>${f.val}</strong>${near ? ' 📍' : ''}${golden && !near ? ' ⭐' : ''}
       </span>`;
@@ -2284,33 +2300,33 @@
 
     if (pct === 100) {
       card.className = 'position-card pct-high';
-      gauge.style.background = '#0f2d1a';
-      gauge.style.border = '3px solid #3fb950';
-      gauge.style.color = '#3fb950';
+      gauge.style.background = 'var(--green-dim)';
+      gauge.style.border = '3px solid var(--green)';
+      gauge.style.color = 'var(--green)';
       document.getElementById('positionTitle').textContent = '✅ כניסה מלאה מומלצת';
       document.getElementById('positionDesc').textContent =
         'כל 6 (או 5) האינדיקטורים מסתדרים — כנסו ב-100% מהפוזיציה המתוכננת. שימו SL מתחת לממוצע 20 ונהלו את הסיכון.';
     } else if (pct === 50) {
       card.className = 'position-card pct-mid';
-      gauge.style.background = '#1a2510';
-      gauge.style.border = '3px solid #e3b341';
-      gauge.style.color = '#e3b341';
+      gauge.style.background = 'var(--yellow-dim)';
+      gauge.style.border = '3px solid var(--yellow)';
+      gauge.style.color = 'var(--yellow)';
       document.getElementById('positionTitle').textContent = '⚠️ כניסה חלקית — 50%';
       document.getElementById('positionDesc').textContent =
         '4 מתוך 6 אינדיקטורים בוליש — כניסה חלקית של 50%. אם המניה תאשר בווליום גבוה בימים הקרובים, השלימו ל-100%.';
     } else if (pct === 25) {
       card.className = 'position-card pct-low';
-      gauge.style.background = '#1f2428';
-      gauge.style.border = '3px solid #8b949e';
-      gauge.style.color = '#8b949e';
+      gauge.style.background = 'var(--bg2)';
+      gauge.style.border = '3px solid var(--label2)';
+      gauge.style.color = 'var(--label2)';
       document.getElementById('positionTitle').textContent = '⏸️ כניסה זהירה — 25% בלבד';
       document.getElementById('positionDesc').textContent =
         'תמונה מעורבת — אם בכל זאת רוצים להיכנס, לא יותר מ-25% מהפוזיציה. עדיף לחכות לאישור ברור יותר מהאינדיקטורים.';
     } else {
       card.className = 'position-card pct-zero';
-      gauge.style.background = '#2d1717';
-      gauge.style.border = '3px solid #f85149';
-      gauge.style.color = '#f85149';
+      gauge.style.background = 'var(--red-dim)';
+      gauge.style.border = '3px solid var(--red)';
+      gauge.style.color = 'var(--red)';
       document.getElementById('positionTitle').textContent = '🚫 לא להיכנס — 0%';
       document.getElementById('positionDesc').textContent =
         'רוב האינדיקטורים בריש — להישאר בצד. אין סיבה להיכנס נגד הטרנד. המתינו לשינוי כיוון ברור לפני שחושבים על כניסה.';
@@ -2398,19 +2414,19 @@
     const el  = document.getElementById('shortPct');
     el.textContent = pct !== null ? pct + '%' : 'N/A';
 
-    let color = '#8b949e', label = '', explain = '';
+    let color = 'var(--label2)', label = '', explain = '';
     if (pct !== null) {
       if (pct >= 20) {
-        color = '#f85149'; label = '⚠️ שורט גבוה מאוד';
+        color = 'var(--red)'; label = '⚠️ שורט גבוה מאוד';
         explain = `${pct}% מה-Float בשורט — סיכון גבוה לסחיטת שורט (Short Squeeze). אם המניה עולה חזק, המשורטים נאלצים לקנות ומאיצים את העלייה.`;
       } else if (pct >= 10) {
-        color = '#e3b341'; label = '⚡ שורט משמעותי';
+        color = 'var(--yellow)'; label = '⚡ שורט משמעותי';
         explain = `${pct}% מה-Float בשורט — רמה משמעותית. שימו לב לחדשות חיוביות שיכולות לגרום לסחיטת שורט.`;
       } else if (pct >= 5) {
-        color = '#8b949e'; label = 'שורט ממוצע';
+        color = 'var(--label2)'; label = 'שורט ממוצע';
         explain = `${pct}% מה-Float בשורט — רמה רגילה, לא מדאיגה ולא חריגה.`;
       } else {
-        color = '#3fb950'; label = '✅ שורט נמוך';
+        color = 'var(--green)'; label = '✅ שורט נמוך';
         explain = `${pct}% בלבד בשורט — המשקיעים לא מהמרים נגד המניה. סביבה בוליש.`;
       }
     }
@@ -2433,18 +2449,18 @@
       const daysLeft = Math.round((eDate - today) / 86400000);
       const urgent   = daysLeft >= 0 && daysLeft <= 7;
       const near     = daysLeft >= 0 && daysLeft <= 14;
-      const bg       = urgent ? '#1a0000' : near ? '#1a1000' : '#0d1117';
-      const border   = urgent ? '#f85149' : near ? '#e3b341' : '#3fb950';
+      const bg       = urgent ? 'var(--red-dim)' : near ? 'var(--orange-dim)' : 'var(--bg)';
+      const border   = urgent ? 'var(--red)' : near ? 'var(--yellow)' : 'var(--green)';
       const timeStr  = d.next_earnings_time ? ` · ${d.next_earnings_time}` : '';
-      const moveStr  = d.expected_move_pct  ? ` | תנועה צפויה: <strong style="color:#e3b341;">±${d.expected_move_pct}%</strong>` : '';
-      const daysTxt  = daysLeft < 0 ? '' : daysLeft === 0 ? ' — <strong style="color:#f85149;">היום!</strong>'
-                     : ` — עוד <strong style="color:${urgent?'#f85149':near?'#e3b341':'#3fb950'};">${daysLeft} ימים</strong>`;
+      const moveStr  = d.expected_move_pct  ? ` | תנועה צפויה: <strong style="color:var(--orange);">±${d.expected_move_pct}%</strong>` : '';
+      const daysTxt  = daysLeft < 0 ? '' : daysLeft === 0 ? ' — <strong style="color:var(--red);">היום!</strong>'
+                     : ` — עוד <strong style="color:${urgent?'var(--red)':near?'var(--orange)':'var(--green)'};">${daysLeft} ימים</strong>`;
       document.getElementById('nextEarningsInner').innerHTML =
         `<div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:12px 16px;">
           📅 <strong>הדוח הבא:</strong>
           <span style="color:${border};font-weight:700;font-size:15px;margin-right:6px;">${d.next_earnings}${timeStr}</span>
           ${daysTxt}${moveStr}
-          ${urgent ? '<div style="margin-top:6px;font-size:12px;color:#f85149;">⚠️ לא להיכנס לפוזיציה פתוחה לפני הדוח — סיכון גבוה לתנועה חדה!</div>' : ''}
+          ${urgent ? '<div style="margin-top:6px;font-size:12px;color:var(--red);">⚠️ לא להיכנס לפוזיציה פתוחה לפני הדוח — סיכון גבוה לתנועה חדה!</div>' : ''}
         </div>`;
       document.getElementById('nextEarningsBox').style.display = 'block';
       hasContent = true;
@@ -2452,11 +2468,11 @@
 
     // ── תחזיות לדוח הבא ──
     const estParts = [];
-    if (d.eps_next_est != null)  estParts.push(`<span>📊 EPS צפוי: <strong style="color:#58a6ff;">${d.eps_next_est > 0 ? '+' : ''}${d.eps_next_est}</strong></span>`);
+    if (d.eps_next_est != null)  estParts.push(`<span>📊 EPS צפוי: <strong style="color:var(--blue);">${d.eps_next_est > 0 ? '+' : ''}${d.eps_next_est}</strong></span>`);
     if (d.rev_next_high != null && d.rev_next_low != null) {
-      estParts.push(`<span>💰 הכנסות צפויות: <strong style="color:#58a6ff;">${fmtB(d.rev_next_low)} – ${fmtB(d.rev_next_high)}</strong></span>`);
+      estParts.push(`<span>💰 הכנסות צפויות: <strong style="color:var(--blue);">${fmtB(d.rev_next_low)} – ${fmtB(d.rev_next_high)}</strong></span>`);
     } else if (d.rev_next_high != null) {
-      estParts.push(`<span>💰 הכנסות צפויות: <strong style="color:#58a6ff;">${fmtB(d.rev_next_high)}</strong></span>`);
+      estParts.push(`<span>💰 הכנסות צפויות: <strong style="color:var(--blue);">${fmtB(d.rev_next_high)}</strong></span>`);
     }
     if (estParts.length > 0) {
       document.getElementById('earningsEstContent').innerHTML = estParts.join('');
@@ -2467,11 +2483,11 @@
     if (d.beat_rate != null && d.earnings && d.earnings.length > 0) {
       const total  = d.earnings.filter(e => e.beat != null).length;
       const beats  = d.earnings.filter(e => e.beat === true).length;
-      const col    = d.beat_rate >= 75 ? '#3fb950' : d.beat_rate >= 50 ? '#e3b341' : '#f85149';
+      const col    = d.beat_rate >= 75 ? 'var(--green)' : d.beat_rate >= 50 ? 'var(--yellow)' : 'var(--red)';
       const emoji  = d.beat_rate >= 75 ? '✅' : d.beat_rate >= 50 ? '⚠️' : '❌';
       document.getElementById('beatRateBox').innerHTML =
         `${emoji} הכתה ציפיות EPS ב-<strong style="color:${col};">${beats} מתוך ${total} רבעונים (${d.beat_rate}%)</strong>
-         <span style="color:#8b949e;font-size:11px;margin-right:8px;">— ביט = בפועל ≥ צפי</span>`;
+         <span style="color:var(--label2);font-size:11px;margin-right:8px;">— ביט = בפועל ≥ צפי</span>`;
       document.getElementById('beatRateBox').style.display = 'block';
       hasContent = true;
     }
@@ -2489,25 +2505,25 @@
         const near     = daysLeft >= 0 && daysLeft <= 14;
         const rowBg    = urgent ? 'rgba(248,81,73,0.08)' : near ? 'rgba(227,179,65,0.06)' : 'rgba(31,111,235,0.06)';
         const dateTxt  = daysLeft < 0    ? d.next_earnings
-                       : daysLeft === 0  ? `${d.next_earnings} — <strong style="color:#f85149">היום!</strong>`
+                       : daysLeft === 0  ? `${d.next_earnings} — <strong style="color:var(--red)">היום!</strong>`
                        : `${d.next_earnings} — עוד ${daysLeft} ימים`;
         const timeTxt  = d.next_earnings_time
-          ? `<span style="font-size:11px;color:#8b949e;margin-right:6px;">(${d.next_earnings_time})</span>` : '';
+          ? `<span style="font-size:11px;color:var(--label2);margin-right:6px;">(${d.next_earnings_time})</span>` : '';
         const epsEstTxt = d.eps_next_est != null
-          ? `<span style="color:#58a6ff;font-weight:700;">${d.eps_next_est > 0 ? '+' : ''}${d.eps_next_est}</span>` : '—';
+          ? `<span style="color:var(--blue);font-weight:700;">${d.eps_next_est > 0 ? '+' : ''}${d.eps_next_est}</span>` : '—';
         const revTxt = (d.rev_next_low != null && d.rev_next_high != null)
-          ? `<span style="color:#58a6ff;">${fmtB(d.rev_next_low)}–${fmtB(d.rev_next_high)}</span>` : '—';
-        nextRow = `<tr style="background:${rowBg};border-bottom:2px solid #30363d;">
+          ? `<span style="color:var(--blue);">${fmtB(d.rev_next_low)}–${fmtB(d.rev_next_high)}</span>` : '—';
+        nextRow = `<tr style="background:${rowBg};border-bottom:2px solid var(--sep);">
           <td style="padding:8px 10px;white-space:nowrap;">
-            <span style="font-size:10px;background:#1f6feb;color:#fff;border-radius:3px;padding:1px 5px;margin-left:6px;">קרוב</span>
-            <span style="color:#e6edf3;font-weight:600;">${dateTxt}</span>${timeTxt}
+            <span style="font-size:10px;background:var(--blue);color:#fff;border-radius:3px;padding:1px 5px;margin-left:6px;">קרוב</span>
+            <span style="color:var(--label);font-weight:600;">${dateTxt}</span>${timeTxt}
           </td>
           <td style="padding:8px 10px;text-align:center;">${epsEstTxt}</td>
-          <td style="padding:8px 10px;text-align:center;color:#8b949e;">—</td>
-          <td style="padding:8px 10px;text-align:center;color:#8b949e;">—</td>
-          <td style="padding:8px 10px;text-align:center;color:#8b949e;">—</td>
+          <td style="padding:8px 10px;text-align:center;color:var(--label2);">—</td>
+          <td style="padding:8px 10px;text-align:center;color:var(--label2);">—</td>
+          <td style="padding:8px 10px;text-align:center;color:var(--label2);">—</td>
           <td style="padding:8px 10px;">${revTxt}</td>
-          <td style="padding:8px 10px;color:#8b949e;">—</td>
+          <td style="padding:8px 10px;color:var(--label2);">—</td>
         </tr>`;
       }
 
@@ -2516,14 +2532,14 @@
         const yoy     = d.earnings[i + 4];
         const epsEst  = e.eps_estimate != null ? e.eps_estimate : '—';
         const epsAct  = e.eps_actual   != null ? e.eps_actual   : '—';
-        const epsColor= e.eps_actual != null ? (e.eps_actual >= 0 ? '#3fb950' : '#f85149') : '#8b949e';
+        const epsColor= e.eps_actual != null ? (e.eps_actual >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--label2)';
         const beatBadge = e.beat === true
-          ? '<span style="background:#1a2510;color:#3fb950;border:1px solid #3fb950;border-radius:4px;padding:2px 7px;font-size:11px;">ביט ✅</span>'
+          ? '<span style="background:var(--yellow-dim);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:2px 7px;font-size:11px;">ביט ✅</span>'
           : e.beat === false
-          ? '<span style="background:#1a0000;color:#f85149;border:1px solid #f85149;border-radius:4px;padding:2px 7px;font-size:11px;">מיס ❌</span>'
-          : '<span style="color:#8b949e;">—</span>';
+          ? '<span style="background:var(--red-dim);color:var(--red);border:1px solid var(--red);border-radius:4px;padding:2px 7px;font-size:11px;">מיס ❌</span>'
+          : '<span style="color:var(--label2);">—</span>';
         const surpriseCol = e.surprise_pct != null
-          ? (e.surprise_pct > 0 ? '#3fb950' : e.surprise_pct < 0 ? '#f85149' : '#8b949e') : '#8b949e';
+          ? (e.surprise_pct > 0 ? 'var(--green)' : e.surprise_pct < 0 ? 'var(--red)' : 'var(--label2)') : 'var(--label2)';
         const surpriseTxt = e.surprise_pct != null
           ? `<span style="color:${surpriseCol};font-weight:700;">${e.surprise_pct > 0 ? '+' : ''}${e.surprise_pct}%</span>` : '—';
         const rev = e.revenue != null ? fmtB(e.revenue) : '—';
@@ -2531,11 +2547,11 @@
         let revChg = '—';
         if (yoy && e.revenue != null && yoy.revenue != null) {
           const chg = ((e.revenue - yoy.revenue) / Math.abs(yoy.revenue) * 100).toFixed(1);
-          revChg = `<span style="color:${chg>=0?'#3fb950':'#f85149'};font-weight:600;">${chg>=0?'+':''}${chg}% YoY</span>`;
+          revChg = `<span style="color:${chg>=0?'var(--green)':'var(--red)'};font-weight:600;">${chg>=0?'+':''}${chg}% YoY</span>`;
         }
-        return `<tr style="border-bottom:1px solid #21262d;">
-          <td style="padding:8px 10px;color:#8b949e;white-space:nowrap;font-size:12px;">${e.date}</td>
-          <td style="padding:8px 10px;text-align:center;color:#8b949e;">${epsEst}</td>
+        return `<tr style="border-bottom:1px solid var(--bg3);">
+          <td style="padding:8px 10px;color:var(--label2);white-space:nowrap;font-size:12px;">${e.date}</td>
+          <td style="padding:8px 10px;text-align:center;color:var(--label2);">${epsEst}</td>
           <td style="padding:8px 10px;text-align:center;color:${epsColor};font-weight:700;">${epsAct}</td>
           <td style="padding:8px 10px;text-align:center;">${beatBadge}</td>
           <td style="padding:8px 10px;text-align:center;">${surpriseTxt}</td>
@@ -2567,15 +2583,15 @@
     const allNews = [...movers, ...regular];
 
     document.getElementById('newsList').innerHTML = allNews.map(n => `
-      <div style="border-bottom:1px solid #21262d;padding:10px 0;display:flex;gap:10px;align-items:flex-start;">
+      <div style="border-bottom:1px solid var(--bg3);padding:10px 0;display:flex;gap:10px;align-items:flex-start;">
         <div style="min-width:24px;font-size:16px;">${n.is_mover ? '🔥' : '📄'}</div>
         <div style="flex:1;">
-          <a href="${n.link}" target="_blank" style="color:${n.is_mover?'#f0883e':'#e6edf3'};text-decoration:none;font-size:14px;font-weight:${n.is_mover?'700':'400'};line-height:1.4;">
+          <a href="${n.link}" target="_blank" style="color:${n.is_mover?'var(--orange)':'var(--label)'};text-decoration:none;font-size:14px;font-weight:${n.is_mover?'700':'400'};line-height:1.4;">
             ${n.title}
           </a>
-          <div style="font-size:11px;color:#8b949e;margin-top:3px;">${n.publisher} · ${n.date}</div>
+          <div style="font-size:11px;color:var(--label2);margin-top:3px;">${n.publisher} · ${n.date}</div>
         </div>
-        ${n.is_mover ? '<div style="font-size:10px;background:#2d1a00;color:#e3b341;border:1px solid #e3b341;border-radius:4px;padding:2px 6px;white-space:nowrap;align-self:center;">מזיז מחיר</div>' : ''}
+        ${n.is_mover ? '<div style="font-size:10px;background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:2px 6px;white-space:nowrap;align-self:center;">מזיז מחיר</div>' : ''}
       </div>
     `).join('');
     show('newsCard');
@@ -2596,7 +2612,7 @@
         .slice(0, 4);
       if (supports.length > 0) {
         supportHtml = `<br>📉 <strong>תמיכות קרובות:</strong> ${supports.map(s =>
-          `<span style="background:#0f2d1a;padding:2px 7px;border-radius:5px;color:#3fb950;">${s.price}</span>`
+          `<span style="background:var(--green-dim);padding:2px 7px;border-radius:5px;color:var(--green);">${s.price}</span>`
         ).join(' ')}`;
       }
 
@@ -2606,21 +2622,21 @@
         .slice(0, 4);
       if (resistances.length > 0) {
         resistanceHtml = `<br>📈 <strong>התנגדויות / יעדים:</strong> ${resistances.map(r =>
-          `<span style="background:#2d1717;padding:2px 7px;border-radius:5px;color:#f85149;">${r.price}</span>`
+          `<span style="background:var(--red-dim);padding:2px 7px;border-radius:5px;color:var(--red);">${r.price}</span>`
         ).join(' ')}`;
       }
     }
 
     const lastLow = d.chart.low[d.chart.low.length - 1];
     document.getElementById('slContent').innerHTML = `
-      <div style="background:#1a0a00;border-right:3px solid #e3b341;padding:10px 14px;border-radius:6px;margin-bottom:10px;">
+      <div style="background:var(--yellow-dim);border:1px solid var(--yellow);border-right:3px solid var(--yellow);padding:12px 16px;border-radius:10px;margin-bottom:12px;">
         🎯 <strong>כלל SL של מיכה סטוקס — לייב 20:</strong><br>
         <span style="font-size:14px;"><strong>SL = הנמוך של יום הכניסה</strong> (${lastLow} ${d.currency})</span><br>
-        <span style="color:#c9d1d9;font-size:13px;">ברגע שהמניה עולה — <strong>העלה את הSL</strong> (Trailing Stop) יחד איתה. זה שומר על הרווח.</span><br>
-        <span style="color:#8b949e;font-size:12px;">אם הוציא אותך — תחזור ותיכנס שוב כשהסטאפ מתאים. זה לא כישלון, זה ניהול סיכון.</span>
+        <span style="color:var(--label2);font-size:13px;">ברגע שהמניה עולה — <strong>העלה את הSL</strong> (Trailing Stop) יחד איתה. זה שומר על הרווח.</span><br>
+        <span style="color:var(--label2);font-size:12px;">אם הוציא אותך — תחזור ותיכנס שוב כשהסטאפ מתאים. זה לא כישלון, זה ניהול סיכון.</span>
       </div>
-      🎯 <strong>יעד ראשוני (ממוצע 20):</strong> <strong style="color:#58a6ff">${target}</strong> — "אפקט הגומיה"<br>
-      ${d.gaps.gaps_up.length ? `📈 <strong>יעד גאפ (80% נסגרים):</strong> <strong style="color:#3fb950">${d.gaps.gaps_up.map(g=>g.level).join(' / ')}</strong><br>` : ''}
+      🎯 <strong>יעד ראשוני (ממוצע 20):</strong> <strong style="color:var(--blue)">${target}</strong> — "אפקט הגומיה"<br>
+      ${d.gaps.gaps_up.length ? `📈 <strong>יעד גאפ (80% נסגרים):</strong> <strong style="color:var(--green)">${d.gaps.gaps_up.map(g=>g.level).join(' / ')}</strong><br>` : ''}
       ${supportHtml}
       ${resistanceHtml}
     `;
@@ -2669,14 +2685,14 @@
     const cci    = ch.cci  ? ch.cci.slice(sl)  : [];
 
     const BASE = {
-      paper_bgcolor: '#0d1117',
-      plot_bgcolor:  '#0d1117',
-      font:   { color: '#c9d1d9', size: 11, family: 'inherit' },
-      xaxis:  { gridcolor: '#1c2128', color: '#8b949e', zeroline: false,
+      paper_bgcolor: '#ffffff',
+      plot_bgcolor:  '#f5f5f7',
+      font:   { color: '#6e6e73', size: 11, family: 'inherit' },
+      xaxis:  { gridcolor: 'rgba(0,0,0,0.06)', color: '#86868b', zeroline: false,
                 rangeslider: { visible: false },
-                showspikes: true, spikecolor: '#484f58', spikewidth: 1, spikesnap: 'cursor', spikedash: 'solid' },
-      yaxis:  { gridcolor: '#1c2128', color: '#8b949e', zeroline: false,
-                showspikes: true, spikecolor: '#484f58', spikewidth: 1 },
+                showspikes: true, spikecolor: 'rgba(0,0,0,0.05)', spikewidth: 1, spikesnap: 'cursor', spikedash: 'solid' },
+      yaxis:  { gridcolor: 'rgba(0,0,0,0.06)', color: '#86868b', zeroline: false,
+                showspikes: true, spikecolor: 'rgba(0,0,0,0.05)', spikewidth: 1 },
       hoverdistance: 50,
       spikedistance: 50,
       hovermode: 'x unified',
@@ -2691,11 +2707,11 @@
     if (_chartGaps) {
       (_chartGaps.gaps_up   || []).forEach(g => gapShapes.push({
         type:'line', x0:dates[0], x1:dates[dates.length-1], y0:g.level, y1:g.level,
-        line:{ color:'#3fb95066', width:1.5, dash:'dot' }
+        line:{ color:'rgba(52,199,89,0.5)', width:1.5, dash:'dot' }
       }));
       (_chartGaps.gaps_down || []).forEach(g => gapShapes.push({
         type:'line', x0:dates[0], x1:dates[dates.length-1], y0:g.level, y1:g.level,
-        line:{ color:'#f8514966', width:1.5, dash:'dot' }
+        line:{ color:'rgba(255,59,48,0.5)', width:1.5, dash:'dot' }
       }));
     }
 
@@ -2703,29 +2719,35 @@
       [
         { type:'candlestick', x:dates, open, high, low, close,
           name:_chartTicker,
-          increasing:{ line:{ color:'#2ea043', width:1 }, fillcolor:'#2ea043' },
-          decreasing:{ line:{ color:'#da3633', width:1 }, fillcolor:'#da3633' },
+          increasing:{ line:{ color:'#34c759', width:1 }, fillcolor:'#34c759' },
+          decreasing:{ line:{ color:'#ff3b30', width:1 }, fillcolor:'#ff3b30' },
           whiskerwidth: 0.3,
           hoverinfo: 'x+y' },
         { type:'scatter', x:dates, y:ma20, name:'MA20', mode:'lines',
-          line:{ color:'#f0883e', width:1.8 }, hovertemplate:'MA20: %{y:.2f}<extra></extra>' },
+          line:{ color:'#ff9f0a', width:1.8 }, hovertemplate:'MA20: %{y:.2f}<extra></extra>' },
         { type:'scatter', x:dates, y:ma50, name:'MA50', mode:'lines',
-          line:{ color:'#58a6ff', width:1.8 }, hovertemplate:'MA50: %{y:.2f}<extra></extra>' },
+          line:{ color:'#0071e3', width:1.8 }, hovertemplate:'MA50: %{y:.2f}<extra></extra>' },
       ],
       { ...BASE, height:440,
         margin:{ l:55, r:16, t:12, b:8 },
         shapes: gapShapes,
-        legend:{ x:0.01, y:0.99, bgcolor:'rgba(13,17,23,0.8)', bordercolor:'#30363d',
+        legend:{ x:0.01, y:0.99, bgcolor:'rgba(255,255,255,0.92)', bordercolor:'rgba(0,0,0,0.10)',
                  borderwidth:1, font:{ size:11 } },
         yaxis:{ ...BASE.yaxis, autorange:true, fixedrange:false },
         xaxis:{ ...BASE.xaxis, fixedrange:false },
       }, CFG);
 
     // ──────────────── ווליום ────────────────
-    const volColors = close.map((c,i) => c >= (open[i] ?? c) ? '#2ea04366' : '#da363366');
+    const volColors = close.map((c,i) =>
+      c >= (open[i] ?? c) ? 'rgba(52,199,89,0.55)' : 'rgba(255,59,48,0.55)'
+    );
+    const volBorderColors = close.map((c,i) =>
+      c >= (open[i] ?? c) ? 'rgba(52,199,89,0.9)' : 'rgba(255,59,48,0.9)'
+    );
     Plotly.react('volumeChart',
       [{ type:'bar', x:dates, y:volume, name:'Volume',
-         marker:{ color:volColors }, hovertemplate:'Vol: %{y:.2s}<extra></extra>' }],
+         marker:{ color:volColors, line:{ color:volBorderColors, width:0.8 } },
+         hovertemplate:'Vol: %{y:.2s}<extra></extra>' }],
       { ...BASE, height:120,
         margin:{ l:55, r:16, t:2, b:32 },
         showlegend:false,
@@ -2737,29 +2759,29 @@
     if (rsi.length) {
       Plotly.react('rsiChart',
         [{ type:'scatter', x:dates, y:rsi, name:'RSI(14)', mode:'lines',
-           line:{ color:'#d2a8ff', width:2 },
+           line:{ color:'#af52de', width:2 },
            hovertemplate:'RSI: %{y:.1f}<extra></extra>' }],
         { ...BASE, height:150,
           margin:{ l:55, r:16, t:8, b:8 },
           showlegend:false,
           shapes:[
             { type:'rect',  x0:dates[0], x1:dates[dates.length-1], y0:70, y1:100,
-              fillcolor:'rgba(248,81,73,0.07)', line:{width:0} },
+              fillcolor:'rgba(255,59,48,0.07)', line:{width:0} },
             { type:'rect',  x0:dates[0], x1:dates[dates.length-1], y0:0,  y1:30,
-              fillcolor:'rgba(63,185,80,0.07)',  line:{width:0} },
+              fillcolor:'rgba(52,199,89,0.07)',  line:{width:0} },
             { type:'line',  x0:dates[0], x1:dates[dates.length-1], y0:70, y1:70,
-              line:{color:'#f85149',width:1,dash:'dash'} },
+              line:{color:'#ff3b30',width:1,dash:'dash'} },
             { type:'line',  x0:dates[0], x1:dates[dates.length-1], y0:30, y1:30,
-              line:{color:'#3fb950',width:1,dash:'dash'} },
+              line:{color:'#34c759',width:1,dash:'dash'} },
           ],
           yaxis:{ ...BASE.yaxis, range:[0,100], fixedrange:true,
             tickvals:[0,30,50,70,100], ticktext:['0','30','50','70','100'] },
           xaxis:{ ...BASE.xaxis, fixedrange:false },
           annotations:[
             { x:dates[dates.length-1], y:70, xanchor:'right', yanchor:'bottom',
-              text:'אוברבוט 70', showarrow:false, font:{color:'#f85149',size:9} },
+              text:'אוברבוט 70', showarrow:false, font:{color:'#ff3b30',size:9} },
             { x:dates[dates.length-1], y:30, xanchor:'right', yanchor:'top',
-              text:'אוסלד 30',    showarrow:false, font:{color:'#3fb950',size:9} },
+              text:'אוסלד 30',    showarrow:false, font:{color:'#34c759',size:9} },
           ],
         }, CFG);
     }
@@ -2768,30 +2790,30 @@
     if (cci.length) {
       Plotly.react('cciChart',
         [{ type:'scatter', x:dates, y:cci, name:'CCI(14)', mode:'lines',
-           line:{ color:'#e3b341', width:2 },
+           line:{ color:'#ff9f0a', width:2 },
            hovertemplate:'CCI: %{y:.0f}<extra></extra>' }],
         { ...BASE, height:150,
           margin:{ l:55, r:16, t:4, b:36 },
           showlegend:false,
           shapes:[
             { type:'line', x0:dates[0], x1:dates[dates.length-1], y0: 150, y1: 150,
-              line:{color:'#f85149',width:1,dash:'dash'} },
+              line:{color:'#ff3b30',width:1,dash:'dash'} },
             { type:'line', x0:dates[0], x1:dates[dates.length-1], y0: 100, y1: 100,
-              line:{color:'#f0883e',width:1,dash:'dot'} },
+              line:{color:'#ff9f0a',width:1,dash:'dot'} },
             { type:'line', x0:dates[0], x1:dates[dates.length-1], y0:   0, y1:   0,
-              line:{color:'#484f58',width:1} },
+              line:{color:'rgba(0,0,0,0.15)',width:1} },
             { type:'line', x0:dates[0], x1:dates[dates.length-1], y0:-100, y1:-100,
-              line:{color:'#58a6ff',width:1,dash:'dot'} },
+              line:{color:'#0071e3',width:1,dash:'dot'} },
             { type:'line', x0:dates[0], x1:dates[dates.length-1], y0:-200, y1:-200,
-              line:{color:'#3fb950',width:1,dash:'dash'} },
+              line:{color:'#34c759',width:1,dash:'dash'} },
           ],
           yaxis:{ ...BASE.yaxis, fixedrange:true },
           xaxis:{ ...BASE.xaxis, fixedrange:false },
           annotations:[
-            { x:dates[dates.length-1], y: 150, xanchor:'right', text:'+150', showarrow:false, font:{color:'#f85149',size:9} },
-            { x:dates[dates.length-1], y: 100, xanchor:'right', text:'+100', showarrow:false, font:{color:'#f0883e',size:9} },
-            { x:dates[dates.length-1], y:-100, xanchor:'right', text:'-100', showarrow:false, font:{color:'#58a6ff',size:9} },
-            { x:dates[dates.length-1], y:-200, xanchor:'right', text:'-200', showarrow:false, font:{color:'#3fb950',size:9} },
+            { x:dates[dates.length-1], y: 150, xanchor:'right', text:'+150', showarrow:false, font:{color:'#ff3b30',size:9} },
+            { x:dates[dates.length-1], y: 100, xanchor:'right', text:'+100', showarrow:false, font:{color:'#b45309',size:9} },
+            { x:dates[dates.length-1], y:-100, xanchor:'right', text:'-100', showarrow:false, font:{color:'#0071e3',size:9} },
+            { x:dates[dates.length-1], y:-200, xanchor:'right', text:'-200', showarrow:false, font:{color:'#34c759',size:9} },
           ],
         }, CFG);
     }
@@ -2822,11 +2844,11 @@
     const patterns = d.chart_patterns || [];
     if (!patterns.length) { hide('chartPatternsCard'); return; }
 
-    const sigColor = s => s === 'bullish' ? '#3fb950' : s === 'bearish' ? '#f85149' : '#e3b341';
+    const sigColor = s => s === 'bullish' ? 'var(--green)' : s === 'bearish' ? 'var(--red)' : 'var(--yellow)';
     const sigLabel = s => s === 'bullish' ? 'בוליש' : s === 'bearish' ? 'בריש' : 'ניטרלי';
 
     document.getElementById('chartPatternsGrid').innerHTML = patterns.map(p => `
-      <div style="background:#0d1117;border:1px solid ${sigColor(p.signal)}44;border-right:3px solid ${sigColor(p.signal)};
+      <div style="background:var(--bg);border:1px solid ${sigColor(p.signal)}44;border-right:3px solid ${sigColor(p.signal)};
                   border-radius:8px;padding:12px 14px;margin-bottom:10px;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
           <span style="font-size:20px;">${p.emoji}</span>
@@ -2836,10 +2858,10 @@
             ${sigLabel(p.signal)} · ${p.strength}
           </span>
         </div>
-        ${p.what_it_means ? `<div style="font-size:11px;color:#8b949e;font-style:italic;margin-bottom:6px;line-height:1.5;">💡 ${p.what_it_means}</div>` : ''}
-        <div style="font-size:13px;color:#c9d1d9;line-height:1.6;">${p.description}</div>
-        ${p.key_level ? `<div style="margin-top:6px;font-size:12px;color:#8b949e;">
-          🎯 רמת מפתח: <strong style="color:#e6edf3;">${p.key_level}</strong>
+        ${p.what_it_means ? `<div style="font-size:11px;color:var(--label2);font-style:italic;margin-bottom:6px;line-height:1.5;">💡 ${p.what_it_means}</div>` : ''}
+        <div style="font-size:13px;color:var(--label2);line-height:1.6;">${p.description}</div>
+        ${p.key_level ? `<div style="margin-top:6px;font-size:12px;color:var(--label2);">
+          🎯 רמת מפתח: <strong style="color:var(--label);">${p.key_level}</strong>
           ${p.target ? ` · יעד: <strong style="color:${sigColor(p.signal)};">${p.target}</strong>` : ''}
         </div>` : ''}
       </div>`).join('');
@@ -2888,13 +2910,13 @@
     const weakVol = ca.rise_weak_vol;
 
     const checkHtml = (ok, txt) =>
-      `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #21262d;">
+      `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bg3);">
         <span style="font-size:16px;">${ok ? '✅' : '❌'}</span>
-        <span style="font-size:13px;color:${ok ? '#3fb950' : '#f85149'};">${txt}</span>
+        <span style="font-size:13px;color:${ok ? 'var(--green)' : 'var(--red)'};">${txt}</span>
       </div>`;
 
     document.getElementById('mikhaChecklist').innerHTML =
-      `<div style="font-size:12px;font-weight:700;color:#8b949e;margin-bottom:6px;letter-spacing:1px;">3 שאלות לייב 20</div>` +
+      `<div style="font-size:12px;font-weight:700;color:var(--label2);margin-bottom:6px;letter-spacing:1px;">3 שאלות לייב 20</div>` +
       checkHtml(q1ok, q1txt) +
       checkHtml(q2ok, q2txt) +
       checkHtml(q3ok, q3txt) +
@@ -2906,31 +2928,31 @@
     const gapsUpTargets   = ca.gaps_up_targets   || [];
     let magnetsHtml = '';
     if (gapsDownTargets.length || gapsUpTargets.length) {
-      magnetsHtml = '<div style="font-size:12px;font-weight:700;color:#8b949e;margin:10px 0 6px;letter-spacing:1px;">גפים פתוחים — מגנטים</div>';
+      magnetsHtml = '<div style="font-size:12px;font-weight:700;color:var(--label2);margin:10px 0 6px;letter-spacing:1px;">גפים פתוחים — מגנטים</div>';
       gapsUpTargets.forEach(g => {
-        magnetsHtml += `<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#3fb950;padding:3px 0;">▲ גפ מעל: <strong>${g}</strong> — יעד עלייה</div>`;
+        magnetsHtml += `<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--green);padding:3px 0;">▲ גפ מעל: <strong>${g}</strong> — יעד עלייה</div>`;
       });
       gapsDownTargets.forEach(g => {
-        magnetsHtml += `<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#f85149;padding:3px 0;">▼ גפ מתחת: <strong>${g}</strong> — יעד תיקון</div>`;
+        magnetsHtml += `<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--red);padding:3px 0;">▼ גפ מתחת: <strong>${g}</strong> — יעד תיקון</div>`;
       });
     }
     document.getElementById('mikhaChecklist').innerHTML += magnetsHtml;
 
     // ── 3. נר סגירה ──
     const pc = ca.prev_candle;
-    const candleColor = pc.color === 'bullish' ? '#3fb950' : '#f85149';
+    const candleColor = pc.color === 'bullish' ? 'var(--green)' : 'var(--red)';
     const candleHe    = pc.color === 'bullish' ? 'ירוק (בוליש)' : 'אדום (בריש)';
     const volQ = pc.vol_ratio > 1.5 ? 'גבוה מאוד' : pc.vol_ratio > 1.2 ? 'גבוה' : pc.vol_ratio < 0.7 ? 'נמוך' : 'ממוצע';
     document.getElementById('candleDetailGrid').innerHTML = [
-      { label: 'פתיחה', val: pc.open, color: '#e6edf3' },
-      { label: 'גבוה',  val: pc.high, color: '#3fb950' },
-      { label: 'נמוך',  val: pc.low,  color: '#f85149' },
+      { label: 'פתיחה', val: pc.open, color: 'var(--label)' },
+      { label: 'גבוה',  val: pc.high, color: 'var(--green)' },
+      { label: 'נמוך',  val: pc.low,  color: 'var(--red)' },
       { label: 'סגירה', val: pc.close, color: candleColor },
       { label: 'צבע נר', val: candleHe, color: candleColor },
-      { label: 'גוף %', val: pc.body_pct + '%', color: '#e6edf3' },
-      { label: 'ווליום', val: pc.vol_ratio + 'x — ' + volQ, color: '#e6edf3' },
-      { label: 'פתיל עליון', val: pc.upper_wick_pct + '%', color: '#8b949e' },
-      { label: 'פתיל תחתון', val: pc.lower_wick_pct + '%', color: '#8b949e' },
+      { label: 'גוף %', val: pc.body_pct + '%', color: 'var(--label)' },
+      { label: 'ווליום', val: pc.vol_ratio + 'x — ' + volQ, color: 'var(--label)' },
+      { label: 'פתיל עליון', val: pc.upper_wick_pct + '%', color: 'var(--label2)' },
+      { label: 'פתיל תחתון', val: pc.lower_wick_pct + '%', color: 'var(--label2)' },
     ].map(s => `<div class="candle-stat"><div class="cs-label">${s.label}</div><div class="cs-val" style="color:${s.color}">${s.val}</div></div>`).join('');
     document.getElementById('candleTypeLabel').textContent = '📌 סוג נר: ' + pc.type;
 
@@ -2943,13 +2965,13 @@
 
     // ── 5. RSI ──
     const rsi = ca.rsi;
-    const rsiColor = rsi.signal === 'bullish' ? '#3fb950' : rsi.signal === 'bearish' ? '#f85149' : '#8b949e';
+    const rsiColor = rsi.signal === 'bullish' ? 'var(--green)' : rsi.signal === 'bearish' ? 'var(--red)' : 'var(--label2)';
     document.getElementById('rsiAnalysisRow').innerHTML =
       `<div style="font-size:13px;color:${rsiColor};">📊 ${rsi.description}</div>`;
 
     // ── 6. פריצה ──
     const bo = ca.breakout;
-    const boColor = bo.color === 'green' ? '#3fb950' : bo.color === 'yellow' ? '#e3b341' : '#f85149';
+    const boColor = bo.color === 'green' ? 'var(--green)' : bo.color === 'yellow' ? 'var(--yellow)' : 'var(--red)';
     const fill = document.getElementById('breakoutBarFill');
     fill.style.width = bo.score + '%';
     fill.style.background = boColor;
@@ -3022,10 +3044,10 @@
       // אירועים תואמים
       const matchEl = document.getElementById('worldMatchedEvents');
       if (_worldData.events && _worldData.events.length) {
-        matchEl.innerHTML = '<div style="font-size:13px;font-weight:700;color:#f0883e;margin-bottom:10px;">🔥 אירועים רלוונטיים עכשיו:</div>' +
+        matchEl.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:10px;">🔥 אירועים רלוונטיים עכשיו:</div>' +
           _worldData.events.map(ev => renderEventBlock(ev, true)).join('');
       } else {
-        matchEl.innerHTML = '<div style="font-size:13px;color:#8b949e;">אין התאמות לחדשות הנוכחיות — ראה לשונית "כל האירועים"</div>';
+        matchEl.innerHTML = '<div style="font-size:13px;color:var(--label2);">אין התאמות לחדשות הנוכחיות — ראה לשונית "כל האירועים"</div>';
       }
       // חדשות חיות
       const newsEl = document.getElementById('worldLiveNews');
@@ -3034,7 +3056,7 @@
           <div class="lni-source">${n.source}</div>
           <div>${n.title}</div>
         </div>`
-      ).join('') || '<div style="font-size:13px;color:#8b949e;">לא הצלחנו לטעון חדשות חיות</div>';
+      ).join('') || '<div style="font-size:13px;color:var(--label2);">לא הצלחנו לטעון חדשות חיות</div>';
     } else {
       document.getElementById('worldAllEvents').innerHTML =
         (_worldData.all_events || []).map(ev => renderEventBlock(ev, false)).join('');
@@ -3050,12 +3072,12 @@
     ).join('');
     const losersHtml = (ev.losers || []).map(l =>
       `<div class="ww-stock-row" onclick="setTicker('${l.ticker}')">
-        <div class="ww-ticker-badge" style="color:#f85149;">${l.ticker}</div>
+        <div class="ww-ticker-badge" style="color:var(--red);">${l.ticker}</div>
         <div><div class="ww-stock-name">${l.name}</div><div class="ww-stock-reason">${l.reason}</div></div>
       </div>`
     ).join('');
     const newsHtml = showNews && ev.news && ev.news.length
-      ? `<div style="font-size:12px;color:#8b949e;margin-bottom:6px;">📰 ${ev.news.slice(0,2).join(' | ')}</div>` : '';
+      ? `<div style="font-size:12px;color:var(--label2);margin-bottom:6px;">📰 ${ev.news.slice(0,2).join(' | ')}</div>` : '';
     return `<div class="macro-event-block">
       <div class="macro-event-topic">📌 ${ev.topic}</div>
       ${newsHtml}
