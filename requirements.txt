@@ -1,7 +1,2 @@
-flask
-yfinance
-pandas
-numpy
-gunicorn
-lxml
-requests
+requests==2.31.0
+schedule==1.2.1
