@@ -1,0 +1,9 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "python live20_bot.py",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
