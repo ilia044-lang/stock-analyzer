@@ -1,1 +1,1 @@
-worker: python live20_bot.py
+web: python live20_bot.py
