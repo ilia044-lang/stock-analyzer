@@ -3,7 +3,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-"startCommand": "python live20_bot\\(5\\).py --now",
+"startCommand": "python bot.py --now",
     "restartPolicyType": "ON_FAILURE"
   }
 }
