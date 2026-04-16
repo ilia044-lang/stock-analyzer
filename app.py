@@ -73,21 +73,23 @@ def calc_cci(high, low, close, period=14):
 
 
 def calc_atr(high, low, close, period=14):
+    # Wilder's RMA — זהה ל-TradingView (לא SMA)
     prev_close = close.shift(1)
     tr = pd.concat([
         high - low,
         (high - prev_close).abs(),
         (low - prev_close).abs()
     ], axis=1).max(axis=1)
-    return tr.rolling(period).mean()
+    return tr.ewm(alpha=1/period, adjust=False).mean()
 
 
 def calc_rsi(close, period=14):
+    # Wilder's Smoothed MA — זהה לשיטת TradingView
     delta = close.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
-    avg_gain = gain.rolling(period).mean()
-    avg_loss = loss.rolling(period).mean()
+    avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/period, adjust=False).mean()
     rs = avg_gain / avg_loss.replace(0, float('nan'))
     return 100 - (100 / (1 + rs))
 
@@ -2833,6 +2835,148 @@ def world_news():
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/scan')
+def scan_watchlist():
+    """סריקת מניות לפי שיטת לייב 20 — מחזיר רק buy/strong-buy"""
+    cached = cache_get('scan', ttl=600)
+    if cached:
+        return jsonify(cached)
+    try:
+        from scanner import run_scan
+        results = run_scan(only_qualifying=True)
+        import datetime as dt
+        result = {
+            'stocks': results,
+            'scanned_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'total': len(results),
+        }
+        cache_set('scan', result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e), 'stocks': []}), 500
+
+
+@app.route('/stock-news/<ticker>')
+def stock_news(ticker):
+    """חדשות עדכניות על מניה — Yahoo Finance + Google News, מתורגמות לעברית"""
+    ticker = ticker.upper().strip()
+    cache_key = f'stock_news_{ticker}'
+    cached = cache_get(cache_key, ttl=300)  # cache 5 דקות
+    if cached:
+        return jsonify(cached)
+
+    import xml.etree.ElementTree as ET
+    import datetime as dt
+    import urllib.parse
+
+    news_items = []
+    seen_titles = set()
+
+    # ── 1. Google News RSS ─────────────────────────────────────────────────────
+    try:
+        q = urllib.parse.quote(f'{ticker} stock')
+        rss_url = f'https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en'
+        resp = requests.get(rss_url, timeout=8, headers={'User-Agent': 'Mozilla/5.0'})
+        root = ET.fromstring(resp.content)
+        for item in root.findall('.//item')[:12]:
+            title_en = (item.findtext('title') or '').split(' - ')[0].strip()
+            link     = item.findtext('link') or ''
+            pub_str  = item.findtext('pubDate') or ''
+            source_el = item.find('{https://news.google.com/rss}source')
+            source   = source_el.text if source_el is not None else 'Google News'
+            # parse date
+            try:
+                pub_dt = dt.datetime.strptime(pub_str[:25], '%a, %d %b %Y %H:%M:%S')
+                pub_date = pub_dt.strftime('%d/%m %H:%M')
+                sort_ts  = pub_dt.timestamp()
+            except Exception:
+                pub_date = ''
+                sort_ts  = 0
+            if title_en and title_en not in seen_titles:
+                seen_titles.add(title_en)
+                news_items.append({
+                    'title_en': title_en,
+                    'source': source,
+                    'link': link,
+                    'date': pub_date,
+                    'sort_ts': sort_ts,
+                    'origin': 'google',
+                })
+    except Exception:
+        pass
+
+    # ── 2. Yahoo Finance (yfinance) ────────────────────────────────────────────
+    try:
+        stock    = yf.Ticker(ticker)
+        raw_news = stock.news or []
+        for item in raw_news[:10]:
+            content  = item.get('content', item)
+            title_en = (content.get('title', '') or item.get('title', '')).strip()
+            provider = content.get('provider', {})
+            source   = provider.get('displayName', '') if isinstance(provider, dict) else item.get('publisher', '')
+            canonical = content.get('canonicalUrl', {}) or content.get('clickThroughUrl', {})
+            link     = canonical.get('url', '') if isinstance(canonical, dict) else item.get('link', '')
+            pub_str  = content.get('pubDate', '') or content.get('displayTime', '')
+            try:
+                pub_dt   = dt.datetime.strptime(pub_str[:16], '%Y-%m-%dT%H:%M')
+                pub_date = pub_dt.strftime('%d/%m %H:%M')
+                sort_ts  = pub_dt.timestamp()
+            except Exception:
+                pub_ts   = item.get('providerPublishTime', 0)
+                if pub_ts:
+                    pub_dt   = dt.datetime.fromtimestamp(pub_ts)
+                    pub_date = pub_dt.strftime('%d/%m %H:%M')
+                    sort_ts  = pub_ts
+                else:
+                    pub_date = ''
+                    sort_ts  = 0
+            if title_en and title_en not in seen_titles:
+                seen_titles.add(title_en)
+                news_items.append({
+                    'title_en': title_en,
+                    'source': source or 'Yahoo Finance',
+                    'link': link,
+                    'date': pub_date,
+                    'sort_ts': sort_ts,
+                    'origin': 'yahoo',
+                })
+    except Exception:
+        pass
+
+    # ── מיון לפי זמן (הכי חדש ראשון) ──────────────────────────────────────────
+    news_items.sort(key=lambda x: x['sort_ts'], reverse=True)
+    news_items = news_items[:15]
+
+    # ── תרגום לעברית ──────────────────────────────────────────────────────────
+    keywords_mover = [
+        'earnings', 'revenue', 'guidance', 'merger', 'acquisition', 'lawsuit',
+        'sec', 'fda', 'deal', 'contract', 'beat', 'miss', 'upgrade', 'downgrade',
+        'buyback', 'dividend', 'recall', 'investigation', 'bankruptcy', 'layoff',
+        'partnership', 'ipo', 'split', 'rally', 'crash', 'surge', 'plunge',
+    ]
+    result_items = []
+    for n in news_items:
+        title_he = translate_he(n['title_en'])
+        is_mover = any(kw in n['title_en'].lower() for kw in keywords_mover)
+        result_items.append({
+            'title':    title_he,
+            'title_en': n['title_en'],
+            'source':   n['source'],
+            'link':     n['link'],
+            'date':     n['date'],
+            'is_mover': is_mover,
+            'origin':   n['origin'],
+        })
+
+    result = {
+        'ticker': ticker,
+        'items':  result_items,
+        'fetched_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+    }
+    cache_set(cache_key, result)
+    return jsonify(result)
 
 
 if __name__ == '__main__':

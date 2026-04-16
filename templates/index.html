@@ -199,6 +199,74 @@
     @media (max-width: 900px) {
       .page-layout { flex-direction: column-reverse; }
       .cl-sidebar { width: 100%; position: static; }
+      .scan-sidebar { width: 100%; position: static; order: -1; }
+    }
+
+    /* ── Liv20 Scanner Sidebar ── */
+    .scan-sidebar {
+      width: 260px; flex-shrink: 0;
+      position: sticky; top: 72px; align-self: flex-start;
+      background: var(--bg2); border: 1px solid var(--sep);
+      border-radius: var(--r-lg); overflow: hidden; font-size: 13px;
+      box-shadow: var(--shadow); max-height: calc(100vh - 90px); overflow-y: auto;
+    }
+    .scan-header {
+      background: linear-gradient(135deg, #1d1d1f 0%, #2c2c2e 100%);
+      padding: 12px 14px; border-bottom: 1px solid var(--sep);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .scan-title { font-size: 12px; font-weight: 700; color: #f5f5f7; letter-spacing: 0.5px; text-transform: uppercase; }
+    .scan-badge {
+      background: var(--green); color: #fff; font-size: 10px;
+      font-weight: 700; border-radius: 8px; padding: 2px 7px; letter-spacing: 0.3px;
+    }
+    .scan-meta {
+      padding: 8px 12px; background: var(--bg3); border-bottom: 1px solid var(--sep2);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .scan-meta-time { font-size: 10px; color: var(--label3); }
+    .scan-btn {
+      font-size: 10px; font-weight: 600; color: var(--blue);
+      border: 1px solid var(--blue); border-radius: 6px;
+      padding: 3px 8px; background: none; cursor: pointer;
+      font-family: inherit; transition: all .15s;
+    }
+    .scan-btn:hover { background: var(--blue); color: #fff; }
+    .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .scan-empty {
+      padding: 28px 16px; text-align: center;
+      color: var(--label3); font-size: 12px; line-height: 1.6;
+    }
+    .scan-loading {
+      padding: 28px 16px; text-align: center; color: var(--label3); font-size: 12px;
+    }
+    .scan-list { padding: 6px 0; }
+    .scan-item {
+      padding: 10px 12px; border-bottom: 1px solid var(--sep2);
+      transition: background .15s; cursor: pointer;
+    }
+    .scan-item:last-child { border-bottom: none; }
+    .scan-item:hover { background: var(--bg3); }
+    .scan-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+    .scan-ticker { font-size: 13px; font-weight: 700; color: var(--label); }
+    .scan-chg { font-size: 11px; font-weight: 600; }
+    .scan-chg.pos { color: var(--green); }
+    .scan-chg.neg { color: var(--red); }
+    .scan-name { font-size: 10px; color: var(--label3); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .scan-reason { font-size: 10px; color: var(--label2); line-height: 1.4; }
+    .scan-rec {
+      display: inline-block; font-size: 9px; font-weight: 700;
+      border-radius: 4px; padding: 1px 5px; margin-right: 4px;
+      text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .scan-rec.strong-buy  { background: var(--green); color: #fff; }
+    .scan-rec.buy         { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+    .scan-rec.strong-sell { background: var(--red); color: #fff; }
+    .scan-item.is-short   { border-right: 3px solid var(--red); }
+    .scan-price { font-size: 11px; color: var(--label2); margin-top: 2px; }
+    .scan-next {
+      padding: 8px 12px; border-top: 1px solid var(--sep);
+      background: var(--bg3); font-size: 10px; color: var(--label3); text-align: center;
     }
 
     /* ── Market Overview Bar ── */
@@ -830,19 +898,6 @@
   </div>
 </div>
 
-<!-- ── עוזר AI ── -->
-<div style="max-width:1500px;margin:10px auto 0;padding:0 20px;">
-  <div class="assistant-card">
-    <div class="section-title" style="margin-bottom:12px;">🤖 עוזר מסחר — שאל אותי כל שאלה</div>
-    <div class="assistant-input-row">
-      <input id="assistantInput" class="assistant-input" type="text"
-        placeholder='לדוג: "האם לקנות TSLA?", "מה ה-SL?", "יש לי FOMO מה לעשות?"'
-        onkeydown="if(event.key==='Enter') askAssistant()" />
-      <button class="assistant-send" onclick="askAssistant()">שלח</button>
-    </div>
-    <div class="assistant-answer" id="assistantAnswer">שאל אותי כל שאלה על מניה, שיטה, או רגש במסחר...</div>
-  </div>
-</div>
 
 <!-- ── חדשות עולם — מי מרוויח ומי מפסיד ── -->
 <div style="max-width:1500px;margin:10px auto 0;padding:0 20px;">
@@ -1231,9 +1286,16 @@
   </div>
 
   <!-- News -->
-  <div id="newsCard" style="display:none;background:var(--bg2);border:1px solid var(--bg3);border-radius:12px;padding:18px 22px;margin-bottom:16px;">
-    <div class="section-title">📰 חדשות שיכולות להזיז את המחיר</div>
-    <div id="newsList"></div>
+  <!-- News Card -->
+  <div id="newsCard" style="display:none;background:var(--bg2);border:1px solid var(--sep);border-radius:14px;margin-bottom:16px;overflow:hidden;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:var(--bg3);border-bottom:1px solid var(--sep);">
+      <div class="section-title" style="margin:0;">📰 חדשות עדכניות</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="newsUpdatedAt" style="font-size:10px;color:var(--label3);"></span>
+        <button onclick="loadStockNews(window._currentTicker, true)" style="font-size:10px;color:var(--blue);border:1px solid var(--blue);border-radius:6px;padding:3px 9px;background:none;cursor:pointer;font-family:inherit;">רענן</button>
+      </div>
+    </div>
+    <div id="newsList" style="padding:0 4px;"></div>
   </div>
 
   <!-- Professional Chart -->
@@ -1328,6 +1390,23 @@
     </div>
   </div>
 </div><!-- end .main -->
+
+<!-- ── Liv20 Scanner Sidebar ── -->
+<div class="scan-sidebar" id="scanSidebar">
+  <div class="scan-header">
+    <div class="scan-title">Liv20 Scanner</div>
+    <span class="scan-badge" id="scanBadge">—</span>
+  </div>
+  <div class="scan-meta">
+    <span class="scan-meta-time" id="scanMetaTime">טרם נסרק</span>
+    <button class="scan-btn" id="scanNowBtn" onclick="runScan(true)">סרוק עכשיו</button>
+  </div>
+  <div id="scanBody">
+    <div class="scan-empty">לחץ "סרוק עכשיו" או המתן לסריקה האוטומטית<br>(16:35 ו-22:40 ET)</div>
+  </div>
+  <div class="scan-next" id="scanNextScan">—</div>
+</div>
+
 </div><!-- end .page-layout -->
 
 <script>
@@ -1859,6 +1938,7 @@
   async function runAnalysis() {
     const ticker = tickerInput.value.trim().toUpperCase();
     if (!ticker) { tickerInput.focus(); return; }
+    window._currentTicker = ticker;
 
     // Reset UI
     hide('errorBox');
@@ -2577,24 +2657,49 @@
   }
 
   function renderNews(d) {
-    if (!d.news || d.news.length === 0) return;
-    const movers = d.news.filter(n => n.is_mover);
-    const regular = d.news.filter(n => !n.is_mover);
-    const allNews = [...movers, ...regular];
-
-    document.getElementById('newsList').innerHTML = allNews.map(n => `
-      <div style="border-bottom:1px solid var(--bg3);padding:10px 0;display:flex;gap:10px;align-items:flex-start;">
-        <div style="min-width:24px;font-size:16px;">${n.is_mover ? '🔥' : '📄'}</div>
-        <div style="flex:1;">
-          <a href="${n.link}" target="_blank" style="color:${n.is_mover?'var(--orange)':'var(--label)'};text-decoration:none;font-size:14px;font-weight:${n.is_mover?'700':'400'};line-height:1.4;">
-            ${n.title}
-          </a>
-          <div style="font-size:11px;color:var(--label2);margin-top:3px;">${n.publisher} · ${n.date}</div>
-        </div>
-        ${n.is_mover ? '<div style="font-size:10px;background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:2px 6px;white-space:nowrap;align-self:center;">מזיז מחיר</div>' : ''}
-      </div>
-    `).join('');
+    // הצג חלונית עם לואדינג ואז טען חדשות מה-endpoint החדש
+    if (!window._currentTicker) return;
     show('newsCard');
+    loadStockNews(window._currentTicker, false);
+  }
+
+  async function loadStockNews(ticker, force) {
+    if (!ticker) return;
+    const listEl     = document.getElementById('newsList');
+    const updatedEl  = document.getElementById('newsUpdatedAt');
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--label3);font-size:13px;">⏳ טוען חדשות...</div>';
+    show('newsCard');
+    try {
+      const url = `/stock-news/${ticker}${force ? '?t=' + Date.now() : ''}`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      const items = data.items || [];
+      if (updatedEl && data.fetched_at) {
+        const d = new Date(data.fetched_at);
+        updatedEl.textContent = 'עודכן ' + d.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit', timeZone:'Asia/Jerusalem'});
+      }
+      if (!items.length) {
+        listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--label3);font-size:13px;">לא נמצאו חדשות</div>';
+        return;
+      }
+      const originIcon = o => o === 'google' ? '<span style="font-size:9px;background:#e8f0fe;color:#1a73e8;border-radius:3px;padding:1px 4px;margin-right:4px;">Google</span>' : '<span style="font-size:9px;background:#fff3cd;color:#856404;border-radius:3px;padding:1px 4px;margin-right:4px;">Yahoo</span>';
+      listEl.innerHTML = items.map(n => `
+        <div style="border-bottom:1px solid var(--sep2);padding:11px 18px;display:flex;gap:10px;align-items:flex-start;">
+          <div style="font-size:18px;min-width:26px;padding-top:1px;">${n.is_mover ? '🔥' : '📰'}</div>
+          <div style="flex:1;min-width:0;">
+            <a href="${n.link}" target="_blank" rel="noopener" style="color:${n.is_mover ? 'var(--orange)' : 'var(--label)'};text-decoration:none;font-size:13.5px;font-weight:${n.is_mover ? '700' : '500'};line-height:1.45;display:block;">
+              ${n.title}
+            </a>
+            <div style="font-size:10.5px;color:var(--label3);margin-top:4px;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+              ${originIcon(n.origin)}${n.source}${n.date ? ' · ' + n.date : ''}
+              ${n.is_mover ? '<span style="background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:1px 5px;font-size:9px;">מזיז מחיר</span>' : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) {
+      listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--label3);font-size:13px;">שגיאה בטעינת חדשות</div>';
+    }
   }
 
   function renderSL(d) {
@@ -3098,6 +3203,127 @@
   // טען חדשות עולם בטעינה
   loadWorldNews();
   setInterval(loadWorldNews, 900000); // כל 15 דקות
+
+  // ─── Liv20 Scanner ───────────────────────────────────────────────────────────
+
+  let _scanInProgress = false;
+
+  function etTimeNow() {
+    // מחזיר שעה ET כאובייקט {h, m}
+    const now = new Date();
+    const etStr = now.toLocaleString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false });
+    const [h, m] = etStr.split(':').map(Number);
+    return { h, m };
+  }
+
+  function nextScanLabel() {
+    const { h, m } = etTimeNow();
+    const curMin = h * 60 + m;
+    const t1 = 16 * 60 + 35;  // 16:35 ET
+    const t2 = 22 * 60 + 40;  // 22:40 ET
+    if (curMin < t1) {
+      const diff = t1 - curMin;
+      return `הסריקה הבאה: 16:35 ET (בעוד ${diff} דקות)`;
+    } else if (curMin < t2) {
+      const diff = t2 - curMin;
+      return `הסריקה הבאה: 22:40 ET (בעוד ${diff} דקות)`;
+    } else {
+      return 'הסריקה הבאה: 16:35 ET מחר';
+    }
+  }
+
+  function shouldAutoScan() {
+    const { h, m } = etTimeNow();
+    return (h === 16 && m === 35) || (h === 22 && m === 40);
+  }
+
+  async function runScan(manual = false) {
+    if (_scanInProgress) return;
+    _scanInProgress = true;
+    const btn = document.getElementById('scanNowBtn');
+    const body = document.getElementById('scanBody');
+    if (btn) btn.disabled = true;
+    body.innerHTML = '<div class="scan-loading">⏳ סורק מניות... (עשוי לקחת 30-60 שניות)</div>';
+
+    try {
+      const res = await fetch('/scan');
+      const data = await res.json();
+      renderScanResults(data);
+    } catch (e) {
+      body.innerHTML = '<div class="scan-empty">שגיאת תקשורת — נסה שוב</div>';
+    } finally {
+      _scanInProgress = false;
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function renderScanResults(data) {
+    const body = document.getElementById('scanBody');
+    const badge = document.getElementById('scanBadge');
+    const meta = document.getElementById('scanMetaTime');
+    const nextEl = document.getElementById('scanNextScan');
+
+    const stocks = data.stocks || [];
+    badge.textContent = stocks.length ? `${stocks.length} מניות` : 'אין';
+    badge.style.background = stocks.length ? 'var(--green)' : 'var(--label3)';
+
+    if (data.scanned_at) {
+      const d = new Date(data.scanned_at);
+      const timeStr = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+      meta.textContent = `עודכן ${timeStr}`;
+    }
+
+    if (nextEl) nextEl.textContent = nextScanLabel();
+
+    if (!stocks.length) {
+      body.innerHTML = '<div class="scan-empty">אין מניות מתאימות כרגע<br><span style="font-size:9px;opacity:.7;">לפי שיטת לייב 20</span></div>';
+      return;
+    }
+
+    const buys  = stocks.filter(s => s.rec === 'strong-buy');
+    const sells = stocks.filter(s => s.rec === 'strong-sell');
+
+    function renderItem(s) {
+      const chgCls   = s.change_pct >= 0 ? 'pos' : 'neg';
+      const chgStr   = (s.change_pct >= 0 ? '+' : '') + s.change_pct.toFixed(2) + '%';
+      const isShort  = s.rec === 'strong-sell';
+      const recCls   = isShort ? 'strong-sell' : 'strong-buy';
+      const recLabel = isShort ? '▼ STRONG SHORT' : '★ STRONG BUY';
+      const maColor  = isShort ? 'var(--red)' : 'var(--green)';
+      const maSign   = s.dist_ma >= 0 ? '+' : '';
+      const itemCls  = isShort ? 'scan-item is-short' : 'scan-item';
+      return `<div class="${itemCls}" onclick="document.getElementById('tickerInput').value='${s.ticker}'; runAnalysis();">
+        <div class="scan-item-top">
+          <span class="scan-ticker">${s.ticker}</span>
+          <span class="scan-chg ${chgCls}">${chgStr}</span>
+        </div>
+        <div class="scan-name">${s.name}</div>
+        <div><span class="scan-rec ${recCls}">${recLabel}</span></div>
+        <div class="scan-reason">${s.reason}</div>
+        <div class="scan-price">$${s.price.toFixed(2)} &nbsp;<span style="color:${maColor};font-size:9px;">MA20 ${maSign}${s.dist_ma.toFixed(1)}%</span></div>
+      </div>`;
+    }
+
+    let html = '';
+    if (buys.length) {
+      html += `<div style="padding:6px 12px 3px;font-size:9px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.5px;">קניה חזקה (${buys.length})</div>`;
+      html += buys.map(renderItem).join('');
+    }
+    if (sells.length) {
+      html += `<div style="padding:6px 12px 3px;font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:0.5px;border-top:1px solid var(--sep2);">שורט חזק (${sells.length})</div>`;
+      html += sells.map(renderItem).join('');
+    }
+    body.innerHTML = '<div class="scan-list">' + html + '</div>';
+  }
+
+  // בדיקה כל דקה — אם הגיע זמן הסריקה האוטומטית
+  setInterval(() => {
+    document.getElementById('scanNextScan').textContent = nextScanLabel();
+    if (shouldAutoScan()) runScan(false);
+  }, 60000);
+
+  // הצג זמן הבא מיד בטעינה
+  document.getElementById('scanNextScan').textContent = nextScanLabel();
 </script>
 </body>
 </html>

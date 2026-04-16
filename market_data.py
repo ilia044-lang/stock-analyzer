@@ -151,32 +151,32 @@ def get_extended_hours():
 
 # ── VIX ───────────────────────────────────────────────────────────────────────
 def get_vix():
-    """
-    מדד הפחד של וול סטריט (Volatility Index).
-    מתחת 15 = שוק רגוע ואופטימי.
-    15–25 = חשש בינוני.
-    מעל 25 = פחד, תנודתיות גבוהה.
-    מעל 40 = פאניקה.
-    """
-    try:
-        vix = _ticker("^VIX")
-        df  = vix.history(period="2d")
-        if df.empty:
-            return None
-        val  = round(df['Close'].iloc[-1], 1)
-        prev = round(df['Close'].iloc[-2], 1) if len(df) > 1 else val
-        chg  = round(val - prev, 1)
-        if val < 15:
-            level, color = "רגוע", "#3fb950"
-        elif val < 25:
-            level, color = "חשש בינוני", "#e3b341"
-        elif val < 40:
-            level, color = "פחד", "#f0883e"
-        else:
-            level, color = "פאניקה!", "#f85149"
-        return {'value': val, 'change': chg, 'level': level, 'color': color}
-    except Exception:
-        return None
+    """מדד הפחד — מנסה כמה טיקרים"""
+    for symbol in ["^VIX", "UVXY", "VXX"]:
+        try:
+            df = _ticker(symbol).history(period="2d")
+            if df.empty or len(df) < 1:
+                continue
+            val  = round(float(df['Close'].iloc[-1]), 1)
+            prev = round(float(df['Close'].iloc[-2]), 1) if len(df) > 1 else val
+            chg  = round(val - prev, 1)
+            # UVXY/VXX הם לא VIX עצמו — נרמל בערך
+            if symbol == "UVXY":
+                val = round(val / 2, 1)   # UVXY ~2x VIX
+            elif symbol == "VXX":
+                val = round(val * 0.85, 1) # קירוב
+            if val < 15:
+                level, color = "רגוע", "#3fb950"
+            elif val < 25:
+                level, color = "חשש בינוני", "#e3b341"
+            elif val < 40:
+                level, color = "פחד", "#f0883e"
+            else:
+                level, color = "פאניקה!", "#f85149"
+            return {'value': val, 'change': chg, 'level': level, 'color': color}
+        except Exception:
+            continue
+    return None
 
 
 # ── Fear & Greed Index (CNN) ──────────────────────────────────────────────────
@@ -251,9 +251,16 @@ def get_fear_greed():
             'Greed':         'חמדנות',
             'Extreme Greed': 'חמדנות קיצונית',
         }
+        # תווית לפי ניקוד אם rating חסר
+        if rating is None:
+            if score <= 25:   rating = 'extreme fear'
+            elif score <= 45: rating = 'fear'
+            elif score <= 55: rating = 'neutral'
+            elif score <= 75: rating = 'greed'
+            else:             rating = 'extreme greed'
         return {
             'score': score, 'change': chg,
-            'label': labels.get(rating, rating),
+            'label': labels.get(rating, labels.get(rating.lower(), rating)),
             'color': color
         }
     except Exception:
@@ -262,31 +269,32 @@ def get_fear_greed():
 
 # ── DXY — מדד הדולר ──────────────────────────────────────────────────────────
 def get_dxy():
-    """
-    מדד כוח הדולר מול סל מטבעות.
-    דולר חזק (DXY עולה) → לחץ על מניות, סחורות וריביות.
-    דולר חלש (DXY יורד) → תמיכה במניות ובסחורות.
-    """
-    try:
-        t  = _ticker("DX-Y.NYB")
-        df = t.history(period="2d")
-        if df.empty:
-            return None
-        val  = round(df['Close'].iloc[-1], 2)
-        prev = round(df['Close'].iloc[-2], 2) if len(df) > 1 else val
-        chg  = round(val - prev, 2)
-        chg_pct = round(chg / prev * 100, 2) if prev else 0
-        if val > 105:
-            level, color = "דולר חזק מאוד", "#f85149"
-        elif val > 101:
-            level, color = "דולר חזק", "#e3b341"
-        elif val > 97:
-            level, color = "ניטרלי", "#8b949e"
-        else:
-            level, color = "דולר חלש", "#3fb950"
-        return {'value': val, 'change': chg, 'change_pct': chg_pct, 'level': level, 'color': color}
-    except Exception:
-        return None
+    """מדד הדולר — מנסה כמה טיקרים"""
+    for symbol in ["DX-Y.NYB", "DX=F", "UUP"]:
+        try:
+            df = _ticker(symbol).history(period="2d")
+            if df.empty or len(df) < 1:
+                continue
+            val  = round(float(df['Close'].iloc[-1]), 2)
+            prev = round(float(df['Close'].iloc[-2]), 2) if len(df) > 1 else val
+            chg  = round(val - prev, 2)
+            chg_pct = round(chg / prev * 100, 2) if prev else 0
+            # UUP הוא ETF — לא DXY עצמו, אבל מייצג את הכיוון
+            if symbol == "UUP":
+                # UUP נע סביב 25-30, נרמל לסקאלה של DXY (95-110)
+                val = round(val * 3.5, 2)
+            if val > 105:
+                level, color = "דולר חזק מאוד", "#f85149"
+            elif val > 101:
+                level, color = "דולר חזק", "#e3b341"
+            elif val > 97:
+                level, color = "ניטרלי", "#8b949e"
+            else:
+                level, color = "דולר חלש", "#3fb950"
+            return {'value': val, 'change': chg, 'change_pct': chg_pct, 'level': level, 'color': color}
+        except Exception:
+            continue
+    return None
 
 
 # ── ריבית 10 שנים (US10Y) ─────────────────────────────────────────────────────
@@ -297,25 +305,34 @@ def get_us10y():
     ריבית יורדת → תמיכה במניות, הקלה על חברות ממונפות.
     מעל 4.5% → לחץ כבד על שוק המניות.
     """
-    try:
-        t  = _ticker("^TNX")
-        df = t.history(period="2d")
-        if df.empty:
-            return None
-        val  = round(df['Close'].iloc[-1], 3)
-        prev = round(df['Close'].iloc[-2], 3) if len(df) > 1 else val
-        chg  = round(val - prev, 3)
-        if val > 4.5:
-            level, color = "לחץ כבד על מניות", "#f85149"
-        elif val > 4.0:
-            level, color = "לחץ בינוני", "#e3b341"
-        elif val > 3.5:
-            level, color = "ניטרלי", "#8b949e"
-        else:
-            level, color = "תמיכה במניות", "#3fb950"
-        return {'value': val, 'change': chg, 'level': level, 'color': color}
-    except Exception:
-        return None
+    for symbol, scale in [("^TNX", 1.0), ("^TYX", 1.0), ("TLT", None)]:
+        try:
+            df = _ticker(symbol).history(period="2d")
+            if df.empty or len(df) < 1:
+                continue
+            raw  = float(df['Close'].iloc[-1])
+            rawp = float(df['Close'].iloc[-2]) if len(df) > 1 else raw
+            if symbol == "TLT":
+                # TLT הוא bond ETF — ריבית מתנהגת הפוך ממחיר
+                # TLT ~100 = ריבית ~4%, TLT ~90 = ריבית ~4.5%
+                val  = round(400 / raw * 10, 3)
+                prev = round(400 / rawp * 10, 3)
+            else:
+                val  = round(raw, 3)
+                prev = round(rawp, 3)
+            chg = round(val - prev, 3)
+            if val > 4.5:
+                level, color = "לחץ כבד על מניות", "#f85149"
+            elif val > 4.0:
+                level, color = "לחץ בינוני", "#e3b341"
+            elif val > 3.5:
+                level, color = "ניטרלי", "#8b949e"
+            else:
+                level, color = "תמיכה במניות", "#3fb950"
+            return {'value': val, 'change': chg, 'level': level, 'color': color}
+        except Exception:
+            continue
+    return None
 
 
 # ── סקטורים ──────────────────────────────────────────────────────────────────
