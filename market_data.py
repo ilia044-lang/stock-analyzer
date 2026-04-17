@@ -7,6 +7,7 @@ import json
 import datetime
 import time
 import yfinance as yf
+
 def _ticker(symbol):
     return yf.Ticker(symbol)
 

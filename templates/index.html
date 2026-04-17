@@ -390,15 +390,6 @@
     .macro-theme-exp   { font-size:12px; color:var(--label2); margin-bottom:4px; line-height:1.5; }
     .macro-theme-tickers { font-size:12px; color:var(--blue); }
 
-    /* ── AI Assistant ── */
-    .assistant-card { background:var(--bg2); border:1px solid var(--sep); border-radius:var(--r-md); padding:18px; margin-bottom:18px; box-shadow:var(--shadow-sm); }
-    .assistant-input-row { display:flex; gap:8px; margin-bottom:12px; }
-    .assistant-input { flex:1; background:var(--bg3); border:1px solid var(--sep); border-radius:var(--r-sm); padding:11px 16px; color:var(--label); font-size:14px; font-family:inherit; outline:none; transition:border-color .15s; }
-    .assistant-input:focus { border-color:var(--blue); }
-    .assistant-send { background:#0071e3; border:none; color:#fff; border-radius:var(--r-sm); padding:11px 20px; cursor:pointer; font-size:14px; font-weight:600; font-family:inherit; transition:filter .15s; }
-    .assistant-send:hover { filter:brightness(1.08); }
-    .assistant-answer { background:var(--bg3); border-radius:var(--r-sm); padding:14px 16px; font-size:13px; color:var(--label); line-height:1.8; white-space:pre-wrap; min-height:60px; }
-    .assistant-loading { color:var(--blue); font-size:13px; }
 
     /* ── Recommendation ── */
     .rec-card { display: none; border-radius: var(--r-lg); padding: 22px 26px; margin-bottom: 18px; text-align: center; border: 1px solid; }
@@ -1842,22 +1833,6 @@
     });
   }
 
-  // ── עוזר AI ──
-  async function askAssistant() {
-    const input = document.getElementById('assistantInput');
-    const answer = document.getElementById('assistantAnswer');
-    const q = input.value.trim();
-    if (!q) return;
-    const ticker = (document.getElementById('tickerInput').value || '').trim().toUpperCase();
-    answer.innerHTML = '<span class="assistant-loading">🤔 חושב...</span>';
-    try {
-      const res = await fetch(`/ask?q=${encodeURIComponent(q)}&ticker=${encodeURIComponent(ticker)}`);
-      const d = await res.json();
-      answer.textContent = d.answer || 'לא הצלחתי להבין. נסה שאלה אחרת.';
-    } catch(e) {
-      answer.textContent = 'שגיאה בחיבור. נסה שוב.';
-    }
-  }
 
   // ── מאקרו ──
   async function loadMacro() {

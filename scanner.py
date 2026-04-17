@@ -63,6 +63,10 @@ NAMES = {
 
 # ── אינדיקטורים ────────────────────────────────────────────────────────────────
 
+def _ticker(symbol):
+    return yf.Ticker(symbol)
+
+
 def calc_ma20(close):
     return close.rolling(window=20).mean()
 
@@ -110,7 +114,7 @@ def build_reason(signals_map, direction='bullish'):
 
 def quick_analyze(ticker):
     try:
-        stock = yf.Ticker(ticker)
+        stock = _ticker(ticker)
         df    = stock.history(period='3mo')
         if df.empty or len(df) < 22:
             return None
