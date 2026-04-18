@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מעקב תיק השקעות</title>
+  <style>
+    :root {
+      --bg:    #f2f2f7;
+      --bg2:   #ffffff;
+      --bg3:   #f2f2f7;
+      --bg4:   #e5e5ea;
+      --sep:   rgba(0,0,0,0.14);
+      --sep2:  rgba(0,0,0,0.07);
+      --label:  #1d1d1f;
+      --label2: #3a3a3c;
+      --label3: #6e6e73;
+      --blue:       #0071e3;
+      --blue-dim:   rgba(0,113,227,0.10);
+      --green:      #34c759;
+      --green-dim:  rgba(52,199,89,0.12);
+      --red:        #ff3b30;
+      --red-dim:    rgba(255,59,48,0.10);
+      --r-sm:  10px;
+      --r-md:  14px;
+      --r-lg:  18px;
+      --shadow:    0 2px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+      --shadow-sm: 0 1px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+                   'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      background-image: radial-gradient(ellipse 100% 60% at 50% 0%, rgba(0,113,227,0.05) 0%, transparent 65%);
+      background-attachment: fixed;
+      color: var(--label);
+      direction: rtl;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 4px 20px rgba(0,0,0,0.08);
+    }
+    header .logo { font-size: 26px; }
+    header h1 { font-size: 20px; font-weight: 700; color: var(--label); }
+    header .subtitle { font-size: 13px; color: var(--label3); margin-top: 2px; }
+    header .back-btn {
+      margin-right: auto;
+      background: var(--blue-dim);
+      color: var(--blue);
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    header .back-btn:hover { background: rgba(0,113,227,0.18); }
+
+    .main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* Summary Cards */
+    .summary-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 700px) { .summary-row { grid-template-columns: repeat(2, 1fr); } }
+
+    .sum-card {
+      background: var(--bg2);
+      border-radius: var(--r-md);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .sum-card .sc-label { font-size: 12px; color: var(--label3); font-weight: 500; margin-bottom: 6px; }
+    .sum-card .sc-val  { font-size: 22px; font-weight: 700; }
+    .sum-card .sc-val.pos { color: #1a7f3c; }
+    .sum-card .sc-val.neg { color: var(--red); }
+    .sum-card .sc-val.neutral { color: var(--label); }
+
+    /* Add position form */
+    .card {
+      background: var(--bg2);
+      border-radius: var(--r-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+    }
+    .card h2 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      color: var(--label);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 12px; font-weight: 600; color: var(--label3); }
+    .form-group input, .form-group select {
+      background: var(--bg3);
+      border: 1.5px solid var(--sep);
+      border-radius: var(--r-sm);
+      padding: 10px 12px;
+      font-size: 15px;
+      color: var(--label);
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(0,113,227,0.12);
+    }
+    .form-group input::placeholder { color: var(--label3); }
+
+    .btn-add {
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 10px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+      align-self: end;
+    }
+    .btn-add:hover { background: #005ab8; }
+    .btn-add:active { transform: scale(0.97); }
+
+    /* Positions Table */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th {
+      text-align: right;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--label3);
+      border-bottom: 1px solid var(--sep);
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--sep2);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg3); }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-long  { background: var(--green-dim); color: #1a7f3c; }
+    .badge-short { background: var(--red-dim);   color: #c0392b; }
+
+    .pnl-pos { color: #1a7f3c; font-weight: 600; }
+    .pnl-neg { color: var(--red); font-weight: 600; }
+    .pnl-zero { color: var(--label3); }
+
+    .btn-del {
+      background: var(--red-dim);
+      color: var(--red);
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-del:hover { background: rgba(255,59,48,0.20); }
+
+    .price-cell { font-weight: 600; }
+    .price-loading { color: var(--label3); font-size: 12px; }
+
+    /* Daily Summary */
+    .daily-table th { font-size: 13px; }
+    .daily-table td { font-size: 14px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--label3);
+    }
+    .empty-state .es-icon { font-size: 40px; margin-bottom: 10px; }
+    .empty-state p { font-size: 15px; }
+
+    .refresh-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .refresh-row span { font-size: 13px; color: var(--label3); }
+    .btn-refresh {
+      background: var(--blue-dim);
+      color: var(--blue);
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-refresh:hover { background: rgba(0,113,227,0.18); }
+
+    .btn-clear-all {
+      background: var(--red-dim);
+      color: var(--red);
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: auto;
+    }
+    .btn-clear-all:hover { background: rgba(255,59,48,0.20); }
+
+    .ticker-badge {
+      font-weight: 700;
+      color: var(--blue);
+      font-size: 14px;
+    }
+
+    .spin {
+      display: inline-block;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--label);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📊</div>
+  <div>
+    <h1>מעקב תיק השקעות</h1>
+    <div class="subtitle">פוזיציות, רווח/הפסד יומי — מחירים חיים</div>
+  </div>
+  <a href="/" class="back-btn">← מנתח מניות</a>
+</header>
+
+<div class="main">
+
+  <!-- Summary Cards -->
+  <div class="summary-row">
+    <div class="sum-card">
+      <div class="sc-label">סה"כ רווח/הפסד פתוח</div>
+      <div class="sc-val neutral" id="total-pnl">—</div>
+    </div>
+    <div class="sum-card">
+      <div class="sc-label">פוזיציות פעילות</div>
+      <div class="sc-val neutral" id="total-positions">0</div>
+    </div>
+    <div class="sum-card">
+      <div class="sc-label">רווח יומי (היום)</div>
+      <div class="sc-val neutral" id="today-pnl">—</div>
+    </div>
+    <div class="sum-card">
+      <div class="sc-label">עדכון אחרון</div>
+      <div class="sc-val neutral" id="last-update" style="font-size:14px">—</div>
+    </div>
+  </div>
+
+  <!-- Add Position -->
+  <div class="card">
+    <h2>הוספת פוזיציה</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>טיקר</label>
+        <input id="inp-ticker" type="text" placeholder="AAPL" maxlength="10" />
+      </div>
+      <div class="form-group">
+        <label>כיוון</label>
+        <select id="inp-dir">
+          <option value="long">לונג (קנייה)</option>
+          <option value="short">שורט (מכירה)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>כמות</label>
+        <input id="inp-qty" type="number" placeholder="100" min="0.001" step="any" />
+      </div>
+      <div class="form-group">
+        <label>מחיר כניסה</label>
+        <input id="inp-price" type="number" placeholder="150.00" min="0.001" step="any" />
+      </div>
+      <div class="form-group">
+        <label>תאריך כניסה</label>
+        <input id="inp-date" type="date" />
+      </div>
+      <div class="form-group">
+        <label>הערה (אופציונלי)</label>
+        <input id="inp-note" type="text" placeholder="הסבר קצר..." maxlength="60" />
+      </div>
+      <button class="btn-add" onclick="addPosition()">+ הוסף</button>
+    </div>
+    <div id="add-error" style="color:var(--red);font-size:13px;margin-top:10px;display:none;"></div>
+  </div>
+
+  <!-- Positions Table -->
+  <div class="card">
+    <div class="refresh-row">
+      <span class="section-title" style="margin:0">פוזיציות פתוחות</span>
+      <button class="btn-refresh" onclick="refreshPrices()">⟳ רענן מחירים</button>
+      <span id="refresh-status"></span>
+      <button class="btn-clear-all" onclick="clearAll()">מחק הכל</button>
+    </div>
+    <div class="table-wrap">
+      <table id="positions-table">
+        <thead>
+          <tr>
+            <th>טיקר</th>
+            <th>כיוון</th>
+            <th>כמות</th>
+            <th>מחיר כניסה</th>
+            <th>מחיר נוכחי</th>
+            <th>שינוי יום</th>
+            <th>רווח/הפסד $</th>
+            <th>רווח/הפסד %</th>
+            <th>תאריך</th>
+            <th>הערה</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="positions-body">
+        </tbody>
+      </table>
+      <div id="positions-empty" class="empty-state" style="display:none">
+        <div class="es-icon">📂</div>
+        <p>אין פוזיציות — הוסף את הראשונה למעלה</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily P&L Summary -->
+  <div class="card">
+    <div class="section-title">סיכום לפי תאריך</div>
+    <div class="table-wrap">
+      <table class="daily-table" id="daily-table">
+        <thead>
+          <tr>
+            <th>תאריך</th>
+            <th>מספר פוזיציות</th>
+            <th>רווח/הפסד כולל</th>
+            <th>ממוצע לפוזיציה</th>
+            <th>מניות</th>
+          </tr>
+        </thead>
+        <tbody id="daily-body"></tbody>
+      </table>
+      <div id="daily-empty" class="empty-state" style="display:none">
+        <div class="es-icon">📅</div>
+        <p>אין נתונים לפי תאריך עדיין</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Storage ───────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'portfolio_positions_v2';
+
+function loadPositions() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch { return []; }
+}
+
+function savePositions(arr) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+
+// ─── Prices cache ──────────────────────────────────────────────────────────
+const priceCache = {};  // ticker -> { price, change, changePct, ts }
+const PRICE_TTL = 60000; // 60 seconds
+
+async function fetchPrice(ticker) {
+  const now = Date.now();
+  if (priceCache[ticker] && (now - priceCache[ticker].ts) < PRICE_TTL) {
+    return priceCache[ticker];
+  }
+  try {
+    const r = await fetch(`/price?ticker=${encodeURIComponent(ticker)}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.error) return null;
+    const entry = { price: d.current_price, change: d.change, changePct: d.change_pct, ts: now };
+    priceCache[ticker] = entry;
+    return entry;
+  } catch { return null; }
+}
+
+// ─── Format helpers ────────────────────────────────────────────────────────
+function fmtMoney(val, decimals=2) {
+  if (val === null || val === undefined || isNaN(val)) return '—';
+  const sign = val >= 0 ? '+' : '';
+  return sign + val.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function fmtPct(val) {
+  if (val === null || val === undefined || isNaN(val)) return '—';
+  const sign = val >= 0 ? '+' : '';
+  return sign + val.toFixed(2) + '%';
+}
+
+function pnlClass(val) {
+  if (val > 0) return 'pnl-pos';
+  if (val < 0) return 'pnl-neg';
+  return 'pnl-zero';
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const parts = d.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return d;
+}
+
+// ─── Add position ──────────────────────────────────────────────────────────
+function addPosition() {
+  const ticker = document.getElementById('inp-ticker').value.trim().toUpperCase();
+  const dir    = document.getElementById('inp-dir').value;
+  const qty    = parseFloat(document.getElementById('inp-qty').value);
+  const price  = parseFloat(document.getElementById('inp-price').value);
+  const date   = document.getElementById('inp-date').value;
+  const note   = document.getElementById('inp-note').value.trim();
+  const errEl  = document.getElementById('add-error');
+
+  errEl.style.display = 'none';
+
+  if (!ticker)        { showErr('יש להזין טיקר'); return; }
+  if (isNaN(qty) || qty <= 0)   { showErr('יש להזין כמות חוקית'); return; }
+  if (isNaN(price) || price <= 0) { showErr('יש להזין מחיר כניסה חוקי'); return; }
+  if (!date)          { showErr('יש לבחור תאריך'); return; }
+
+  const positions = loadPositions();
+  positions.push({
+    id: Date.now().toString(),
+    ticker, dir, qty, price, date, note
+  });
+  savePositions(positions);
+
+  // Clear form
+  document.getElementById('inp-ticker').value = '';
+  document.getElementById('inp-qty').value    = '';
+  document.getElementById('inp-price').value  = '';
+  document.getElementById('inp-note').value   = '';
+
+  renderAll();
+  refreshPrices();
+}
+
+function showErr(msg) {
+  const el = document.getElementById('add-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ─── Delete position ───────────────────────────────────────────────────────
+function deletePosition(id) {
+  const positions = loadPositions().filter(p => p.id !== id);
+  savePositions(positions);
+  renderAll();
+}
+
+function clearAll() {
+  if (!confirm('למחוק את כל הפוזיציות?')) return;
+  savePositions([]);
+  Object.keys(priceCache).forEach(k => delete priceCache[k]);
+  renderAll();
+}
+
+// ─── Render positions table ────────────────────────────────────────────────
+function renderPositionsTable(positions) {
+  const tbody = document.getElementById('positions-body');
+  const empty = document.getElementById('positions-empty');
+  tbody.innerHTML = '';
+
+  if (!positions.length) {
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  positions.forEach(p => {
+    const pc = priceCache[p.ticker];
+    let currentPrice = pc ? pc.price : null;
+    let dayChange = pc ? pc.change : null;
+    let dayChangePct = pc ? pc.changePct : null;
+
+    let pnlAbs = null, pnlPct = null;
+    if (currentPrice !== null) {
+      if (p.dir === 'long') {
+        pnlAbs = (currentPrice - p.price) * p.qty;
+        pnlPct = ((currentPrice - p.price) / p.price) * 100;
+      } else {
+        pnlAbs = (p.price - currentPrice) * p.qty;
+        pnlPct = ((p.price - currentPrice) / p.price) * 100;
+      }
+    }
+
+    const priceCell = currentPrice !== null
+      ? `<span class="price-cell">$${currentPrice.toFixed(2)}</span>`
+      : `<span class="price-loading">טוען... <span class="spin">⟳</span></span>`;
+
+    const dayCell = dayChange !== null
+      ? `<span class="${pnlClass(dayChange)}">${fmtMoney(dayChange)} (${fmtPct(dayChangePct)})</span>`
+      : '—';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="ticker-badge">${p.ticker}</span></td>
+      <td><span class="badge ${p.dir === 'long' ? 'badge-long' : 'badge-short'}">${p.dir === 'long' ? 'לונג' : 'שורט'}</span></td>
+      <td>${p.qty.toLocaleString()}</td>
+      <td>$${p.price.toFixed(2)}</td>
+      <td>${priceCell}</td>
+      <td>${dayCell}</td>
+      <td class="${pnlAbs !== null ? pnlClass(pnlAbs) : ''}">${pnlAbs !== null ? '$' + fmtMoney(pnlAbs) : '—'}</td>
+      <td class="${pnlPct !== null ? pnlClass(pnlPct) : ''}">${pnlPct !== null ? fmtPct(pnlPct) : '—'}</td>
+      <td>${formatDate(p.date)}</td>
+      <td style="color:var(--label3);font-size:12px">${p.note || ''}</td>
+      <td><button class="btn-del" onclick="deletePosition('${p.id}')">מחק</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── Render daily summary ──────────────────────────────────────────────────
+function renderDailySummary(positions) {
+  const tbody = document.getElementById('daily-body');
+  const empty = document.getElementById('daily-empty');
+  tbody.innerHTML = '';
+
+  if (!positions.length) {
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Group by date
+  const byDate = {};
+  positions.forEach(p => {
+    const pc = priceCache[p.ticker];
+    if (!byDate[p.date]) byDate[p.date] = { pnl: 0, count: 0, tickers: new Set() };
+    byDate[p.date].count++;
+    byDate[p.date].tickers.add(p.ticker);
+    if (pc) {
+      const pnl = p.dir === 'long'
+        ? (pc.price - p.price) * p.qty
+        : (p.price - pc.price) * p.qty;
+      byDate[p.date].pnl += pnl;
+    }
+  });
+
+  // Sort dates newest first
+  const sorted = Object.entries(byDate).sort((a,b) => b[0].localeCompare(a[0]));
+
+  sorted.forEach(([date, data]) => {
+    const avg = data.count > 0 ? data.pnl / data.count : 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${formatDate(date)}</strong></td>
+      <td>${data.count}</td>
+      <td class="${pnlClass(data.pnl)}"><strong>${data.pnl !== 0 ? '$' + fmtMoney(data.pnl) : '—'}</strong></td>
+      <td class="${pnlClass(avg)}">${avg !== 0 ? '$' + fmtMoney(avg) : '—'}</td>
+      <td style="font-size:12px;color:var(--label3)">${[...data.tickers].join(', ')}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── Update summary cards ──────────────────────────────────────────────────
+function updateSummaryCards(positions) {
+  let totalPnl = 0;
+  let totalPriced = 0;
+
+  positions.forEach(p => {
+    const pc = priceCache[p.ticker];
+    if (pc) {
+      const pnl = p.dir === 'long'
+        ? (pc.price - p.price) * p.qty
+        : (p.price - pc.price) * p.qty;
+      totalPnl += pnl;
+      totalPriced++;
+    }
+  });
+
+  // Today's P&L
+  const today = new Date().toISOString().split('T')[0];
+  let todayPnl = 0;
+  let todayCount = 0;
+  positions.filter(p => p.date === today).forEach(p => {
+    const pc = priceCache[p.ticker];
+    if (pc) {
+      const pnl = p.dir === 'long'
+        ? (pc.price - p.price) * p.qty
+        : (p.price - pc.price) * p.qty;
+      todayPnl += pnl;
+      todayCount++;
+    }
+  });
+
+  const totalEl = document.getElementById('total-pnl');
+  totalEl.textContent = totalPriced > 0 ? '$' + fmtMoney(totalPnl) : '—';
+  totalEl.className = 'sc-val ' + (totalPriced > 0 ? pnlClass(totalPnl).replace('pnl-','') : 'neutral');
+  // fix class names
+  totalEl.className = 'sc-val ' + (totalPnl > 0 ? 'pos' : totalPnl < 0 ? 'neg' : 'neutral');
+
+  document.getElementById('total-positions').textContent = positions.length;
+
+  const todayEl = document.getElementById('today-pnl');
+  todayEl.textContent = todayCount > 0 ? '$' + fmtMoney(todayPnl) : '—';
+  todayEl.className = 'sc-val ' + (todayPnl > 0 ? 'pos' : todayPnl < 0 ? 'neg' : 'neutral');
+
+  const now = new Date();
+  document.getElementById('last-update').textContent =
+    now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+// ─── Render all ────────────────────────────────────────────────────────────
+function renderAll() {
+  const positions = loadPositions();
+  renderPositionsTable(positions);
+  renderDailySummary(positions);
+  updateSummaryCards(positions);
+}
+
+// ─── Refresh prices ────────────────────────────────────────────────────────
+async function refreshPrices() {
+  const positions = loadPositions();
+  if (!positions.length) return;
+
+  const statusEl = document.getElementById('refresh-status');
+  statusEl.innerHTML = '<span class="spin">⟳</span> מעדכן...';
+
+  // Unique tickers, invalidate cache
+  const tickers = [...new Set(positions.map(p => p.ticker))];
+  tickers.forEach(t => {
+    if (priceCache[t]) priceCache[t].ts = 0; // force refresh
+  });
+
+  await Promise.all(tickers.map(t => fetchPrice(t)));
+  renderAll();
+  statusEl.textContent = 'עודכן ✓';
+  setTimeout(() => { statusEl.textContent = ''; }, 3000);
+}
+
+// ─── Auto-refresh every 60s ────────────────────────────────────────────────
+setInterval(() => {
+  const positions = loadPositions();
+  if (positions.length) refreshPrices();
+}, 60000);
+
+// ─── Set default date to today ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('inp-date').value = today;
+
+  renderAll();
+  refreshPrices();
+});
+
+// Enter key on ticker → jump to next field
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('inp-ticker').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('inp-qty').focus();
+  });
+  document.getElementById('inp-qty').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('inp-price').focus();
+  });
+  document.getElementById('inp-price').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addPosition();
+  });
+});
+</script>
+</body>
+</html>
