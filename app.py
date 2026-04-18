@@ -2858,6 +2858,11 @@ def scan_watchlist():
         return jsonify({'error': str(e), 'stocks': []}), 500
 
 
+@app.route('/portfolio')
+def portfolio():
+    return render_template('portfolio.html')
+
+
 @app.route('/stock-news/<ticker>')
 def stock_news(ticker):
     """חדשות עדכניות על מניה — Yahoo Finance + Google News, מתורגמות לעברית"""
