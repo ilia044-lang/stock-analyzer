@@ -846,22 +846,6 @@
   <div style="text-align:left;padding:2px 12px;font-size:10px;color:var(--label3);" id="marketLastUpdated"></div>
 </div>
 
-<!-- ── Buy the Dip ── -->
-<div style="max-width:1500px;margin:10px auto 0;padding:0 20px;">
-  <div class="dip-card" id="dipCard">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div class="section-title" style="margin:0;">🎯 לתפוס את הדיפ — 4 כללי מיכה סטוק</div>
-      <span id="dipSignal" style="font-size:13px;font-weight:600;color:var(--label3);">בודק...</span>
-    </div>
-    <div id="dipRules">
-      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">Fear &amp; Greed &lt; 10</div><div class="dip-rule-val">טוען...</div></div>
-      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">VIX &gt; 30</div><div class="dip-rule-val">טוען...</div></div>
-      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">סקטורי S&amp;P &gt;80% מתחת MA50</div><div class="dip-rule-val">טוען...</div></div>
-      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">3 ימים אדומים רצופים ב-S&amp;P500</div><div class="dip-rule-val">טוען...</div></div>
-    </div>
-  </div>
-</div>
-
 <!-- ── סקטורים תמיד גלויים ── -->
 <div style="max-width:1500px;margin:10px auto 0;padding:0 20px;">
   <div class="mcard">
@@ -1303,6 +1287,20 @@
 
   <!-- News -->
   <!-- News Card -->
+  <!-- ── Buy the Dip card (מופיע בניתוח מניה) ── -->
+  <div id="dipCard" style="display:none;background:var(--bg2);border:1px solid var(--sep);border-radius:14px;margin-bottom:16px;padding:16px 18px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="section-title" style="margin:0;">🎯 האם השוק בדיפ? — 4 כללי מיכה סטוק</div>
+      <span id="dipSignal" style="font-size:13px;font-weight:600;color:var(--label3);">בודק...</span>
+    </div>
+    <div id="dipRules">
+      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">Fear &amp; Greed &lt; 10</div><div class="dip-rule-val">טוען...</div></div>
+      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">VIX &gt; 30</div><div class="dip-rule-val">טוען...</div></div>
+      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">סקטורי S&amp;P &gt;80% מתחת MA50</div><div class="dip-rule-val">טוען...</div></div>
+      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">3 ימים אדומים רצופים ב-S&amp;P500</div><div class="dip-rule-val">טוען...</div></div>
+    </div>
+  </div>
+
   <div id="newsCard" style="display:none;background:var(--bg2);border:1px solid var(--sep);border-radius:14px;margin-bottom:16px;overflow:hidden;">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:var(--bg3);border-bottom:1px solid var(--sep);">
       <div class="section-title" style="margin:0;">📰 חדשות עדכניות</div>
@@ -1957,6 +1955,7 @@
     hide('slCard');
     hide('tradeCard');
     hide('diagCard');
+    hide('dipCard');
     hide('chartsSection');
     hide('chartAnalysisCard');
     hide('chartPatternsCard');
@@ -1998,6 +1997,10 @@
       renderCharts(data);
       renderChartPatterns(data);
       renderChartAnalysis(data);
+
+      // הצג כרטיס דיפ וטען נתונים
+      show('dipCard');
+      loadDipCheck();
 
     } catch (err) {
       hide('loading');
@@ -3204,9 +3207,6 @@
   loadWorldNews();
   setInterval(loadWorldNews, 900000); // כל 15 דקות
 
-  // טען בדיקת דיפ
-  loadDipCheck();
-  setInterval(loadDipCheck, 300000); // כל 5 דקות
 
   // ─── Liv20 Scanner ───────────────────────────────────────────────────────────
 
