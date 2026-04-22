@@ -2858,6 +2858,99 @@ def scan_watchlist():
         return jsonify({'error': str(e), 'stocks': []}), 500
 
 
+@app.route('/dip-check')
+def dip_check():
+    """בדיקת 4 כללים לתפיסת הדיפ לפי שיטת מיכה סטוק"""
+    cached = cache_get('dip_check', ttl=300)
+    if cached:
+        return jsonify(cached)
+    import datetime as dt
+
+    result = {
+        'fg': {'value': None, 'pass': False, 'label': ''},
+        'vix': {'value': None, 'pass': False, 'label': ''},
+        's5fi': {'value': None, 'pass': False, 'label': ''},
+        'spy_red': {'value': 0, 'pass': False, 'label': ''},
+        'all_pass': False,
+        'checked_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+    }
+
+    # ── 1. Fear & Greed < 10 ──────────────────────────────────────────────────
+    try:
+        fg_data = get_fear_greed()
+        fg_score = fg_data.get('score') if fg_data else None
+        if fg_score is not None:
+            result['fg']['value'] = round(float(fg_score), 1)
+            result['fg']['pass'] = float(fg_score) < 10
+            result['fg']['label'] = f'F&G = {result["fg"]["value"]}'
+    except Exception:
+        pass
+
+    # ── 2. VIX > 30 ────────────────────────────────────────────────────────────
+    try:
+        vix_data = get_vix()
+        if vix_data is not None:
+            vix_val = float(vix_data['value'])
+            result['vix']['value'] = vix_val
+            result['vix']['pass'] = vix_val > 30
+            result['vix']['label'] = f'VIX = {vix_val}'
+    except Exception:
+        pass
+
+    # ── 3. S5FI < 20% — proxy: מספר סקטורים מתחת ל-MA50 ─────────────────────
+    # ^S5FI לא זמין ב-Yahoo Finance; משתמשים ב-11 ETF סקטוריאליים כ-proxy
+    try:
+        sectors = ['XLK','XLF','XLE','XLC','XLI','XLV','XLY','XLP','XLB','XLRE','XLU']
+        below_ma = 0
+        checked  = 0
+        for s in sectors:
+            try:
+                df_s = yf.Ticker(s).history(period='3mo')
+                if len(df_s) >= 50:
+                    ma50 = float(df_s['Close'].rolling(50).mean().iloc[-1])
+                    price = float(df_s['Close'].iloc[-1])
+                    checked += 1
+                    if price < ma50:
+                        below_ma += 1
+            except Exception:
+                pass
+        if checked > 0:
+            pct_below = round(below_ma / checked * 100, 1)
+            result['s5fi']['value'] = pct_below
+            result['s5fi']['pass'] = pct_below >= 80   # 80%+ סקטורים מתחת ל-MA50 ≈ S5FI < 20%
+            result['s5fi']['label'] = f'{below_ma}/{checked} סקטורים מתחת MA50'
+    except Exception:
+        pass
+
+    # ── 4. 3 ימים אדומים רצופים ב-SPY ──────────────────────────────────────
+    try:
+        spy = yf.Ticker('SPY')
+        spy_hist = spy.history(period='10d')
+        if len(spy_hist) >= 3:
+            closes = spy_hist['Close'].values
+            red_streak = 0
+            for i in range(len(closes) - 1, 0, -1):
+                if closes[i] < closes[i - 1]:
+                    red_streak += 1
+                else:
+                    break
+            result['spy_red']['value'] = red_streak
+            result['spy_red']['pass'] = red_streak >= 3
+            result['spy_red']['label'] = f'{red_streak} ימים אדומים רצופים'
+    except Exception:
+        pass
+
+    result['all_pass'] = all([
+        result['fg']['pass'],
+        result['vix']['pass'],
+        result['s5fi']['pass'],
+        result['spy_red']['pass'],
+    ])
+
+    cache_set('dip_check', result)
+    return jsonify(result)
+
+
 @app.route('/portfolio')
 def portfolio():
     return render_template('portfolio.html')

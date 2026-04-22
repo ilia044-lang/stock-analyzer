@@ -297,6 +297,15 @@
     .mcard-val   { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
     .mcard-sub   { font-size: 12px; margin-top: 4px; color: var(--label2); }
     .mcard-explain { font-size: 11px; color: var(--label3); margin-top: 10px; line-height: 1.6; border-top: 1px solid var(--sep); padding-top: 10px; }
+    /* ── dip card ── */
+    .dip-card { background:var(--bg2); border:1px solid var(--sep); border-radius:var(--r-md); padding:16px 18px; box-shadow:var(--shadow-sm); }
+    .dip-card.all-pass { border-color:#22c55e; box-shadow:0 0 0 2px #22c55e33; }
+    .dip-rule { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--sep2); font-size:13px; }
+    .dip-rule:last-child { border-bottom:none; }
+    .dip-icon { font-size:17px; width:22px; text-align:center; flex-shrink:0; }
+    .dip-rule-label { flex:1; color:var(--label2); }
+    .dip-rule-val { font-size:12px; color:var(--label3); }
+
     .sector-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--sep2); font-size:13px; }
     .sector-bar-wrap { width:80px; height:4px; background:var(--bg3); border-radius:2px; overflow:hidden; }
     .sector-bar-fill { height:4px; border-radius:2px; }
@@ -835,6 +844,22 @@
     </div>
   </div>
   <div style="text-align:left;padding:2px 12px;font-size:10px;color:var(--label3);" id="marketLastUpdated"></div>
+</div>
+
+<!-- ── Buy the Dip ── -->
+<div style="max-width:1500px;margin:10px auto 0;padding:0 20px;">
+  <div class="dip-card" id="dipCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="section-title" style="margin:0;">🎯 לתפוס את הדיפ — 4 כללי מיכה סטוק</div>
+      <span id="dipSignal" style="font-size:13px;font-weight:600;color:var(--label3);">בודק...</span>
+    </div>
+    <div id="dipRules">
+      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">Fear &amp; Greed &lt; 10</div><div class="dip-rule-val">טוען...</div></div>
+      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">VIX &gt; 30</div><div class="dip-rule-val">טוען...</div></div>
+      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">סקטורי S&amp;P &gt;80% מתחת MA50</div><div class="dip-rule-val">טוען...</div></div>
+      <div class="dip-rule"><div class="dip-icon">⏳</div><div class="dip-rule-label">3 ימים אדומים רצופים ב-S&amp;P500</div><div class="dip-rule-val">טוען...</div></div>
+    </div>
+  </div>
 </div>
 
 <!-- ── סקטורים תמיד גלויים ── -->
@@ -3179,6 +3204,10 @@
   loadWorldNews();
   setInterval(loadWorldNews, 900000); // כל 15 דקות
 
+  // טען בדיקת דיפ
+  loadDipCheck();
+  setInterval(loadDipCheck, 300000); // כל 5 דקות
+
   // ─── Liv20 Scanner ───────────────────────────────────────────────────────────
 
   let _scanInProgress = false;
@@ -3210,6 +3239,44 @@
   function shouldAutoScan() {
     const { h, m } = etTimeNow();
     return (h === 16 && m === 35) || (h === 22 && m === 40);
+  }
+
+  async function loadDipCheck() {
+    try {
+      const data = await fetch('/dip-check').then(r => r.json());
+      const card = document.getElementById('dipCard');
+      const rules = [
+        { key: 'fg',      label: 'Fear &amp; Greed &lt; 10',              thresh: '< 10' },
+        { key: 'vix',     label: 'VIX &gt; 30',                           thresh: '> 30' },
+        { key: 's5fi',    label: 'סקטורי S&amp;P &gt;80% מתחת MA50',        thresh: '≥80%' },
+        { key: 'spy_red', label: '3 ימים אדומים רצופים ב-S&amp;P500',     thresh: '≥ 3' },
+      ];
+      const rows = rules.map(r => {
+        const d = data[r.key] || {};
+        const ok = d.pass;
+        const icon = ok ? '✅' : (d.value === null || d.value === undefined ? '❓' : '❌');
+        const valTxt = d.label || (d.value !== null && d.value !== undefined ? String(d.value) : '—');
+        return `<div class="dip-rule">
+          <div class="dip-icon">${icon}</div>
+          <div class="dip-rule-label">${r.label}</div>
+          <div class="dip-rule-val">${valTxt}</div>
+        </div>`;
+      }).join('');
+      document.getElementById('dipRules').innerHTML = rows;
+      const sig = document.getElementById('dipSignal');
+      if (data.all_pass) {
+        sig.textContent = '🚀 כל התנאים מתקיימים — זמן לקנות!';
+        sig.style.color = '#22c55e';
+        card.classList.add('all-pass');
+      } else {
+        const passed = ['fg','vix','s5fi','spy_red'].filter(k => data[k] && data[k].pass).length;
+        sig.textContent = `${passed}/4 תנאים מתקיימים`;
+        sig.style.color = 'var(--label3)';
+        card.classList.remove('all-pass');
+      }
+    } catch(e) {
+      document.getElementById('dipSignal').textContent = 'שגיאה בטעינה';
+    }
   }
 
   async function runScan(manual = false) {
