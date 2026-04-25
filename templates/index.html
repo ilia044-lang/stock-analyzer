@@ -3337,16 +3337,15 @@
 
   function saveToHistory(d) {
     const tp = d.trade_plan || {};
-    const rec = (d.recommendation || {}).signal || d.rec || '';
     const entry = {
       date: new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' }),
       ticker: d.ticker || '',
       name: d.name || d.ticker || '',
       price: d.price || '',
       change_pct: d.change_pct || '',
-      rec: rec,
-      bullish: d.bullish ?? '',
-      bearish: d.bearish ?? '',
+      rec: d.rec_key || '',
+      bullish: d.bullish_count ?? '',
+      bearish: d.bearish_count ?? '',
       entry_price: tp.entry || '',
       sl: tp.sl || '',
       target1: tp.target1 || '',
