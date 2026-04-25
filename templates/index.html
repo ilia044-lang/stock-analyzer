@@ -845,9 +845,15 @@
     <h1>מנתח מניות — שיטת מיכה סטוקס</h1>
     <p>ניתוח אוטומטי לפי 6 פרמטרים: טרנד · נרות · ווליום · ממוצע 20 · גאפים · CCI</p>
   </div>
-  <div style="text-align:left;font-size:11px;color:var(--label3);white-space:nowrap;">
-    <div style="font-weight:600;color:var(--label2);">© רייזמן איליה</div>
-    <div>כל הזכויות שמורות</div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;white-space:nowrap;">
+    <div style="text-align:left;font-size:11px;color:var(--label3);">
+      <div style="font-weight:600;color:var(--label2);">© רייזמן איליה</div>
+      <div>כל הזכויות שמורות</div>
+    </div>
+    <button onclick="downloadHistory()" id="historyBtn"
+      style="background:var(--bg3);border:1px solid var(--sep);border-radius:8px;padding:6px 14px;color:var(--label2);font-size:12px;cursor:pointer;white-space:nowrap;">
+      ⬇️ היסטוריה <span id="historyCount" style="background:var(--blue);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;margin-right:2px;">0</span>
+    </button>
   </div>
 </header>
 
@@ -986,12 +992,6 @@
     <span onclick="setTicker('AMZN')">AMZN</span>
     <span onclick="setTicker('MSFT')">MSFT</span>
     <span onclick="setTicker('SPY')">SPY</span>
-  </div>
-  <div style="display:flex;justify-content:center;margin-top:10px;">
-    <button onclick="downloadHistory()" id="historyBtn" title="הורד היסטוריית ניתוחים"
-      style="background:var(--bg3);border:1px solid var(--sep);border-radius:8px;padding:5px 14px;color:var(--label2);font-size:12px;cursor:pointer;display:none;">
-      ⬇️ הורד היסטוריה (<span id="historyCount">0</span>)
-    </button>
   </div>
 </div>
 
@@ -3365,11 +3365,8 @@
   }
 
   function updateHistoryBtn(count) {
-    const btn = document.getElementById('historyBtn');
     const cnt = document.getElementById('historyCount');
-    if (!btn) return;
-    cnt.textContent = count;
-    btn.style.display = count > 0 ? 'inline-block' : 'none';
+    if (cnt) cnt.textContent = count;
   }
 
   function downloadHistory() {
