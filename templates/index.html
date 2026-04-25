@@ -306,6 +306,31 @@
     .dip-rule-label { flex:1; color:var(--label2); }
     .dip-rule-val { font-size:12px; color:var(--label3); }
 
+    /* ── overtrading card ── */
+    .ot-card { background:linear-gradient(135deg,#1a0a2e 0%,#0d1a2e 100%); border:1px solid #6b21a8; border-radius:14px; padding:20px; margin-bottom:16px; display:none; }
+    .ot-title { text-align:center; font-size:18px; font-weight:800; color:#a855f7; letter-spacing:-0.5px; margin-bottom:4px; }
+    .ot-sub { text-align:center; font-size:12px; color:#94a3b8; margin-bottom:16px; }
+    .ot-compare { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+    .ot-box { border-radius:10px; padding:12px; text-align:center; }
+    .ot-box.good { border:1px dashed #22c55e; background:#052e16aa; }
+    .ot-box.bad  { border:1px dashed #ef4444; background:#2d0a0aaa; }
+    .ot-box-title { font-size:13px; font-weight:700; margin-bottom:4px; }
+    .ot-box.good .ot-box-title { color:#4ade80; }
+    .ot-box.bad  .ot-box-title { color:#f87171; }
+    .ot-box-desc { font-size:11px; color:#94a3b8; line-height:1.5; }
+    .ot-section-title { font-size:13px; font-weight:700; color:#e2e8f0; margin-bottom:10px; text-align:center; }
+    .ot-psych { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+    .ot-psych-item { background:#1e293b; border-radius:8px; padding:10px 12px; text-align:center; }
+    .ot-psych-emoji { font-size:20px; margin-bottom:4px; }
+    .ot-psych-name { font-size:12px; font-weight:700; color:#c084fc; margin-bottom:3px; }
+    .ot-psych-desc { font-size:10px; color:#64748b; line-height:1.4; }
+    .ot-rules { background:#0f172a; border-radius:10px; padding:12px 14px; }
+    .ot-rule-item { display:flex; align-items:flex-start; gap:8px; padding:5px 0; font-size:12px; color:#cbd5e1; border-bottom:1px solid #1e293b; line-height:1.5; }
+    .ot-rule-item:last-child { border-bottom:none; }
+    .ot-rule-item span { color:#22c55e; font-size:14px; flex-shrink:0; margin-top:1px; }
+    .ot-quote { text-align:center; margin-top:14px; font-size:12px; color:#a855f7; font-style:italic; }
+    .ot-quote-sub { text-align:center; font-size:10px; color:#475569; margin-top:3px; }
+
     .sector-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--sep2); font-size:13px; }
     .sector-bar-wrap { width:80px; height:4px; background:var(--bg3); border-radius:2px; overflow:hidden; }
     .sector-bar-fill { height:4px; border-radius:2px; }
@@ -1301,6 +1326,58 @@
     </div>
   </div>
 
+  <!-- ── Over-trading warning card ── -->
+  <div class="ot-card" id="otCard">
+    <div class="ot-title">אובר-טריידינג</div>
+    <div class="ot-sub">האויב השקט של חשבון המסחר שלך</div>
+
+    <div class="ot-compare">
+      <div class="ot-box good">
+        <div class="ot-box-title">🎯 הסוחר המקצועי</div>
+        <div class="ot-box-desc">ממתין לסטירה המדויקת. פועל לפי תוכנית, מתמקד באיכות.</div>
+      </div>
+      <div class="ot-box bad">
+        <div class="ot-box-title">💥 האובר-טריידר</div>
+        <div class="ot-box-desc">יורה לכל עבר, מוצא תירוצים. מתמקד בכמות, לא באיכות.</div>
+      </div>
+    </div>
+
+    <div class="ot-section-title">הפסיכולוגיה: למה זה קורה לנו?</div>
+    <div class="ot-psych">
+      <div class="ot-psych-item">
+        <div class="ot-psych-emoji">🚀</div>
+        <div class="ot-psych-name">FOMO</div>
+        <div class="ot-psych-desc">הפחד לפספס את "המהלך הגדול הבא" וקפיצה לעסקאות לא מבושלות.</div>
+      </div>
+      <div class="ot-psych-item">
+        <div class="ot-psych-emoji">🥊</div>
+        <div class="ot-psych-name">מסחר נקמה</div>
+        <div class="ot-psych-desc">ניסיון "להחזיר" לשוק אחרי הפסד, מתוך כעס וכאב.</div>
+      </div>
+      <div class="ot-psych-item">
+        <div class="ot-psych-emoji">😮‍💨</div>
+        <div class="ot-psych-name">שעמום</div>
+        <div class="ot-psych-desc">הצורך "לעשות משהו" והרגשת אקשן, גם כשאין הזדמנות אמיתית.</div>
+      </div>
+      <div class="ot-psych-item">
+        <div class="ot-psych-emoji">👑</div>
+        <div class="ot-psych-name">ביטחון יתר</div>
+        <div class="ot-psych-desc">אחרי רצף הצלחות, מרגישים בלתי מנוצחים — ושוברים את החוקים.</div>
+      </div>
+    </div>
+
+    <div class="ot-section-title" style="margin-top:4px;">הפתרון: כלים פרקטיים ליציאה מהמעגל</div>
+    <div class="ot-rules">
+      <div class="ot-rule-item"><span>✅</span><div><strong>תוכנית מסחר קשיחה:</strong> הגדר מראש מה התנאים לכניסה — אם לא מתקיימים ב-100%, אין עסקה.</div></div>
+      <div class="ot-rule-item"><span>✅</span><div><strong>יומן מסחר:</strong> תעד הכל — מספרים, סיבות וחרטות. המודעות היא המפתח.</div></div>
+      <div class="ot-rule-item"><span>✅</span><div><strong>חוקי עצירה בחרום:</strong> הגדר מראש גבול הפסד יומי או מספר עסקאות מקסימלי.</div></div>
+      <div class="ot-rule-item"><span>✅</span><div><strong>הפסקות יזומות:</strong> אחרי עסקה גדולה (רווח או הפסד) — קום מהמסך ל-7-15 דקות.</div></div>
+    </div>
+
+    <div class="ot-quote">"העסקה הטובה ביותר היא לפעמים זו שלא לקחתם"</div>
+    <div class="ot-quote-sub">לסיפים נוספים, עקב אחרי הערוץ!</div>
+  </div>
+
   <div id="newsCard" style="display:none;background:var(--bg2);border:1px solid var(--sep);border-radius:14px;margin-bottom:16px;overflow:hidden;">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:var(--bg3);border-bottom:1px solid var(--sep);">
       <div class="section-title" style="margin:0;">📰 חדשות עדכניות</div>
@@ -1956,6 +2033,7 @@
     hide('tradeCard');
     hide('diagCard');
     hide('dipCard');
+    document.getElementById('otCard').style.display = 'none';
     hide('chartsSection');
     hide('chartAnalysisCard');
     hide('chartPatternsCard');
@@ -2001,6 +2079,9 @@
       // הצג כרטיס דיפ וטען נתונים
       show('dipCard');
       loadDipCheck();
+
+      // הצג כרטיס אובר-טריידינג
+      document.getElementById('otCard').style.display = 'block';
 
     } catch (err) {
       hide('loading');
