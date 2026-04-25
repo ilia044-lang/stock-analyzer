@@ -987,6 +987,12 @@
     <span onclick="setTicker('MSFT')">MSFT</span>
     <span onclick="setTicker('SPY')">SPY</span>
   </div>
+  <div style="display:flex;justify-content:center;margin-top:10px;">
+    <button onclick="downloadHistory()" id="historyBtn" title="הורד היסטוריית ניתוחים"
+      style="background:var(--bg3);border:1px solid var(--sep);border-radius:8px;padding:5px 14px;color:var(--label2);font-size:12px;cursor:pointer;display:none;">
+      ⬇️ הורד היסטוריה (<span id="historyCount">0</span>)
+    </button>
+  </div>
 </div>
 
 <div class="page-layout">
@@ -2082,6 +2088,9 @@
 
       // הצג כרטיס אובר-טריידינג
       document.getElementById('otCard').style.display = 'block';
+
+      // שמור להיסטוריה
+      saveToHistory(data);
 
     } catch (err) {
       hide('loading');
@@ -3321,6 +3330,73 @@
     const { h, m } = etTimeNow();
     return (h === 16 && m === 35) || (h === 22 && m === 40);
   }
+
+  // ── היסטוריית ניתוחים ─────────────────────────────────────────────────────
+  const HISTORY_KEY = 'analysisHistory';
+  const MAX_HISTORY = 500;
+
+  function saveToHistory(d) {
+    const tp = d.trade_plan || {};
+    const rec = (d.recommendation || {}).signal || d.rec || '';
+    const entry = {
+      date: new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' }),
+      ticker: d.ticker || '',
+      name: d.name || d.ticker || '',
+      price: d.price || '',
+      change_pct: d.change_pct || '',
+      rec: rec,
+      bullish: d.bullish ?? '',
+      bearish: d.bearish ?? '',
+      entry_price: tp.entry || '',
+      sl: tp.sl || '',
+      target1: tp.target1 || '',
+      target2: tp.target2 || '',
+      rr: tp.rr || '',
+      atr_pct: d.atr_pct || '',
+      ma20: d.ma20 || '',
+    };
+    try {
+      const hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      hist.unshift(entry);
+      if (hist.length > MAX_HISTORY) hist.length = MAX_HISTORY;
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+      updateHistoryBtn(hist.length);
+    } catch(e) {}
+  }
+
+  function updateHistoryBtn(count) {
+    const btn = document.getElementById('historyBtn');
+    const cnt = document.getElementById('historyCount');
+    if (!btn) return;
+    cnt.textContent = count;
+    btn.style.display = count > 0 ? 'inline-block' : 'none';
+  }
+
+  function downloadHistory() {
+    const hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    if (!hist.length) return alert('אין היסטוריה עדיין');
+    const headers = ['תאריך','טיקר','שם','מחיר','שינוי%','המלצה','בוליש','בריש','כניסה','SL','יעד1','יעד2','R:R','ATR%','MA20'];
+    const keys    = ['date','ticker','name','price','change_pct','rec','bullish','bearish','entry_price','sl','target1','target2','rr','atr_pct','ma20'];
+    const rows = [headers.join(',')];
+    for (const e of hist) {
+      rows.push(keys.map(k => `"${String(e[k] ?? '').replace(/"/g,'""')}"`).join(','));
+    }
+    const blob = new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `ניתוחי_מניות_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // אתחל כפתור בטעינה
+  (function initHistoryBtn() {
+    try {
+      const hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      updateHistoryBtn(hist.length);
+    } catch(e) {}
+  })();
+  // ─────────────────────────────────────────────────────────────────────────
 
   async function loadDipCheck() {
     try {
