@@ -1584,6 +1584,14 @@
     <div class="day-score-txt" id="dayScoreTxt" style="color:#f59e0b;">50</div>
     <div class="day-verdict"   id="dayVerdict"  style="color:#f59e0b;">טוען...</div>
   </div>
+  <!-- רצועת דיוק היסטורי -->
+  <div id="dayAccuracyBar" style="text-align:center;padding:4px 10px 6px;border-top:1px solid var(--sep2);font-size:10px;color:var(--label3);">
+    📊 <span id="dayAccuracyTxt">טוען היסטוריית דיוק...</span>
+    <button onclick="toggleAccHistory()" style="font-size:9px;background:none;border:none;color:var(--blue);cursor:pointer;padding:0 3px;">▾ פרוט</button>
+  </div>
+  <div id="dayAccHistory" style="display:none;max-height:160px;overflow-y:auto;border-bottom:1px solid var(--sep2);">
+    <div id="dayAccHistoryList"></div>
+  </div>
   <div class="day-factors-title">גורמים מכריעים</div>
   <div id="dayFactors"><div style="padding:10px;color:var(--label3);font-size:11px;">⏳ בודק שוק...</div></div>
   <div id="dayUpdatedBar" style="font-size:9px;color:var(--label3);padding:4px 10px 6px;border-top:1px solid var(--sep2);line-height:1.5;"></div>
@@ -3516,8 +3524,136 @@
       } else {
         newsSection.style.display = 'none';
       }
+      // שמור תחזית + בדוק דיוק היסטורי
+      const direction = score >= 55 ? 'bull' : score <= 45 ? 'bear' : 'neutral';
+      saveDayPrediction(score, direction);
+      checkPendingOutcomes().then(hist => renderAccuracyBadge(hist));
+
     } catch(e) {
       document.getElementById('dayVerdict').textContent = 'שגיאה בטעינה';
+    }
+  }
+
+  // ── מעקב דיוק תחזיות יומיות ─────────────────────────────────────────────────
+  const PRED_HIST_KEY = 'dayPredHistory';
+
+  function todayET() {
+    // ET = UTC-4 (EDT) / UTC-5 (EST) — use UTC-4 as approximation
+    const et = new Date(Date.now() - 4 * 3600000);
+    return et.toISOString().slice(0, 10);
+  }
+
+  function saveDayPrediction(score, direction) {
+    const today = todayET();
+    let hist = [];
+    try { hist = JSON.parse(localStorage.getItem(PRED_HIST_KEY)) || []; } catch(e) {}
+    if (hist.find(h => h.date === today)) return; // already saved today
+    hist.push({ date: today, score, direction, settled: false });
+    if (hist.length > 60) hist = hist.slice(-60);
+    localStorage.setItem(PRED_HIST_KEY, JSON.stringify(hist));
+  }
+
+  async function checkPendingOutcomes() {
+    let hist = [];
+    try { hist = JSON.parse(localStorage.getItem(PRED_HIST_KEY)) || []; } catch(e) {}
+    const today = todayET();
+    let changed = false;
+    for (const entry of hist) {
+      if (entry.settled) continue;
+      if (entry.date === today) continue; // can't check today yet
+      if (entry.direction === 'neutral') { entry.settled = true; entry.skipped = true; changed = true; continue; }
+      try {
+        const r = await fetch(`/check-outcome?date=${entry.date}`).then(r => r.json());
+        if (r.status === 'ok') {
+          entry.actual_pct = r.pct;
+          entry.actual_dir = r.direction;
+          // correct if direction matches (bull→bull, bear→bear); neutral outcome = partial credit for correct side
+          if (r.direction === 'neutral') {
+            entry.correct = null; entry.skipped = true;
+          } else {
+            entry.correct = entry.direction === r.direction;
+          }
+          entry.settled = true; changed = true;
+        } else if (r.status === 'no_data') {
+          entry.settled = true; entry.skipped = true; changed = true; // holiday/weekend
+        }
+      } catch(e) {}
+    }
+    if (changed) localStorage.setItem(PRED_HIST_KEY, JSON.stringify(hist));
+    return hist;
+  }
+
+  function calcAccuracy(hist) {
+    const scored = hist.filter(h => h.settled && !h.skipped && h.correct !== null && h.correct !== undefined);
+    if (!scored.length) return null;
+    const correct = scored.filter(h => h.correct).length;
+    return { correct, total: scored.length, pct: Math.round(correct / scored.length * 100), recent: scored.slice(-7) };
+  }
+
+  function renderAccuracyBadge(hist) {
+    const acc = calcAccuracy(hist);
+    const txtEl = document.getElementById('dayAccuracyTxt');
+    if (!txtEl) return;
+    if (!acc) {
+      txtEl.innerHTML = 'ממתין לנתוני דיוק (מחר יתחיל מעקב)';
+      return;
+    }
+    const color = acc.pct >= 65 ? '#22c55e' : acc.pct >= 50 ? '#f59e0b' : '#ef4444';
+    const label = acc.pct >= 65 ? '✅ אמין' : acc.pct >= 50 ? '⚠️ בינוני' : '❌ לא אמין';
+    txtEl.innerHTML =
+      `<span style="color:${color};font-weight:700;">${acc.pct}%</span>` +
+      ` דיוק · ${acc.correct}/${acc.total} ימים · ` +
+      `<span style="background:${color}22;color:${color};border-radius:3px;padding:1px 5px;">${label}</span>`;
+
+    // אזהרה בתחזית אם דיוק נמוך
+    const verdEl = document.getElementById('dayVerdict');
+    if (verdEl && acc.pct < 50 && acc.total >= 5) {
+      verdEl.insertAdjacentHTML('afterend',
+        `<div style="font-size:9px;color:#ef4444;text-align:center;padding:2px 8px;">⚠️ דיוק נמוך — השתמש בזהירות</div>`);
+    }
+
+    // עדכן פרוט היסטורי
+    renderAccHistory(hist);
+  }
+
+  function renderAccHistory(hist) {
+    const listEl = document.getElementById('dayAccHistoryList');
+    if (!listEl) return;
+    const rows = [...hist].reverse().slice(0, 20);
+    listEl.innerHTML = rows.map(h => {
+      if (h.skipped) {
+        return `<div style="padding:3px 10px;font-size:10px;color:var(--label3);display:flex;justify-content:space-between;">
+          <span>${h.date}</span><span style="color:var(--label3);">⏭ דלג (חג/סוף שבוע)</span></div>`;
+      }
+      if (!h.settled) {
+        const dirIcon = h.direction === 'bull' ? '🟢' : h.direction === 'bear' ? '🔴' : '⚪';
+        return `<div style="padding:3px 10px;font-size:10px;color:var(--label3);display:flex;justify-content:space-between;">
+          <span>${h.date}</span>
+          <span>${dirIcon} ${h.direction} (ציון ${h.score}) · ⏳ ממתין</span></div>`;
+      }
+      const ok    = h.correct === true;
+      const icon  = ok ? '✅' : '❌';
+      const pDir  = h.direction === 'bull' ? '🟢 עלייה' : '🔴 ירידה';
+      const aDir  = h.actual_dir === 'bull' ? '🟢 עלה' : h.actual_dir === 'bear' ? '🔴 ירד' : '⚪ ניטרלי';
+      const pctStr = h.actual_pct != null ? ` (${h.actual_pct > 0 ? '+' : ''}${h.actual_pct}%)` : '';
+      return `<div style="padding:3px 10px;font-size:10px;border-bottom:1px solid var(--sep2);display:flex;justify-content:space-between;gap:6px;">
+        <span style="color:var(--label3);flex-shrink:0;">${h.date}</span>
+        <span style="color:var(--label2);">${icon} ${pDir} → ${aDir}${pctStr}</span>
+      </div>`;
+    }).join('') || '<div style="padding:8px 10px;font-size:10px;color:var(--label3);">אין היסטוריה עדיין</div>';
+  }
+
+  function toggleAccHistory() {
+    const el  = document.getElementById('dayAccHistory');
+    const btn = document.querySelector('[onclick="toggleAccHistory()"]');
+    if (!el) return;
+    const open = el.style.display !== 'none';
+    el.style.display = open ? 'none' : 'block';
+    if (btn) btn.textContent = open ? '▾ פרוט' : '▴ סגור';
+    if (!open) {
+      let hist = [];
+      try { hist = JSON.parse(localStorage.getItem(PRED_HIST_KEY)) || []; } catch(e) {}
+      renderAccHistory(hist);
     }
   }
 

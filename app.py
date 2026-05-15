@@ -3144,16 +3144,47 @@ def day_prediction():
     elif score >= 35: verdict, color = 'נטיית ירידה 🟠', '#fca5a5'
     else:             verdict, color = 'יום אדום 🔴', '#ef4444'
 
+    breaking_count = sum(1 for n in market_news if n['fresh'] and abs(n['impact']) >= 2)
     result = {
         'score': score, 'verdict': verdict, 'color': color,
         'factors': factors,
-        'breaking_count': len(breaking),
+        'breaking_count': breaking_count,
         'market_news': market_news,
         'sources': 'ES/NQ/YM חוזים · SPY/QQQ פרה-מרקט · VIX · F&G · אגח 10Y · DXY · נפט · זהב · אסיה/אירופה · לוח אירועים · Google News שוק/Trump/פוליטיקה',
         'checked_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
     }
     cache_set('day_prediction', result)
     return jsonify(result)
+
+
+@app.route('/check-outcome')
+def check_outcome():
+    """בדיקת תוצאת יום מסחר — האם SPY עלה או ירד ב-date מסוים"""
+    date_str = request.args.get('date', '')
+    if not date_str:
+        return jsonify({'status': 'error', 'msg': 'missing date'})
+    cache_key = f'outcome_{date_str}'
+    cached = cache_get(cache_key, ttl=86400)
+    if cached:
+        return jsonify(cached)
+    try:
+        import datetime as _dt2
+        start = _dt2.datetime.strptime(date_str, '%Y-%m-%d')
+        end   = start + _dt2.timedelta(days=1)
+        spy   = yf.Ticker('SPY')
+        hist  = spy.history(start=date_str, end=end.strftime('%Y-%m-%d'))
+        if hist.empty:
+            result = {'status': 'no_data'}
+            cache_set(cache_key, result)
+            return jsonify(result)
+        day = hist.iloc[0]
+        pct = round(float((day['Close'] - day['Open']) / day['Open'] * 100), 2)
+        direction = 'bull' if pct > 0.3 else ('bear' if pct < -0.3 else 'neutral')
+        result = {'status': 'ok', 'pct': pct, 'direction': direction, 'date': date_str}
+        cache_set(cache_key, result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'msg': str(e)})
 
 
 @app.route('/quick-predict/<ticker>')
