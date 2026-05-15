@@ -196,10 +196,53 @@
     .cl-bar-wrap { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
     .cl-bar-fill { height: 100%; border-radius: 3px; transition: width .6s; }
 
+    /* ── Day Prediction Sidebar ── */
+    .day-sidebar {
+      width: 240px; flex-shrink: 0;
+      position: sticky; top: 72px; align-self: flex-start;
+      background: var(--bg2); border: 1px solid var(--sep);
+      border-radius: var(--r-lg); overflow: hidden; font-size: 12px;
+      box-shadow: var(--shadow); max-height: calc(100vh - 90px); overflow-y: auto;
+    }
+    .day-header {
+      padding: 10px 12px; border-bottom: 1px solid var(--sep);
+      background: linear-gradient(135deg,#0f172a,#1e293b);
+      font-size: 11px; font-weight: 700; color: #f1f5f9; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .day-gauge-wrap {
+      padding: 14px 12px 10px;
+    }
+    .day-gauge-bar {
+      height: 18px; border-radius: 9px; width: 100%;
+      background: linear-gradient(90deg, #ef4444 0%, #f59e0b 40%, #22c55e 75%, #16a34a 100%);
+      position: relative; margin-bottom: 6px;
+    }
+    .day-gauge-needle {
+      position: absolute; top: -4px; width: 4px; height: 26px;
+      background: #fff; border-radius: 2px; box-shadow: 0 0 4px #0008;
+      transform: translateX(-50%); transition: left 0.8s cubic-bezier(.4,0,.2,1);
+    }
+    .day-score-txt { font-size: 22px; font-weight: 800; text-align: center; letter-spacing: -0.5px; }
+    .day-verdict  { font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 10px; }
+    .day-factor   { display: flex; align-items: flex-start; gap: 6px; padding: 5px 10px; border-bottom: 1px solid var(--sep2); font-size: 11px; line-height: 1.4; }
+    .day-factor:last-child { border-bottom: none; }
+    .day-factor-icon { flex-shrink: 0; width: 16px; text-align: center; }
+    .day-factor-label { flex: 1; color: var(--label2); }
+    .day-factor-delta { font-size: 10px; font-weight: 700; flex-shrink: 0; }
+    .day-factors-title { font-size: 10px; font-weight: 700; color: var(--label3); padding: 6px 10px 3px; text-transform: uppercase; letter-spacing: 0.4px; border-top: 1px solid var(--sep); }
+    /* stock mini-predictor */
+    .stock-pred-section { border-top: 1px solid var(--sep); padding: 10px 10px 4px; }
+    .stock-pred-title { font-size: 10px; font-weight: 700; color: var(--label3); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+    .stock-pred-inputs { display: flex; flex-direction: column; gap: 4px; }
+    .stock-pred-row { display: flex; align-items: center; gap: 5px; }
+    .stock-pred-input { flex: 1; background: var(--bg3); border: 1px solid var(--sep); border-radius: 6px; padding: 4px 7px; font-size: 11px; color: var(--label); font-family: inherit; text-transform: uppercase; outline: none; width: 0; }
+    .stock-pred-result { font-size: 10px; font-weight: 700; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+
     @media (max-width: 900px) {
       .page-layout { flex-direction: column-reverse; }
       .cl-sidebar { width: 100%; position: static; }
       .scan-sidebar { width: 100%; position: static; order: -1; }
+      .day-sidebar { width: 100%; position: static; order: -2; }
     }
 
     /* ── Liv20 Scanner Sidebar ── */
@@ -910,14 +953,34 @@
   </div>
 </div>
 
-<!-- ── לוח אירועים תמיד גלוי ── -->
+<!-- ── לוח אירועים — אירוע הבא בלבד ── -->
 <div style="max-width:1500px;margin:10px auto 0;padding:0 20px;">
-  <div class="mcard" id="calendarCard">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div class="section-title" style="margin:0;">📅 אירועים קרובים — 10 ימים קדימה</div>
-      <div style="font-size:11px;color:var(--label3);">FOMC · NFP · עונת דוחות · חגים</div>
+  <div class="mcard" id="calendarCard" style="cursor:pointer;" onclick="openEventsModal()">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="section-title" style="margin:0;">📅 האירוע הקרוב ביותר</div>
+      <button onclick="event.stopPropagation();openEventsModal()" style="background:var(--bg3);border:1px solid var(--sep);border-radius:8px;padding:4px 12px;color:var(--blue);font-size:12px;cursor:pointer;">הצג הכל 60 יום ›</button>
     </div>
-    <div id="eventsList"><div style="color:var(--label3);font-size:13px;">טוען...</div></div>
+    <div id="eventsList" style="margin-top:10px;"><div style="color:var(--label3);font-size:13px;">טוען...</div></div>
+  </div>
+</div>
+
+<!-- ── מודל אירועים 60 יום ── -->
+<div id="eventsModal" style="display:none;position:fixed;inset:0;background:#000a;z-index:9999;overflow-y:auto;" onclick="if(event.target===this)closeEventsModal()">
+  <div style="max-width:520px;margin:40px auto;background:var(--bg2);border-radius:16px;border:1px solid var(--sep);overflow:hidden;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:var(--bg3);border-bottom:1px solid var(--sep);">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--label);">📅 אירועים קרובים — 60 יום</div>
+        <div style="font-size:11px;color:var(--label3);margin-top:3px;">
+          <span style="color:#f59e0b;">●</span> FOMC &nbsp;
+          <span style="color:#ef4444;">●</span> CPI/NFP &nbsp;
+          <span style="color:#a855f7;">●</span> GDP/PCE &nbsp;
+          <span style="color:#22c55e;">●</span> חגים &nbsp;
+          <span style="color:#3b82f6;">●</span> דוחות
+        </div>
+      </div>
+      <button onclick="closeEventsModal()" style="background:none;border:none;font-size:20px;color:var(--label3);cursor:pointer;padding:4px 8px;">✕</button>
+    </div>
+    <div id="eventsModalList" style="padding:8px 0;max-height:70vh;overflow-y:auto;"></div>
   </div>
 </div>
 
@@ -996,6 +1059,27 @@
 </div>
 
 <div class="page-layout">
+
+<!-- ── Day Prediction Sidebar (שמאל) ── -->
+<div class="day-sidebar" id="daySidebar">
+  <div class="day-header">🌡️ תחזית יום — ירוק או אדום?</div>
+  <div class="day-gauge-wrap">
+    <div class="day-gauge-bar">
+      <div class="day-gauge-needle" id="dayNeedle" style="left:50%;"></div>
+    </div>
+    <div class="day-score-txt" id="dayScoreTxt" style="color:#f59e0b;">50</div>
+    <div class="day-verdict"   id="dayVerdict"  style="color:#f59e0b;">טוען...</div>
+  </div>
+  <div class="day-factors-title">גורמים מכריעים</div>
+  <div id="dayFactors"><div style="padding:10px;color:var(--label3);font-size:11px;">⏳ בודק שוק...</div></div>
+
+  <!-- ── תחזית מניות ── -->
+  <div class="stock-pred-section">
+    <div class="stock-pred-title">📌 תחזית מניות ספציפיות</div>
+    <div class="stock-pred-inputs" id="stockPredInputs"></div>
+    <button onclick="runStockPredictions()" style="width:100%;margin-top:8px;margin-bottom:6px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:6px;font-size:11px;font-weight:700;cursor:pointer;">🔍 נתח</button>
+  </div>
+</div>
 
 <!-- ── Checklist Sidebar ── -->
 <div class="cl-sidebar" id="clSidebar">
@@ -1824,26 +1908,42 @@
     }
 
     // אירועים
-    const evColors  = {fomc:'var(--yellow)', holiday:'var(--blue)', economic:'var(--blue)', earnings:'var(--green)'};
-    const evExplain = {
-      fomc:     'החלטת ריבית — תנודתיות גבוהה · כדאי לסגור פוזיציות פתוחות לפני',
-      holiday:  'הבורסה סגורה — אין מסחר',
-      economic: 'נתון כלכלי — עשוי להזיז את השוק',
-      earnings: 'עונת דוחות — ווליום גבוה, הזדמנויות רבות'
+    const evDotColor = {
+      fomc:'#f59e0b', holiday:'#22c55e', earnings:'#3b82f6',
+      nfp:'#ef4444',  cpi:'#ef4444',     ppi:'#ef4444',
+      gdp:'#a855f7',  pce:'#a855f7',     retail:'#94a3b8',
+      economic:'#ef4444'
     };
+    const evExplain = {
+      fomc:    'החלטת ריבית — תנודתיות גבוהה · כדאי לסגור פוזיציות לפני',
+      holiday: 'הבורסה סגורה — אין מסחר',
+      earnings:'עונת דוחות — ווליום גבוה, הזדמנויות רבות',
+      nfp:     'תעסוקה — עשוי להזיז את הדולר ואת השוק',
+      cpi:     'אינפלציית צרכן — השפעה ישירה על ריבית ה-Fed',
+      ppi:     'אינפלציית יצרן — מבשר לCPI הבא',
+      gdp:     'תוצר גולמי — מדד הצמיחה הכלכלית',
+      pce:     'מדד האינפלציה המועדף על הFed',
+      retail:  'מכירות קמעונאות — מדד הצריכה הפרטית',
+    };
+    window._allEvents = d.events || [];
+
+    // קלף קטן — אירוע אחד בלבד
     if (d.events && d.events.length) {
-      document.getElementById('eventsList').innerHTML = d.events.map(ev => {
-        const col  = evColors[ev.type] || 'var(--label2)';
-        const expl = evExplain[ev.type] || '';
-        const days = ev.days_until === 0 ? '🔴 היום!' : `בעוד ${ev.days_until} ימים`;
-        return `<div class="event-item ${ev.type}">
-          <div class="event-title">${ev.event}</div>
-          <div class="event-meta">${ev.date_fmt} | ${days}</div>
-          ${expl ? `<div class="event-explain">${expl}</div>` : ''}
+      const ev   = d.events[0];
+      const dot  = evDotColor[ev.type] || '#94a3b8';
+      const days = ev.days_until === 0 ? '🔴 היום!' : `בעוד ${ev.days_until}\'`;
+      const expl = evExplain[ev.type] || '';
+      document.getElementById('eventsList').innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="background:${dot}22;border:1px solid ${dot};border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;color:${dot};white-space:nowrap;">${ev.date_fmt}</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--label);">${ev.event}</div>
+            ${expl ? `<div style="font-size:11px;color:var(--label3);margin-top:2px;">${expl}</div>` : ''}
+          </div>
+          <div style="font-size:12px;color:var(--label3);white-space:nowrap;">${days}</div>
         </div>`;
-      }).join('');
     } else {
-      document.getElementById('eventsList').innerHTML = '<div style="color:var(--label3);font-size:13px;">אין אירועים ב-10 הימים הקרובים</div>';
+      document.getElementById('eventsList').innerHTML = '<div style="color:var(--label3);font-size:13px;">אין אירועים קרובים</div>';
     }
   }
 
@@ -2775,21 +2875,33 @@
         listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--label3);font-size:13px;">לא נמצאו חדשות</div>';
         return;
       }
-      const originIcon = o => o === 'google' ? '<span style="font-size:9px;background:#e8f0fe;color:#1a73e8;border-radius:3px;padding:1px 4px;margin-right:4px;">Google</span>' : '<span style="font-size:9px;background:#fff3cd;color:#856404;border-radius:3px;padding:1px 4px;margin-right:4px;">Yahoo</span>';
-      listEl.innerHTML = items.map(n => `
-        <div style="border-bottom:1px solid var(--sep2);padding:11px 18px;display:flex;gap:10px;align-items:flex-start;">
-          <div style="font-size:18px;min-width:26px;padding-top:1px;">${n.is_mover ? '🔥' : '📰'}</div>
+      const originBadge = o => {
+        if (o === 'google') return '<span style="font-size:9px;background:#e8f0fe;color:#1a73e8;border-radius:3px;padding:1px 5px;margin-left:4px;">Google</span>';
+        return '<span style="font-size:9px;background:#fff3cd;color:#856404;border-radius:3px;padding:1px 5px;margin-left:4px;">Yahoo</span>';
+      };
+      const xLink = data.x_search_url || `https://x.com/search?q=%24${ticker}&src=typed_query&f=live`;
+
+      const newsRows = items.map(n => `
+        <div style="border-bottom:1px solid var(--sep2);padding:10px 18px;display:flex;gap:10px;align-items:flex-start;">
+          <div style="font-size:17px;min-width:24px;padding-top:1px;">${n.is_mover ? '🔥' : '📰'}</div>
           <div style="flex:1;min-width:0;">
-            <a href="${n.link}" target="_blank" rel="noopener" style="color:${n.is_mover ? 'var(--orange)' : 'var(--label)'};text-decoration:none;font-size:13.5px;font-weight:${n.is_mover ? '700' : '500'};line-height:1.45;display:block;">
-              ${n.title}
-            </a>
-            <div style="font-size:10.5px;color:var(--label3);margin-top:4px;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
-              ${originIcon(n.origin)}${n.source}${n.date ? ' · ' + n.date : ''}
-              ${n.is_mover ? '<span style="background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:1px 5px;font-size:9px;">מזיז מחיר</span>' : ''}
+            <a href="${n.link}" target="_blank" rel="noopener"
+               style="color:${n.is_mover ? 'var(--orange)' : 'var(--label)'};text-decoration:none;font-size:13px;font-weight:${n.is_mover ? '600' : '400'};line-height:1.45;display:block;">${n.title}</a>
+            <div style="font-size:10px;color:var(--label3);margin-top:3px;display:flex;align-items:center;flex-wrap:wrap;gap:3px;">
+              ${originBadge(n.origin)}${n.source}${n.date ? ' · ' + n.date : ''}
+              ${n.is_mover ? '<span style="color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:1px 4px;font-size:9px;">מזיז מחיר</span>' : ''}
             </div>
           </div>
-        </div>
-      `).join('');
+        </div>`).join('');
+
+      listEl.innerHTML = newsRows + `
+        <div style="padding:12px 18px;background:var(--bg3);border-top:1px solid var(--sep);display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;color:var(--label3);">𝕏 רוצה לראות מה אומרים הטריידרים?</div>
+          <a href="${xLink}" target="_blank" rel="noopener"
+             style="font-size:12px;font-weight:600;color:#fff;background:#000;border-radius:8px;padding:6px 16px;text-decoration:none;white-space:nowrap;">
+            𝕏 חפש ב-X.com ›
+          </a>
+        </div>`;
     } catch(e) {
       listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--label3);font-size:13px;">שגיאה בטעינת חדשות</div>';
     }
@@ -3297,6 +3409,75 @@
   loadWorldNews();
   setInterval(loadWorldNews, 900000); // כל 15 דקות
 
+  // ─── Day Prediction Sidebar ──────────────────────────────────────────────────
+
+  async function loadDayPrediction() {
+    try {
+      const data = await fetch('/day-prediction').then(r => r.json());
+      const { score, verdict, color, factors } = data;
+
+      // עדכן מחט
+      document.getElementById('dayNeedle').style.left = score + '%';
+      const scorEl = document.getElementById('dayScoreTxt');
+      scorEl.textContent = score;
+      scorEl.style.color = color;
+      const vEl = document.getElementById('dayVerdict');
+      vEl.textContent = verdict;
+      vEl.style.color = color;
+
+      // רנדר גורמים
+      const factorsEl = document.getElementById('dayFactors');
+      factorsEl.innerHTML = (factors || []).filter(f => f.delta !== 0).map(f => {
+        const dColor = f.bull === true ? '#22c55e' : f.bull === false ? '#ef4444' : '#94a3b8';
+        const dSign  = f.delta > 0 ? '+' + f.delta : f.delta;
+        return `<div class="day-factor">
+          <div class="day-factor-icon">${f.icon}</div>
+          <div class="day-factor-label">${f.label}</div>
+          <div class="day-factor-delta" style="color:${dColor};">${dSign}</div>
+        </div>`;
+      }).join('') || '<div style="padding:10px;color:var(--label3);font-size:11px;">אין נתונים</div>';
+    } catch(e) {
+      document.getElementById('dayVerdict').textContent = 'שגיאה בטעינה';
+    }
+  }
+
+  // בנה 7 שורות קלט מניות (עם ערכי ברירת מחדל)
+  const DEFAULT_TICKERS = ['NVDA','TSLA','AAPL','AMZN','META','PLTR','MSTR'];
+  (function buildStockInputs() {
+    const cont = document.getElementById('stockPredInputs');
+    cont.innerHTML = DEFAULT_TICKERS.map((t, i) => `
+      <div class="stock-pred-row" id="predRow${i}">
+        <input class="stock-pred-input" id="predTicker${i}" value="${t}" placeholder="טיקר" maxlength="8"
+          onkeydown="if(event.key==='Enter')runStockPredictions()" />
+        <span class="stock-pred-result" id="predResult${i}" style="background:var(--bg3);color:var(--label3);">—</span>
+      </div>`).join('');
+  })();
+
+  async function runStockPredictions() {
+    for (let i = 0; i < 7; i++) {
+      const inp = document.getElementById(`predTicker${i}`);
+      const res = document.getElementById(`predResult${i}`);
+      const ticker = (inp.value || '').trim().toUpperCase();
+      if (!ticker) { res.textContent = '—'; continue; }
+      res.textContent = '⏳';
+      res.style.background = 'var(--bg3)';
+      res.style.color = 'var(--label3)';
+      try {
+        const d = await fetch(`/quick-predict/${ticker}`).then(r => r.json());
+        if (d.error) { res.textContent = '❌'; continue; }
+        res.textContent = `${d.verdict} ${d.change_pct > 0 ? '+' : ''}${d.change_pct}%`;
+        res.style.background = d.color + '22';
+        res.style.color = d.color;
+        res.title = `${d.ticker}: bull=${d.bullish} bear=${d.bearish} | ${d.reason}`;
+      } catch(e) {
+        res.textContent = '❌';
+      }
+    }
+  }
+
+  // טעינה בפתיחה ורענון כל 5 דקות
+  loadDayPrediction();
+  setInterval(loadDayPrediction, 300000);
 
   // ─── Liv20 Scanner ───────────────────────────────────────────────────────────
 

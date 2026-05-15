@@ -2391,7 +2391,7 @@ def market_overview():
             f_dxy     = ex.submit(get_dxy)
             f_t10     = ex.submit(get_us10y)
             f_sectors = ex.submit(get_sector_performance)
-            f_events  = ex.submit(lambda: get_upcoming_events(30))
+            f_events  = ex.submit(lambda: get_upcoming_events(60))
             f_futures  = ex.submit(get_futures)
             f_mstatus  = ex.submit(get_market_status)
             f_extended = ex.submit(get_extended_hours)
@@ -2858,6 +2858,237 @@ def scan_watchlist():
         return jsonify({'error': str(e), 'stocks': []}), 500
 
 
+@app.route('/day-prediction')
+def day_prediction():
+    """תחזית יום — ירוק או אדום? לפי 10 גורמים מאקרו"""
+    import datetime as dt, xml.etree.ElementTree as ET, urllib.parse as ulp
+
+    cached = cache_get('day_prediction', ttl=300)
+    if cached:
+        return jsonify(cached)
+
+    score = 50
+    factors = []
+
+    def add(icon, label, delta, bull):
+        nonlocal score
+        score += delta
+        factors.append({'icon': icon, 'label': label, 'delta': delta, 'bull': bull})
+
+    # ── 1. S&P500 Futures (חזק ביותר) ────────────────────────────────────────
+    try:
+        es = yf.Ticker('ES=F').history(period='2d')
+        if len(es) >= 2:
+            chg = (es['Close'].iloc[-1] - es['Close'].iloc[-2]) / es['Close'].iloc[-2] * 100
+            if chg > 1:    add('🚀', f'חוזי S&P עלו {chg:.1f}%', +12, True)
+            elif chg > 0.5: add('📈', f'חוזי S&P עלו {chg:.1f}%', +8, True)
+            elif chg > 0.1: add('📈', f'חוזי S&P עלו {chg:.1f}%', +4, True)
+            elif chg > -0.1: add('➡️', f'חוזי S&P יציבים ({chg:+.1f}%)', 0, None)
+            elif chg > -0.5: add('📉', f'חוזי S&P ירדו {chg:.1f}%', -4, False)
+            elif chg > -1:  add('📉', f'חוזי S&P ירדו {chg:.1f}%', -8, False)
+            else:           add('🔴', f'חוזי S&P ירדו חזק {chg:.1f}%', -12, False)
+    except Exception: pass
+
+    # ── 2. VIX ──────────────────────────────────────────────────────────────
+    try:
+        vix_data = get_vix()
+        if vix_data:
+            v = vix_data['value']
+            if v < 15:    add('😌', f'VIX נמוך ({v}) — שוק רגוע', +10, True)
+            elif v < 20:  add('🟡', f'VIX בינוני ({v})', +4, True)
+            elif v < 25:  add('⚠️', f'VIX מוגבר ({v})', -4, False)
+            elif v < 30:  add('😨', f'VIX גבוה ({v}) — חשש', -8, False)
+            else:         add('🆘', f'VIX מעל 30 ({v}) — פאניקה!', -14, False)
+    except Exception: pass
+
+    # ── 3. Fear & Greed (contrarian) ────────────────────────────────────────
+    try:
+        fg = get_fear_greed()
+        if fg:
+            s = float(fg['score'])
+            if s <= 15:   add('🛒', f'פחד קיצוני (F&G={s:.0f}) — הזדמנות קנייה', +6, True)
+            elif s <= 30: add('😰', f'פחד בשוק (F&G={s:.0f})', +2, True)
+            elif s <= 55: add('😐', f'F&G ניטרלי ({s:.0f})', 0, None)
+            elif s <= 75: add('😏', f'חמדנות (F&G={s:.0f}) — מומנטום', +3, True)
+            else:         add('🤑', f'חמדנות קיצונית (F&G={s:.0f}) — סיכון', -4, False)
+    except Exception: pass
+
+    # ── 4. SPY — אתמול + שבוע ───────────────────────────────────────────────
+    try:
+        spy_h = yf.Ticker('SPY').history(period='10d')
+        if len(spy_h) >= 6:
+            d1 = (spy_h['Close'].iloc[-1] - spy_h['Close'].iloc[-2]) / spy_h['Close'].iloc[-2] * 100
+            d5 = (spy_h['Close'].iloc[-1] - spy_h['Close'].iloc[-6]) / spy_h['Close'].iloc[-6] * 100
+            # mean reversion — 3+ ימים אדומים
+            reds = sum(1 for i in range(1, min(4, len(spy_h)))
+                       if spy_h['Close'].iloc[-i] < spy_h['Close'].iloc[-i-1])
+            if d1 > 1:    add('📗', f'S&P500 עלה {d1:.1f}% אתמול', +5, True)
+            elif d1 > 0:  add('📗', f'S&P500 עלה {d1:.1f}% אתמול', +2, True)
+            elif d1 > -1: add('📕', f'S&P500 ירד {d1:.1f}% אתמול', -2, False)
+            else:         add('📕', f'S&P500 ירד חזק {d1:.1f}% אתמול', -5, False)
+            if d5 > 3:    add('📈', f'מגמה שבועית חיובית ({d5:.1f}%)', +5, True)
+            elif d5 > 0:  add('📈', f'מגמה שבועית קלה ({d5:.1f}%)', +2, True)
+            elif d5 > -3: add('📉', f'מגמה שבועית שלילית ({d5:.1f}%)', -2, False)
+            else:         add('📉', f'מגמה שבועית חלשה ({d5:.1f}%)', -5, False)
+            if reds >= 3:
+                add('🔄', f'{reds} ימים אדומים רצופים — ריקושט סטטיסטי', +4, True)
+    except Exception: pass
+
+    # ── 5. תשואת אגח 10Y ────────────────────────────────────────────────────
+    try:
+        us10y = get_us10y()
+        if us10y:
+            yld = float(us10y['value'])
+            chg = float(us10y.get('change', 0))
+            if yld > 4.5 and chg > 0.05:  add('📛', f'אגח 10Y עולה ({yld:.2f}%) — לחץ על מניות', -8, False)
+            elif yld > 4.5:               add('⚠️', f'אגח 10Y גבוה ({yld:.2f}%)', -4, False)
+            elif yld < 4.0:               add('✅', f'אגח 10Y נמוך ({yld:.2f}%) — תומך', +5, True)
+            elif chg < -0.05:             add('💚', f'אגח 10Y יורד ({chg:+.2f}%) — חיובי', +4, True)
+            else:                         add('🟡', f'אגח 10Y ניטרלי ({yld:.2f}%)', 0, None)
+    except Exception: pass
+
+    # ── 6. דולר DXY ──────────────────────────────────────────────────────────
+    try:
+        dxy = get_dxy()
+        if dxy:
+            dc = float(dxy.get('change', 0))
+            if dc > 0.5:    add('💵', f'דולר מתחזק ({dc:+.1f}%) — לחץ', -5, False)
+            elif dc > 0.2:  add('💵', f'דולר עולה קלות ({dc:+.1f}%)', -2, False)
+            elif dc < -0.5: add('💚', f'דולר נחלש ({dc:+.1f}%) — תומך', +5, True)
+            elif dc < -0.2: add('💚', f'דולר יורד קלות ({dc:+.1f}%)', +2, True)
+            else:           add('💵', f'דולר יציב ({dc:+.1f}%)', 0, None)
+    except Exception: pass
+
+    # ── 7. נפט גולמי WTI ────────────────────────────────────────────────────
+    try:
+        oil_h = yf.Ticker('CL=F').history(period='3d')
+        if len(oil_h) >= 2:
+            oc = (oil_h['Close'].iloc[-1] - oil_h['Close'].iloc[-2]) / oil_h['Close'].iloc[-2] * 100
+            if oc > 3:    add('🛢️', f'נפט עולה חזק {oc:.1f}% — לחץ אינפלציה', -5, False)
+            elif oc > 1:  add('🛢️', f'נפט עולה {oc:.1f}%', -2, False)
+            elif oc < -3: add('✅', f'נפט יורד {oc:.1f}% — הקלה', +4, True)
+            elif oc < -1: add('✅', f'נפט יורד {oc:.1f}%', +2, True)
+            else:         add('🛢️', f'נפט יציב ({oc:+.1f}%)', 0, None)
+    except Exception: pass
+
+    # ── 8. זהב — risk-off ────────────────────────────────────────────────────
+    try:
+        gold_h = yf.Ticker('GC=F').history(period='3d')
+        if len(gold_h) >= 2:
+            gc = (gold_h['Close'].iloc[-1] - gold_h['Close'].iloc[-2]) / gold_h['Close'].iloc[-2] * 100
+            if gc > 1:    add('🥇', f'זהב עולה {gc:.1f}% — בריחה לבטוח', -4, False)
+            elif gc < -1: add('🥇', f'זהב יורד {gc:.1f}% — risk-on', +3, True)
+            else:         add('🥇', f'זהב יציב ({gc:+.1f}%)', 0, None)
+    except Exception: pass
+
+    # ── 9. אסיה ואירופה ──────────────────────────────────────────────────────
+    try:
+        asia_sum = 0
+        for sym, name in [('^N225','ניקיי'), ('^HSI','הנג-סנג'), ('^GDAXI','DAX')]:
+            try:
+                h = yf.Ticker(sym).history(period='3d')
+                if len(h) >= 2:
+                    c = (h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2] * 100
+                    asia_sum += c
+            except Exception: pass
+        if asia_sum > 2:    add('🌏', f'שוקי אסיה/אירופה חיוביים', +5, True)
+        elif asia_sum > 0.5: add('🌏', f'שוקי אסיה/אירופה קלות חיוביים', +2, True)
+        elif asia_sum < -2: add('🌏', f'שוקי אסיה/אירופה שליליים', -5, False)
+        elif asia_sum < -0.5: add('🌏', f'שוקי אסיה/אירופה קלות שליליים', -2, False)
+        else:               add('🌏', f'שוקי אסיה/אירופה יציבים', 0, None)
+    except Exception: pass
+
+    # ── 10. אירועים היום/מחר ────────────────────────────────────────────────
+    try:
+        for ev in get_upcoming_events(2):
+            if ev['days_until'] <= 1:
+                t = ev.get('type', '')
+                if t == 'fomc':          add('🏛️', f'ישיבת FOMC היום/מחר — תנודתיות', -10, False)
+                elif t in ('cpi','ppi'): add('📊', f'{ev["event"][:35]}', -7, False)
+                elif t == 'nfp':        add('💼', f'NFP היום/מחר', -6, False)
+                elif t in ('gdp','pce'): add('📈', f'{ev["event"][:35]}', -5, False)
+                elif t == 'retail':     add('🛒', f'מכירות קמעונאות היום/מחר', -3, False)
+                elif t == 'holiday':    add('🏛️', f'שוק סגור — {ev["event"][:25]}', 0, None)
+    except Exception: pass
+
+    # ── 11. סנטימנט חדשות ──────────────────────────────────────────────────
+    try:
+        q = ulp.quote('stock market today wall street')
+        rss = f'https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en'
+        r = requests.get(rss, timeout=6, headers={'User-Agent': 'Mozilla/5.0'})
+        root = ET.fromstring(r.content)
+        bull_kw = ['rally','surges','gains','rises','beats','higher','record','recovery','optimism','bullish','breakout','soars']
+        bear_kw = ['crash','plunges','falls','drops','recession','fear','warning','crisis','sell-off','bearish','slump','tumbles','tariff','default']
+        b, s2 = 0, 0
+        for item in root.findall('.//item')[:12]:
+            t = (item.findtext('title') or '').lower()
+            b  += sum(1 for w in bull_kw if w in t)
+            s2 += sum(1 for w in bear_kw if w in t)
+        if b > s2 + 2:    add('📰', f'חדשות חיוביות ({b} סיגנלים)', +6, True)
+        elif s2 > b + 2:  add('📰', f'חדשות שליליות ({s2} סיגנלים)', -6, False)
+        else:             add('📰', f'חדשות מעורבות (חיובי:{b} שלילי:{s2})', 0, None)
+    except Exception: pass
+
+    score = max(0, min(100, score))
+    if score >= 65:   verdict, color = 'יום ירוק 🟢', '#22c55e'
+    elif score >= 55: verdict, color = 'נטיית עלייה 🟡', '#86efac'
+    elif score >= 45: verdict, color = 'ניטרלי ⚪', '#f59e0b'
+    elif score >= 35: verdict, color = 'נטיית ירידה 🟠', '#fca5a5'
+    else:             verdict, color = 'יום אדום 🔴', '#ef4444'
+
+    result = {
+        'score': score, 'verdict': verdict, 'color': color,
+        'factors': factors,
+        'checked_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+    }
+    cache_set('day_prediction', result)
+    return jsonify(result)
+
+
+@app.route('/quick-predict/<ticker>')
+def quick_predict(ticker):
+    """תחזית מהירה לטיקר — ירוק/אדום/ניטרלי"""
+    ticker = ticker.upper().strip()
+    cache_key = f'qpred_{ticker}'
+    cached = cache_get(cache_key, ttl=600)
+    if cached:
+        return jsonify(cached)
+    try:
+        from scanner import quick_analyze
+        r = quick_analyze(ticker)
+        if not r:
+            return jsonify({'error': 'no data'}), 404
+        score = 50
+        score += r['bullish'] * 7
+        score -= r['bearish'] * 7
+        if r['rec'] == 'strong-buy':  score += 10
+        elif r['rec'] == 'buy':       score += 5
+        elif r['rec'] == 'strong-sell': score -= 10
+        elif r['rec'] == 'sell':      score -= 5
+        score = max(0, min(100, score))
+        if score >= 60:   verdict, color = 'ירוק', '#22c55e'
+        elif score >= 50: verdict, color = 'נטייה חיובית', '#86efac'
+        elif score >= 40: verdict, color = 'ניטרלי', '#f59e0b'
+        elif score >= 30: verdict, color = 'נטייה שלילית', '#fca5a5'
+        else:             verdict, color = 'אדום', '#ef4444'
+        result = {
+            'ticker': ticker,
+            'score': score,
+            'verdict': verdict,
+            'color': color,
+            'price': r['price'],
+            'change_pct': r['change_pct'],
+            'bullish': r['bullish'],
+            'bearish': r['bearish'],
+            'reason': r['reason'],
+            'rec': r['rec'],
+        }
+        cache_set(cache_key, result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/dip-check')
 def dip_check():
     """בדיקת 4 כללים לתפיסת הדיפ לפי שיטת מיכה סטוק"""
@@ -3068,10 +3299,12 @@ def stock_news(ticker):
             'origin':   n['origin'],
         })
 
+    x_query = urllib.parse.quote(f'${ticker}')
     result = {
         'ticker': ticker,
         'items':  result_items,
         'fetched_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'x_search_url': f'https://x.com/search?q=%24{ticker}&src=typed_query&f=live',
     }
     cache_set(cache_key, result)
     return jsonify(result)
