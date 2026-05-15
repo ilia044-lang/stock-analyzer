@@ -2875,18 +2875,54 @@ def day_prediction():
         score += delta
         factors.append({'icon': icon, 'label': label, 'delta': delta, 'bull': bull})
 
-    # ── 1. S&P500 Futures (חזק ביותר) ────────────────────────────────────────
+    # ── 1. חוזים עתידיים + פרה-מרקט (הגורם החזק ביותר) ─────────────────────
     try:
-        es = yf.Ticker('ES=F').history(period='2d')
-        if len(es) >= 2:
-            chg = (es['Close'].iloc[-1] - es['Close'].iloc[-2]) / es['Close'].iloc[-2] * 100
-            if chg > 1:    add('🚀', f'חוזי S&P עלו {chg:.1f}%', +12, True)
-            elif chg > 0.5: add('📈', f'חוזי S&P עלו {chg:.1f}%', +8, True)
-            elif chg > 0.1: add('📈', f'חוזי S&P עלו {chg:.1f}%', +4, True)
-            elif chg > -0.1: add('➡️', f'חוזי S&P יציבים ({chg:+.1f}%)', 0, None)
-            elif chg > -0.5: add('📉', f'חוזי S&P ירדו {chg:.1f}%', -4, False)
-            elif chg > -1:  add('📉', f'חוזי S&P ירדו {chg:.1f}%', -8, False)
-            else:           add('🔴', f'חוזי S&P ירדו חזק {chg:.1f}%', -12, False)
+        futures_scores = []
+        futures_labels = []
+        for sym, name in [('ES=F','S&P'), ('NQ=F','נאסדק'), ('YM=F','דאו')]:
+            try:
+                h = yf.Ticker(sym).history(period='2d', prepost=True)
+                if len(h) >= 2:
+                    chg = (h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2] * 100
+                    futures_scores.append(chg)
+                    futures_labels.append(f'{name} {chg:+.1f}%')
+            except Exception:
+                pass
+        if futures_scores:
+            avg_chg = sum(futures_scores) / len(futures_scores)
+            label = 'חוזים: ' + ' · '.join(futures_labels)
+            if avg_chg > 1:     add('🚀', label, +14, True)
+            elif avg_chg > 0.5: add('📈', label, +9,  True)
+            elif avg_chg > 0.1: add('📈', label, +5,  True)
+            elif avg_chg > -0.1:add('➡️', label,  0,  None)
+            elif avg_chg > -0.5:add('📉', label, -5,  False)
+            elif avg_chg > -1:  add('📉', label, -9,  False)
+            else:               add('🔴', label, -14, False)
+    except Exception: pass
+
+    # ── 1b. פרה-מרקט SPY/QQQ (נתון מדויק לפני פתיחה) ────────────────────────
+    try:
+        import datetime as _dt
+        now_et = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(hours=4)
+        is_premarket = 4 <= now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
+        if is_premarket:
+            pm_scores = []
+            for sym, name in [('SPY','SPY'), ('QQQ','QQQ')]:
+                try:
+                    h = yf.Ticker(sym).history(period='1d', interval='1m', prepost=True)
+                    if not h.empty:
+                        last_pm  = float(h['Close'].iloc[-1])
+                        prev_close = float(yf.Ticker(sym).history(period='2d')['Close'].iloc[-2])
+                        pm_chg = (last_pm - prev_close) / prev_close * 100
+                        pm_scores.append((name, pm_chg))
+                except Exception:
+                    pass
+            if pm_scores:
+                parts = ' · '.join(f'{n} {c:+.1f}%' for n, c in pm_scores)
+                avg = sum(c for _, c in pm_scores) / len(pm_scores)
+                delta = int(avg * 8)
+                delta = max(-12, min(12, delta))
+                add('⏰', f'פרה-מרקט: {parts}', delta, avg > 0 if abs(avg) > 0.1 else None)
     except Exception: pass
 
     # ── 2. VIX ──────────────────────────────────────────────────────────────
@@ -3011,23 +3047,95 @@ def day_prediction():
                 elif t == 'holiday':    add('🏛️', f'שוק סגור — {ev["event"][:25]}', 0, None)
     except Exception: pass
 
-    # ── 11. סנטימנט חדשות ──────────────────────────────────────────────────
-    try:
-        q = ulp.quote('stock market today wall street')
-        rss = f'https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en'
-        r = requests.get(rss, timeout=6, headers={'User-Agent': 'Mozilla/5.0'})
-        root = ET.fromstring(r.content)
-        bull_kw = ['rally','surges','gains','rises','beats','higher','record','recovery','optimism','bullish','breakout','soars']
-        bear_kw = ['crash','plunges','falls','drops','recession','fear','warning','crisis','sell-off','bearish','slump','tumbles','tariff','default']
-        b, s2 = 0, 0
-        for item in root.findall('.//item')[:12]:
-            t = (item.findtext('title') or '').lower()
-            b  += sum(1 for w in bull_kw if w in t)
-            s2 += sum(1 for w in bear_kw if w in t)
-        if b > s2 + 2:    add('📰', f'חדשות חיוביות ({b} סיגנלים)', +6, True)
-        elif s2 > b + 2:  add('📰', f'חדשות שליליות ({s2} סיגנלים)', -6, False)
-        else:             add('📰', f'חדשות מעורבות (חיובי:{b} שלילי:{s2})', 0, None)
-    except Exception: pass
+    # ── 11. חדשות שוק + Trump/פוליטיקה + חדשות מתפרצות ─────────────────────
+    import email.utils as _eu
+    import datetime as _dt2
+
+    bull_kw    = ['rally','surges','gains','rises','beats','higher','record','recovery',
+                  'optimism','bullish','breakout','soars','ceasefire','stimulus',
+                  'rate cut','trade deal','boom','surge','lifted','jumped','climbed',
+                  'strong jobs','beat estimates','buyback','approved','signed']
+    bear_kw    = ['crash','plunges','falls','drops','recession','fear','warning','crisis',
+                  'sell-off','bearish','slump','tumbles','tariff','default','sanction',
+                  'bank failure','layoffs','miss','downgrade','collapse','suspend','ban',
+                  'investigation','shutdown','debt ceiling','war','attack','escalate',
+                  'threatens','inflation','spike','hike']
+    trump_bear = ['tariff','tariffs','trade war','sanction','ban','threatens','escalate',
+                  'executive order','china tariff','nato','withdraw','fired','indicted']
+    trump_bull = ['deal','trade deal','ceasefire','cut tax','deregulate','approve',
+                  'reduce tariff','agreement','invest','friendly','sign']
+
+    total_b, total_s = 0, 0
+    market_news  = []   # כל החדשות שנקראו עם קישור
+
+    rss_queries = [
+        ('📈 שוק', 'stock market today wall street open'),
+        ('🏛️ פד/ריבית', 'federal reserve interest rate economy'),
+        ('🇺🇸 Trump', 'Trump economy tariff market trade'),
+        ('🔔 חדשות חמות', 'breaking news market economy today'),
+        ('🌍 גיאו-פוליטי', 'geopolitics war sanctions economy market'),
+    ]
+    for cat, raw_q in rss_queries:
+        try:
+            q = ulp.quote(raw_q)
+            rss_url = f'https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en'
+            r = requests.get(rss_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
+            root = ET.fromstring(r.content)
+            for item in root.findall('.//item')[:6]:
+                raw_title = (item.findtext('title') or '').strip()
+                link      = item.findtext('link') or ''
+                pub_str   = item.findtext('pubDate') or ''
+                title_lo  = raw_title.lower()
+                # גיל הכתבה
+                age_h = 999
+                pub_fmt = ''
+                try:
+                    pub_dt  = _dt2.datetime(*_eu.parsedate(pub_str)[:6],
+                                            tzinfo=_dt2.timezone.utc)
+                    age_h   = (_dt2.datetime.now(_dt2.timezone.utc) - pub_dt).total_seconds() / 3600
+                    pub_fmt = pub_dt.strftime('%d/%m %H:%M')
+                except Exception:
+                    pass
+                b_hit = sum(1 for w in bull_kw if w in title_lo)
+                s_hit = sum(1 for w in bear_kw if w in title_lo)
+                is_trump = 'trump' in title_lo
+                if is_trump:
+                    b_hit += sum(1 for w in trump_bull if w in title_lo) * 2
+                    s_hit += sum(1 for w in trump_bear if w in title_lo) * 2
+                total_b += b_hit
+                total_s += s_hit
+                impact = b_hit - s_hit
+                if abs(impact) >= 1 or age_h < 6:   # חדשה עם השפעה או עדכנית
+                    market_news.append({
+                        'title':   raw_title[:80],
+                        'link':    link,
+                        'cat':     cat,
+                        'pub':     pub_fmt,
+                        'age_h':   round(age_h, 1),
+                        'bull':    impact > 0,
+                        'impact':  impact,
+                        'is_trump': is_trump,
+                        'fresh':   age_h < 3,
+                    })
+        except Exception:
+            pass
+
+    # מיין: חדשות מתפרצות קודם, אחר כך לפי השפעה
+    market_news.sort(key=lambda x: (-x['fresh'], -abs(x['impact']), x['age_h']))
+    market_news = market_news[:20]
+
+    if total_b > total_s + 3:
+        add('📰', f'חדשות חיוביות ({total_b} סיגנלים)', +8, True)
+    elif total_s > total_b + 3:
+        add('📰', f'חדשות שליליות ({total_s} סיגנלים)', -8, False)
+    else:
+        add('📰', f'חדשות מעורבות (חיובי:{total_b} שלילי:{total_s})', 0, None)
+
+    # חדשות מתפרצות (< 3 שע') עם השפעה חזקה
+    for n in [x for x in market_news if x['fresh'] and abs(x['impact']) >= 2][:3]:
+        delta = min(7, max(-9, n['impact'] * 3))
+        icon  = '🟢' if n['bull'] else '🔴'
+        add(icon, f'🔔 {n["title"][:55]}', delta, n['bull'])
 
     score = max(0, min(100, score))
     if score >= 65:   verdict, color = 'יום ירוק 🟢', '#22c55e'
@@ -3039,6 +3147,9 @@ def day_prediction():
     result = {
         'score': score, 'verdict': verdict, 'color': color,
         'factors': factors,
+        'breaking_count': len(breaking),
+        'market_news': market_news,
+        'sources': 'ES/NQ/YM חוזים · SPY/QQQ פרה-מרקט · VIX · F&G · אגח 10Y · DXY · נפט · זהב · אסיה/אירופה · לוח אירועים · Google News שוק/Trump/פוליטיקה',
         'checked_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
     }
     cache_set('day_prediction', result)

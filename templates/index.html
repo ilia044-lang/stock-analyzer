@@ -198,11 +198,10 @@
 
     /* ── Day Prediction Sidebar ── */
     .day-sidebar {
-      width: 240px; flex-shrink: 0;
-      position: sticky; top: 72px; align-self: flex-start;
+      width: 100%; flex-shrink: 0;
       background: var(--bg2); border: 1px solid var(--sep);
       border-radius: var(--r-lg); overflow: hidden; font-size: 12px;
-      box-shadow: var(--shadow); max-height: calc(100vh - 90px); overflow-y: auto;
+      box-shadow: var(--shadow);
     }
     .day-header {
       padding: 10px 12px; border-bottom: 1px solid var(--sep);
@@ -241,17 +240,23 @@
     @media (max-width: 900px) {
       .page-layout { flex-direction: column-reverse; }
       .cl-sidebar { width: 100%; position: static; }
-      .scan-sidebar { width: 100%; position: static; order: -1; }
-      .day-sidebar { width: 100%; position: static; order: -2; }
+      .right-col { width: 100%; position: static; order: -1; }
+    }
+
+    /* ── Right column: scanner + day prediction ── */
+    .right-col {
+      width: 260px; flex-shrink: 0;
+      position: sticky; top: 72px; align-self: flex-start;
+      display: flex; flex-direction: column; gap: 10px;
+      max-height: calc(100vh - 90px); overflow-y: auto;
     }
 
     /* ── Liv20 Scanner Sidebar ── */
     .scan-sidebar {
-      width: 260px; flex-shrink: 0;
-      position: sticky; top: 72px; align-self: flex-start;
+      width: 100%; flex-shrink: 0;
       background: var(--bg2); border: 1px solid var(--sep);
       border-radius: var(--r-lg); overflow: hidden; font-size: 13px;
-      box-shadow: var(--shadow); max-height: calc(100vh - 90px); overflow-y: auto;
+      box-shadow: var(--shadow);
     }
     .scan-header {
       background: linear-gradient(135deg, #1d1d1f 0%, #2c2c2e 100%);
@@ -1060,27 +1065,6 @@
 
 <div class="page-layout">
 
-<!-- ── Day Prediction Sidebar (שמאל) ── -->
-<div class="day-sidebar" id="daySidebar">
-  <div class="day-header">🌡️ תחזית יום — ירוק או אדום?</div>
-  <div class="day-gauge-wrap">
-    <div class="day-gauge-bar">
-      <div class="day-gauge-needle" id="dayNeedle" style="left:50%;"></div>
-    </div>
-    <div class="day-score-txt" id="dayScoreTxt" style="color:#f59e0b;">50</div>
-    <div class="day-verdict"   id="dayVerdict"  style="color:#f59e0b;">טוען...</div>
-  </div>
-  <div class="day-factors-title">גורמים מכריעים</div>
-  <div id="dayFactors"><div style="padding:10px;color:var(--label3);font-size:11px;">⏳ בודק שוק...</div></div>
-
-  <!-- ── תחזית מניות ── -->
-  <div class="stock-pred-section">
-    <div class="stock-pred-title">📌 תחזית מניות ספציפיות</div>
-    <div class="stock-pred-inputs" id="stockPredInputs"></div>
-    <button onclick="runStockPredictions()" style="width:100%;margin-top:8px;margin-bottom:6px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:6px;font-size:11px;font-weight:700;cursor:pointer;">🔍 נתח</button>
-  </div>
-</div>
-
 <!-- ── Checklist Sidebar ── -->
 <div class="cl-sidebar" id="clSidebar">
   <div class="cl-header">
@@ -1572,7 +1556,9 @@
   </div>
 </div><!-- end .main -->
 
-<!-- ── Liv20 Scanner Sidebar ── -->
+<!-- ── עמודה ימנית: סורק + תחזית יום ── -->
+<div class="right-col">
+
 <div class="scan-sidebar" id="scanSidebar">
   <div class="scan-header">
     <div class="scan-title">Liv20 Scanner</div>
@@ -1587,6 +1573,43 @@
   </div>
   <div class="scan-next" id="scanNextScan">—</div>
 </div>
+
+<!-- ── Day Prediction (מתחת לסורק) ── -->
+<div class="day-sidebar" id="daySidebar">
+  <div class="day-header">🔮 תחזית פרה-מרקט — מה צפוי היום?</div>
+  <div class="day-gauge-wrap">
+    <div class="day-gauge-bar">
+      <div class="day-gauge-needle" id="dayNeedle" style="left:50%;"></div>
+    </div>
+    <div class="day-score-txt" id="dayScoreTxt" style="color:#f59e0b;">50</div>
+    <div class="day-verdict"   id="dayVerdict"  style="color:#f59e0b;">טוען...</div>
+  </div>
+  <div class="day-factors-title">גורמים מכריעים</div>
+  <div id="dayFactors"><div style="padding:10px;color:var(--label3);font-size:11px;">⏳ בודק שוק...</div></div>
+  <div id="dayUpdatedBar" style="font-size:9px;color:var(--label3);padding:4px 10px 6px;border-top:1px solid var(--sep2);line-height:1.5;"></div>
+  <!-- חדשות שהשפיעו על הניתוח -->
+  <div id="dayNewsSection" style="display:none;border-top:1px solid var(--sep2);padding:6px 0 2px;">
+    <div style="font-size:10px;font-weight:700;color:var(--label2);padding:0 10px 4px;letter-spacing:.5px;">📰 חדשות שהשפיעו על הניתוח</div>
+    <div id="dayNewsList" style="max-height:220px;overflow-y:auto;"></div>
+  </div>
+  <div class="stock-pred-section">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div class="stock-pred-title" style="margin:0;">📌 תחזית מניות ספציפיות</div>
+      <button id="editTickersBtn" onclick="toggleEditTickers()" style="font-size:9px;color:var(--blue);background:none;border:1px solid var(--blue);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️ ערוך</button>
+    </div>
+    <div id="stockPredDisplay"></div>
+    <div id="stockPredEdit" style="display:none;">
+      <div class="stock-pred-inputs" id="stockPredInputs"></div>
+      <div style="display:flex;gap:5px;margin-top:6px;">
+        <button onclick="saveTickersAndAnalyze()" style="flex:1;background:var(--blue);color:#fff;border:none;border-radius:6px;padding:5px;font-size:11px;font-weight:700;cursor:pointer;">💾 שמור וניתח</button>
+        <button onclick="toggleEditTickers()" style="background:var(--bg3);color:var(--label2);border:1px solid var(--sep);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;">ביטול</button>
+      </div>
+    </div>
+    <button onclick="runStockPredictions()" id="analyzePredBtn" style="width:100%;margin-top:6px;margin-bottom:4px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:6px;font-size:11px;font-weight:700;cursor:pointer;">🔍 נתח מניות</button>
+  </div>
+</div>
+
+</div><!-- end .right-col -->
 
 </div><!-- end .page-layout -->
 
@@ -3436,48 +3459,177 @@
           <div class="day-factor-delta" style="color:${dColor};">${dSign}</div>
         </div>`;
       }).join('') || '<div style="padding:10px;color:var(--label3);font-size:11px;">אין נתונים</div>';
+
+      // זמן עדכון + מקורות
+      if (data.checked_at) {
+        const dt = new Date(data.checked_at);
+        const timeStr = dt.toLocaleString('he-IL', {
+          timeZone: 'Asia/Jerusalem', day:'2-digit', month:'2-digit',
+          hour:'2-digit', minute:'2-digit'
+        });
+        const sources = data.sources || '';
+        const breakingTxt = data.breaking_count > 0
+          ? `<br>🔔 <span style="color:#ef4444;font-weight:700;">${data.breaking_count} חדשות מתפרצות (3 שע' האחרונות)</span>` : '';
+        document.getElementById('dayUpdatedBar').innerHTML =
+          `🕐 עודכן: ${timeStr}${breakingTxt}<br><span style="color:var(--label3);">מקורות: ${sources}</span>`;
+      }
+
+      // רנדר חדשות עם קישורים
+      const newsSection = document.getElementById('dayNewsSection');
+      const newsList    = document.getElementById('dayNewsList');
+      const news = data.market_news || [];
+      if (news.length) {
+        newsSection.style.display = 'block';
+        newsList.innerHTML = news.map(n => {
+          const sentColor = n.bull === true  ? '#22c55e'
+                          : n.bull === false ? '#ef4444'
+                          : '#94a3b8';
+          const sentIcon  = n.bull === true  ? '▲'
+                          : n.bull === false ? '▼'
+                          : '●';
+          const freshBadge = n.fresh
+            ? `<span style="background:#ef444422;color:#ef4444;border-radius:3px;padding:0 3px;font-size:8px;margin-left:3px;">חם</span>`
+            : '';
+          const trumpBadge = n.is_trump
+            ? `<span style="background:#f59e0b22;color:#f59e0b;border-radius:3px;padding:0 3px;font-size:8px;margin-left:3px;">Trump</span>`
+            : '';
+          const ageStr = n.age_h < 1 ? `${Math.round(n.age_h * 60)}ד'`
+                       : n.age_h < 24 ? `${Math.round(n.age_h)}ש'`
+                       : `${Math.round(n.age_h / 24)}י'`;
+          return `<div style="padding:5px 10px;border-bottom:1px solid var(--sep2);display:flex;gap:5px;align-items:flex-start;">
+            <div style="margin-top:2px;font-size:11px;font-weight:700;color:${sentColor};flex-shrink:0;">${sentIcon}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:9px;color:var(--label3);margin-bottom:2px;">
+                <span style="background:var(--bg3);border-radius:3px;padding:0 3px;">${n.cat || ''}</span>
+                ${freshBadge}${trumpBadge}
+                <span style="float:left;opacity:.7;">${ageStr}</span>
+              </div>
+              <a href="${n.link}" target="_blank" rel="noopener"
+                 style="font-size:11px;color:var(--label);text-decoration:none;line-height:1.35;display:block;word-break:break-word;"
+                 onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--label)'">
+                ${n.title}
+              </a>
+              ${n.pub ? `<div style="font-size:9px;color:var(--label3);margin-top:1px;">${n.pub}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      } else {
+        newsSection.style.display = 'none';
+      }
     } catch(e) {
       document.getElementById('dayVerdict').textContent = 'שגיאה בטעינה';
     }
   }
 
-  // בנה 7 שורות קלט מניות (עם ערכי ברירת מחדל)
-  const DEFAULT_TICKERS = ['NVDA','TSLA','AAPL','AMZN','META','PLTR','MSTR'];
-  (function buildStockInputs() {
-    const cont = document.getElementById('stockPredInputs');
-    cont.innerHTML = DEFAULT_TICKERS.map((t, i) => `
-      <div class="stock-pred-row" id="predRow${i}">
-        <input class="stock-pred-input" id="predTicker${i}" value="${t}" placeholder="טיקר" maxlength="8"
-          onkeydown="if(event.key==='Enter')runStockPredictions()" />
-        <span class="stock-pred-result" id="predResult${i}" style="background:var(--bg3);color:var(--label3);">—</span>
-      </div>`).join('');
-  })();
+  // ── ניהול טיקרים עם localStorage ────────────────────────────────────────────
+  const PRED_TICKERS_KEY = 'predTickers';
+  const DEFAULT_TICKERS  = ['NVDA','TSLA','AAPL','AMZN','META','PLTR','MSTR'];
 
-  async function runStockPredictions() {
-    for (let i = 0; i < 7; i++) {
-      const inp = document.getElementById(`predTicker${i}`);
-      const res = document.getElementById(`predResult${i}`);
-      const ticker = (inp.value || '').trim().toUpperCase();
-      if (!ticker) { res.textContent = '—'; continue; }
-      res.textContent = '⏳';
-      res.style.background = 'var(--bg3)';
-      res.style.color = 'var(--label3)';
-      try {
-        const d = await fetch(`/quick-predict/${ticker}`).then(r => r.json());
-        if (d.error) { res.textContent = '❌'; continue; }
-        res.textContent = `${d.verdict} ${d.change_pct > 0 ? '+' : ''}${d.change_pct}%`;
-        res.style.background = d.color + '22';
-        res.style.color = d.color;
-        res.title = `${d.ticker}: bull=${d.bullish} bear=${d.bearish} | ${d.reason}`;
-      } catch(e) {
-        res.textContent = '❌';
-      }
+  function loadSavedTickers() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PRED_TICKERS_KEY));
+      if (Array.isArray(saved) && saved.length) return saved;
+    } catch(e) {}
+    return [...DEFAULT_TICKERS];
+  }
+
+  function saveTickers(list) {
+    localStorage.setItem(PRED_TICKERS_KEY, JSON.stringify(list));
+  }
+
+  let _editMode = false;
+  let _predData = {}; // cache last results per ticker
+
+  function buildStockDisplay(tickers) {
+    const disp = document.getElementById('stockPredDisplay');
+    disp.innerHTML = tickers.map(t => {
+      const d = _predData[t];
+      const bg    = d ? d.color + '22' : 'var(--bg3)';
+      const col   = d ? d.color : 'var(--label3)';
+      const label = d ? `${d.verdict} ${d.change_pct >= 0 ? '+' : ''}${d.change_pct}%` : '—';
+      const tip   = d ? `bull=${d.bullish} bear=${d.bearish} | ${d.reason}` : '';
+      return `<div class="stock-pred-row" style="cursor:pointer;" onclick="analyzeFromSidebar('${t}')">
+        <span style="flex:1;font-size:12px;font-weight:600;color:var(--label);padding:3px 0;" title="${tip}">${t}</span>
+        <span class="stock-pred-result" style="background:${bg};color:${col};">${label}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function buildStockEditInputs(tickers) {
+    const cont = document.getElementById('stockPredInputs');
+    cont.innerHTML = tickers.map((t, i) => `
+      <div class="stock-pred-row">
+        <input class="stock-pred-input" id="predTicker${i}" value="${t}" placeholder="טיקר" maxlength="8"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter')saveTickersAndAnalyze()" />
+      </div>`).join('');
+  }
+
+  function toggleEditTickers() {
+    _editMode = !_editMode;
+    const editEl = document.getElementById('stockPredEdit');
+    const dispEl = document.getElementById('stockPredDisplay');
+    const btn    = document.getElementById('editTickersBtn');
+    const anaBtn = document.getElementById('analyzePredBtn');
+    if (_editMode) {
+      buildStockEditInputs(loadSavedTickers());
+      editEl.style.display = 'block';
+      dispEl.style.display = 'none';
+      anaBtn.style.display = 'none';
+      btn.textContent = '✕';
+    } else {
+      editEl.style.display = 'none';
+      dispEl.style.display = 'block';
+      anaBtn.style.display = 'block';
+      btn.textContent = '✏️ ערוך';
     }
   }
 
+  function saveTickersAndAnalyze() {
+    const tickers = [];
+    for (let i = 0; i < 7; i++) {
+      const inp = document.getElementById(`predTicker${i}`);
+      if (inp) { const v = inp.value.trim().toUpperCase(); if (v) tickers.push(v); }
+    }
+    if (!tickers.length) return;
+    saveTickers(tickers);
+    _editMode = true; toggleEditTickers(); // exit edit mode
+    runStockPredictions();
+  }
+
+  function analyzeFromSidebar(ticker) {
+    const inp = document.getElementById('tickerInput');
+    if (inp) {
+      inp.value = ticker;
+      runAnalysis();
+    }
+  }
+
+  async function runStockPredictions() {
+    const tickers = loadSavedTickers();
+    buildStockDisplay(tickers); // show loading state
+    for (const ticker of tickers) {
+      try {
+        const d = await fetch(`/quick-predict/${ticker}`).then(r => r.json());
+        if (!d.error) {
+          _predData[ticker] = d;
+          buildStockDisplay(tickers); // re-render with new data
+        }
+      } catch(e) {}
+    }
+  }
+
+  // אתחול בטעינת דף
+  (function initStockPred() {
+    const tickers = loadSavedTickers();
+    buildStockDisplay(tickers);
+  })();
+
   // טעינה בפתיחה ורענון כל 5 דקות
   loadDayPrediction();
+  runStockPredictions();
   setInterval(loadDayPrediction, 300000);
+  setInterval(runStockPredictions, 600000);
 
   // ─── Liv20 Scanner ───────────────────────────────────────────────────────────
 
