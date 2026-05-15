@@ -5,14 +5,19 @@ import numpy as np
 import time
 import requests
 import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def _ticker(symbol):
     return yf.Ticker(symbol)
+
+_trans_cache: dict = {}   # title → translated_title (mem-cache for server lifetime)
 
 def translate_he(text):
     """תרגום לעברית — מנסה כמה ממשקים בזה אחר זה"""
     if not text or not text.strip():
         return text
+    if text in _trans_cache:
+        return _trans_cache[text]
 
     # 1. Google Translate (ללא מפתח — endpoint ציבורי)
     try:
@@ -25,6 +30,7 @@ def translate_he(text):
         parts = [seg[0] for seg in data[0] if seg[0]]
         result = ''.join(parts).strip()
         if result and result != text:
+            _trans_cache[text] = result
             return result
     except Exception:
         pass
@@ -35,11 +41,27 @@ def translate_he(text):
         r = requests.get(url, params={'q': text[:400], 'langpair': 'en|he'}, timeout=5)
         result = r.json().get('responseData', {}).get('translatedText', '')
         if result and result != text and 'MYMEMORY WARNING' not in result:
+            _trans_cache[text] = result
             return result
     except Exception:
         pass
 
     return text
+
+
+def translate_news_batch(news_list):
+    """מתרגם כותרות חדשות במקביל (עד 8 threads)"""
+    if not news_list:
+        return news_list
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(translate_he, n['title']): i for i, n in enumerate(news_list)}
+        for fut in as_completed(futures):
+            idx = futures[fut]
+            try:
+                news_list[idx]['title'] = fut.result()
+            except Exception:
+                pass
+    return news_list
 from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
                          get_sector_performance, get_upcoming_events,
                          get_market_drivers, get_futures,
@@ -3123,6 +3145,9 @@ def day_prediction():
     # מיין: חדשות מתפרצות קודם, אחר כך לפי השפעה
     market_news.sort(key=lambda x: (-x['fresh'], -abs(x['impact']), x['age_h']))
     market_news = market_news[:20]
+
+    # תרגם כותרות לעברית במקביל
+    market_news = translate_news_batch(market_news)
 
     if total_b > total_s + 3:
         add('📰', f'חדשות חיוביות ({total_b} סיגנלים)', +8, True)
