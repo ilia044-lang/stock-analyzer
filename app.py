@@ -5,7 +5,28 @@ import numpy as np
 import time
 import requests
 import datetime
+import os, json
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# ── Portfolio persistent file (local disk) ─────────────────────────────────
+_PF_FILE = os.path.join(os.path.dirname(__file__), 'portfolio_data.json')
+
+def _pf_load():
+    try:
+        if os.path.exists(_PF_FILE):
+            with open(_PF_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {'positions': [], 'history': [], 'snapshots': []}
+
+def _pf_save(data):
+    try:
+        with open(_PF_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
 
 def _ticker(symbol):
     return yf.Ticker(symbol)
@@ -3622,6 +3643,22 @@ def social_posts(ticker):
     }
     cache_set(cache_key, result)
     return jsonify(result)
+
+
+@app.route('/api/portfolio/load')
+def api_portfolio_load():
+    """טוען את נתוני התיק מהקובץ המקומי"""
+    return jsonify(_pf_load())
+
+@app.route('/api/portfolio/save', methods=['POST'])
+def api_portfolio_save():
+    """שומר נתוני תיק לקובץ מקומי"""
+    try:
+        data = request.get_json(force=True)
+        ok = _pf_save(data)
+        return jsonify({'ok': ok})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':

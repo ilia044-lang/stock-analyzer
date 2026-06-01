@@ -4460,8 +4460,42 @@
   let _pfPrices = {};
 
   function getPF()       { try { return JSON.parse(localStorage.getItem(PF_KEY)) || []; } catch(e) { return []; } }
-  function savePF(arr)   { localStorage.setItem(PF_KEY, JSON.stringify(arr)); }
+  function savePF(arr)   { localStorage.setItem(PF_KEY, JSON.stringify(arr)); pfAutoSave(); }
   function uid()         { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+  // ── שמירה / טעינה מקובץ על הדיסק ─────────────────────────────
+  let _pfSaveTimer = null;
+  function pfAutoSave() {
+    clearTimeout(_pfSaveTimer);
+    _pfSaveTimer = setTimeout(async () => {
+      try {
+        const data = {
+          version:   2,
+          saved_at:  new Date().toISOString(),
+          positions: getPF(),
+          history:   getHist(),
+          snapshots: (()=>{ try{ return JSON.parse(localStorage.getItem(PF_SNAP_KEY))||[]; }catch(e){return[];} })(),
+        };
+        await fetch('/api/portfolio/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+      } catch(e) {} // offline/Render — localStorage still has the data
+    }, 800); // debounce 0.8s
+  }
+
+  async function pfLoadFromServer() {
+    try {
+      const data = await fetch('/api/portfolio/load').then(r => r.json());
+      if (data.positions?.length || data.history?.length) {
+        // Server file is the source of truth — overwrite localStorage
+        if (data.positions) localStorage.setItem(PF_KEY,       JSON.stringify(data.positions));
+        if (data.history)   localStorage.setItem(PF_HIST_KEY,  JSON.stringify(data.history));
+        if (data.snapshots) localStorage.setItem(PF_SNAP_KEY,  JSON.stringify(data.snapshots));
+      }
+    } catch(e) {} // offline — keep localStorage values
+  }
   function usd(n, d=0)   { return n == null || isNaN(n) ? '—' : '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); }
   function pct(n)        { return n == null || isNaN(n) ? '—' : (n>=0?'+':'')+n.toFixed(2)+'%'; }
 
@@ -4824,7 +4858,7 @@
   // ── Close Position Modal ─────────────────────────────────────
   const PF_HIST_KEY = 'pfTradeHistory';
   function getHist()     { try { return JSON.parse(localStorage.getItem(PF_HIST_KEY)) || []; } catch(e) { return []; } }
-  function saveHist(arr) { localStorage.setItem(PF_HIST_KEY, JSON.stringify(arr)); }
+  function saveHist(arr) { localStorage.setItem(PF_HIST_KEY, JSON.stringify(arr)); pfAutoSave(); }
 
   let _closePos = null; // פוזיציה פעילה במודל הסגירה
 
@@ -5313,9 +5347,11 @@
       }).join('');
   }
 
-  // Init
-  (function(){
-    const p=getPF(); if(p.length) renderPortfolio();
+  // Init — טעינה מהקובץ המקומי, אחר כך רינדור
+  (async function(){
+    await pfLoadFromServer();          // קובץ על הדיסק = מקור האמת
+    const p = getPF();
+    if (p.length) renderPortfolio();
     renderTradeHistory();
   })();
 </script>
