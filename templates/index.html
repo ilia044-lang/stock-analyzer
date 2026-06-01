@@ -931,6 +931,29 @@
     .pf-fld input { width: 100%; box-sizing: border-box; padding: 11px 14px; border: 1.5px solid var(--sep); border-radius: 10px; font-size: 14px; color: var(--label); background: var(--bg3); }
     .pf-fld input:focus { outline: none; border-color: var(--blue); background: var(--bg2); }
 
+    /* Calendar */
+    .pf-cal-nav { display:flex; align-items:center; gap:10px; }
+    .pf-cal-nav button { background:none; border:1px solid var(--sep); border-radius:7px; width:28px; height:28px; cursor:pointer; font-size:15px; color:var(--label2); line-height:1; }
+    .pf-cal-nav button:hover { background:var(--bg3); }
+    .pf-cal-hdr-row { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; padding:10px 14px 4px; }
+    .pf-cal-hdr-cell { text-align:center; font-size:10px; font-weight:700; color:var(--label3); }
+    .pf-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; padding:4px 14px 14px; }
+    .pf-cal-cell {
+      aspect-ratio:1; border-radius:8px; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:1px;
+      font-size:10px; cursor:default; border:1.5px solid transparent; transition:filter .1s;
+    }
+    .pf-cal-cell.blank { opacity:0; pointer-events:none; }
+    .pf-cal-cell.no-trade { background:var(--bg3); color:var(--label3); }
+    .pf-cal-cell.is-today  { border-color:var(--blue) !important; }
+    .pf-cal-cell.profit { cursor:pointer; }
+    .pf-cal-cell.loss   { cursor:pointer; }
+    .pf-cal-cell:not(.blank):not(.no-trade):hover { filter:brightness(.92); }
+    .pf-cal-num { font-weight:700; font-size:11px; }
+    .pf-cal-amt { font-size:8px; font-weight:800; }
+    .pf-cal-month-summary { display:flex; gap:10px; flex-wrap:wrap; padding:10px 16px; border-top:1px solid var(--sep2); font-size:12px; }
+    .pf-cal-day-detail { padding:10px 16px; border-top:1px solid var(--sep2); min-height:36px; }
+
     /* History stats strip */
     .pf-hist-stats { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--sep2); }
     .pf-hs { background: var(--bg3); border-radius: 10px; padding: 12px 14px; }
@@ -1916,6 +1939,30 @@
       </div>
     </div>
     </div><!-- end pfHistBody -->
+
+    <!-- Calendar P&L -->
+    <div style="border-top:1px solid var(--sep2);padding:14px 18px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:13px;font-weight:700;color:var(--label);">📅 יומן רווח / הפסד</span>
+        <div class="pf-cal-nav">
+          <button onclick="pfCalMove(-1)">‹</button>
+          <span id="pfCalLabel" style="font-size:12px;font-weight:700;color:var(--label2);min-width:90px;text-align:center;"></span>
+          <button onclick="pfCalMove(+1)">›</button>
+        </div>
+      </div>
+    </div>
+    <div class="pf-cal-hdr-row">
+      <div class="pf-cal-hdr-cell">א'</div>
+      <div class="pf-cal-hdr-cell">ב'</div>
+      <div class="pf-cal-hdr-cell">ג'</div>
+      <div class="pf-cal-hdr-cell">ד'</div>
+      <div class="pf-cal-hdr-cell">ה'</div>
+      <div class="pf-cal-hdr-cell">ו'</div>
+      <div class="pf-cal-hdr-cell">ש'</div>
+    </div>
+    <div class="pf-cal-grid" id="pfCalGrid"></div>
+    <div class="pf-cal-month-summary" id="pfCalMonthSummary"></div>
+    <div class="pf-cal-day-detail" id="pfCalDayDetail"></div>
 
     <!-- History table -->
     <div class="pf-tbl-wrap" style="border-top:1px solid var(--sep2);">
@@ -4956,6 +5003,7 @@
       </tr>`;
     });
     document.getElementById('pfHistTableBody').innerHTML = rows.join('');
+    renderPFCalendar();
   }
 
   function deleteHistEntry(id) {
@@ -5093,6 +5141,126 @@
           </a>
         </div>`;
     }
+  }
+
+  // ── P&L Calendar ─────────────────────────────────────────────
+  let _calYear  = new Date().getFullYear();
+  let _calMonth = new Date().getMonth(); // 0-based
+
+  const _heMonths = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני',
+                     'יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+  function pfCalMove(dir) {
+    _calMonth += dir;
+    if (_calMonth > 11) { _calMonth = 0;  _calYear++; }
+    if (_calMonth < 0)  { _calMonth = 11; _calYear--; }
+    renderPFCalendar();
+  }
+
+  function renderPFCalendar() {
+    const hist = getHist();
+    // Build dayPnl map  { 'YYYY-MM-DD': {pnl, trades:[]} }
+    const dayMap = {};
+    for (const h of hist) {
+      const d = h.exit_date || h.closed_at?.slice(0,10);
+      if (!d) continue;
+      if (!dayMap[d]) dayMap[d] = { pnl: 0, trades: [] };
+      dayMap[d].pnl    += h.pnl;
+      dayMap[d].trades.push(h);
+    }
+
+    // Max abs value for color intensity
+    const allVals = Object.values(dayMap).map(v => Math.abs(v.pnl));
+    const maxAbs  = allVals.length ? Math.max(...allVals) : 1;
+
+    const year = _calYear, month = _calMonth;
+    document.getElementById('pfCalLabel').textContent = `${_heMonths[month]} ${year}`;
+
+    // Calendar grid: first weekday of month (Sun=0 → but we start Mon so shift)
+    const firstDow = new Date(year, month, 1).getDay(); // 0=Sun..6=Sat
+    const startOffset = (firstDow + 6) % 7; // Mon-based offset
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = new Date().toISOString().slice(0,10);
+
+    let cells = '';
+    // blank leading cells
+    for (let i = 0; i < startOffset; i++) cells += `<div class="pf-cal-cell blank"></div>`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const entry   = dayMap[dateStr];
+      const isToday = dateStr === todayStr;
+      const todayCls = isToday ? ' is-today' : '';
+      if (!entry) {
+        cells += `<div class="pf-cal-cell no-trade${todayCls}"><span class="pf-cal-num">${d}</span></div>`;
+        continue;
+      }
+      const pnl     = entry.pnl;
+      const isProfit= pnl >= 0;
+      const ratio   = Math.min(Math.abs(pnl) / maxAbs, 1);
+      const alpha   = (0.12 + ratio * 0.55).toFixed(2);
+      const bg      = isProfit
+        ? `rgba(34,197,94,${alpha})`
+        : `rgba(239,68,68,${alpha})`;
+      const txtColor = isProfit ? '#15803d' : '#dc2626';
+      const amtStr  = (isProfit ? '+' : '') + (Math.abs(pnl) >= 1000
+        ? (pnl/1000).toFixed(1) + 'K'
+        : pnl.toFixed(0));
+      cells += `<div class="pf-cal-cell ${isProfit?'profit':'loss'}${todayCls}"
+          style="background:${bg};"
+          onclick="pfCalSelectDay('${dateStr}')"
+          title="${dateStr}: ${isProfit?'+':''}$${Math.abs(pnl).toFixed(2)}">
+        <span class="pf-cal-num">${d}</span>
+        <span class="pf-cal-amt" style="color:${txtColor};">${amtStr}$</span>
+      </div>`;
+    }
+    document.getElementById('pfCalGrid').innerHTML = cells;
+
+    // Month summary
+    const monthEntries = Object.entries(dayMap).filter(([k]) =>
+      k.startsWith(`${year}-${String(month+1).padStart(2,'0')}`));
+    const monthPnl   = monthEntries.reduce((s,[,v]) => s + v.pnl, 0);
+    const monthWins  = monthEntries.filter(([,v]) => v.pnl >= 0).length;
+    const monthLoss  = monthEntries.filter(([,v]) => v.pnl < 0).length;
+    const monthDays  = monthEntries.length;
+
+    const summEl = document.getElementById('pfCalMonthSummary');
+    if (!monthDays) {
+      summEl.innerHTML = `<span style="color:var(--label3);">אין עסקאות בחודש זה</span>`;
+    } else {
+      const pPos = monthPnl >= 0;
+      summEl.innerHTML =
+        `<span style="font-weight:700;color:${pPos?'#15803d':'#dc2626'};">${pPos?'▲':'▼'} ${pPos?'+':''}$${Math.abs(monthPnl).toFixed(2)}</span>` +
+        `<span style="color:var(--label3);">·</span>` +
+        `<span>${monthDays} ימי מסחר</span>` +
+        `<span style="color:var(--label3);">·</span>` +
+        `<span style="color:#15803d;">✅ ${monthWins} ניצחונות</span>` +
+        `<span style="color:var(--label3);">·</span>` +
+        `<span style="color:#dc2626;">❌ ${monthLoss} הפסדים</span>`;
+    }
+    document.getElementById('pfCalDayDetail').innerHTML = '';
+  }
+
+  function pfCalSelectDay(dateStr) {
+    const hist   = getHist();
+    const trades = hist.filter(h => (h.exit_date || h.closed_at?.slice(0,10)) === dateStr);
+    if (!trades.length) return;
+    const dayPnl  = trades.reduce((s,h) => s + h.pnl, 0);
+    const pPos    = dayPnl >= 0;
+    const detail  = document.getElementById('pfCalDayDetail');
+    detail.innerHTML =
+      `<div style="font-size:11px;font-weight:700;color:var(--label2);margin-bottom:6px;">
+        📅 ${dateStr} — ${pPos?'▲ רווח':'▼ הפסד'}: <span style="color:${pPos?'#15803d':'#dc2626'};">${pPos?'+':''}$${Math.abs(dayPnl).toFixed(2)}</span>
+      </div>` +
+      trades.map(h => {
+        const p = h.pnl >= 0;
+        return `<div style="display:flex;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid var(--sep2);font-size:12px;">
+          <strong style="width:50px;">${h.ticker}</strong>
+          <span style="color:var(--label3);">${h.shares} מניות · $${h.entry_price}→$${h.exit_price}</span>
+          <span style="margin-right:auto;font-weight:700;color:${p?'#15803d':'#dc2626'};">${p?'+':''}$${Math.abs(h.pnl).toFixed(2)}</span>
+          <span class="pf-chip ${p?'pf-chip-g':'pf-chip-r'}">${p?'+':''}${h.pnl_pct.toFixed(1)}%</span>
+        </div>`;
+      }).join('');
   }
 
   // Init
