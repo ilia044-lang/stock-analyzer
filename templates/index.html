@@ -1875,33 +1875,47 @@
   </div>
 
   <!-- ── TRADE HISTORY ─────────────────────────── -->
-  <div class="pf-divider" id="pfHistDivider" style="display:none;">📒 היסטוריית עסקאות סגורות</div>
+  <div class="pf-divider">📒 היסטוריית עסקאות סגורות</div>
 
   <!-- History stats strip -->
-  <div class="pf-card" id="pfHistCard" style="display:none;">
+  <div class="pf-card" id="pfHistCard">
     <div class="pf-card-hdr">
       <span class="pf-card-title">📊 סטטיסטיקות מסחר</span>
       <span class="pf-card-sub" id="pfHistCount">0 עסקאות</span>
     </div>
+    <div id="pfHistEmpty" style="display:none;padding:40px;text-align:center;color:var(--label3);">
+      <div style="font-size:36px;margin-bottom:10px;">📭</div>
+      <div style="font-size:14px;">עדיין לא סגרת עסקאות<br><span style="font-size:12px;">לחץ 🔒 על פוזיציה פתוחה כדי למכור</span></div>
+    </div>
+    <div id="pfHistBody" style="display:none;">
     <div class="pf-hist-stats">
       <div class="pf-hs"><div class="pf-hs-lbl">💰 סה"כ רווח ממומש</div><div class="pf-hs-val" id="phsTotalPnl">—</div></div>
       <div class="pf-hs"><div class="pf-hs-lbl">🎯 אחוז הצלחה</div>    <div class="pf-hs-val" id="phsWinRate">—</div></div>
       <div class="pf-hs"><div class="pf-hs-lbl">🟢 ממוצע רוויח</div>   <div class="pf-hs-val" id="phsAvgWin">—</div></div>
       <div class="pf-hs"><div class="pf-hs-lbl">🔴 ממוצע הפסד</div>   <div class="pf-hs-val" id="phsAvgLoss">—</div></div>
       <div class="pf-hs"><div class="pf-hs-lbl">🏆 עסקה הכי טובה</div><div class="pf-hs-val" id="phsBest">—</div></div>
+      <div class="pf-hs"><div class="pf-hs-lbl">💸 עסקה הכי גרועה</div><div class="pf-hs-val" id="phsWorst">—</div></div>
+      <div class="pf-hs"><div class="pf-hs-lbl">📦 סה"כ נמכר ($)</div>  <div class="pf-hs-val" id="phsTotalSold">—</div></div>
     </div>
 
     <!-- History charts -->
-    <div class="pf-row2" style="padding:16px;gap:14px;">
-      <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding:16px;">
+      <div style="background:var(--bg3);border-radius:12px;overflow:hidden;grid-column:span 2;">
         <div style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--label);">📈 רווח מצטבר לאורך זמן</div>
         <div id="pfCumChart" style="height:180px;"></div>
       </div>
+      <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
+        <div style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--label);">🎯 ניצחונות / הפסדים</div>
+        <div id="pfWinLoseChart" style="height:180px;"></div>
+      </div>
+    </div>
+    <div style="padding:0 16px 16px;">
       <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
         <div style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--label);">📊 רווח/הפסד לפי עסקה</div>
         <div id="pfTradeBarChart" style="height:180px;"></div>
       </div>
     </div>
+    </div><!-- end pfHistBody -->
 
     <!-- History table -->
     <div class="pf-tbl-wrap" style="border-top:1px solid var(--sep2);">
@@ -1934,16 +1948,19 @@
     <div class="pf-modal-title" id="pfModalTitle">➕ הוסף פוזיציה</div>
     <div class="pf-fld">
       <label>טיקר (סימול מניה)</label>
-      <input id="pfFldTicker" placeholder="NVDA" oninput="this.value=this.value.toUpperCase()" />
+      <input id="pfFldTicker" placeholder="NVDA"
+             oninput="this.value=this.value.toUpperCase(); pfModalTickerChanged(this.value)" />
     </div>
+    <!-- תצוגה חיה כשמוסיפים למניה קיימת -->
+    <div id="pfAvgPreview" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;line-height:1.6;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div class="pf-fld">
         <label>כמות מניות</label>
-        <input id="pfFldShares" type="number" step="0.0001" placeholder="10" />
+        <input id="pfFldShares" type="number" step="0.0001" placeholder="10" oninput="pfModalTickerChanged()" />
       </div>
       <div class="pf-fld">
         <label>עלות ממוצעת ($)</label>
-        <input id="pfFldCost" type="number" step="0.01" placeholder="450.00" />
+        <input id="pfFldCost" type="number" step="0.01" placeholder="450.00" oninput="pfModalTickerChanged()" />
       </div>
     </div>
     <div class="pf-fld">
@@ -4395,7 +4412,7 @@
   // ── Modal ────────────────────────────────────────────────────
   function openPFModal(editId) {
     const pos = editId ? getPF().find(p => p.id === editId) : null;
-    document.getElementById('pfModalTitle').textContent = pos ? '✏️ ערוך פוזיציה' : '➕ הוסף פוזיציה';
+    document.getElementById('pfModalTitle').textContent = pos ? '✏️ ערוך פוזיציה' : '➕ הוסף / הוסף לפוזיציה';
     document.getElementById('pfFldTicker').value  = pos ? pos.ticker     : '';
     document.getElementById('pfFldShares').value  = pos ? pos.shares     : '';
     document.getElementById('pfFldCost').value    = pos ? pos.avg_cost   : '';
@@ -4403,9 +4420,31 @@
     document.getElementById('pfFldNotes').value   = pos ? (pos.notes||'')     : '';
     document.getElementById('pfFldEditId').value  = editId || '';
     document.getElementById('pfFldTicker').disabled = !!pos;
+    document.getElementById('pfAvgPreview').style.display = 'none';
     document.getElementById('pfModalBg').style.display = 'flex';
   }
   function closePFModal() { document.getElementById('pfModalBg').style.display = 'none'; }
+
+  function pfModalTickerChanged(ticker) {
+    ticker = ticker || document.getElementById('pfFldTicker').value.trim().toUpperCase();
+    const editId = document.getElementById('pfFldEditId').value;
+    const prev   = document.getElementById('pfAvgPreview');
+    if (editId) { prev.style.display='none'; return; }
+    const existing = getPF().find(p => p.ticker === ticker);
+    if (!existing) { prev.style.display='none'; return; }
+    const newShares = parseFloat(document.getElementById('pfFldShares').value);
+    const newCost   = parseFloat(document.getElementById('pfFldCost').value);
+    const totalShares = !isNaN(newShares) && newShares>0 ? existing.shares + newShares : null;
+    const newAvg      = totalShares && !isNaN(newCost) && newCost>0
+      ? Math.round((existing.shares * existing.avg_cost + newShares * newCost) / totalShares * 100) / 100
+      : null;
+    prev.style.display = 'block';
+    prev.innerHTML = `➕ <strong>הוספה ל-${ticker} קיים</strong><br>` +
+      `יש לך: ${existing.shares} מניות @ $${existing.avg_cost}<br>` +
+      (totalShares
+        ? `סה"כ: <strong>${totalShares} מניות</strong> · עלות ממוצעת חדשה: <strong>$${newAvg ?? '...'}</strong>`
+        : `הכנס כמות ומחיר לחישוב ממוצע`);
+  }
 
   function savePFPosition() {
     const ticker    = document.getElementById('pfFldTicker').value.trim().toUpperCase();
@@ -4422,8 +4461,16 @@
       const i = arr.findIndex(p=>p.id===editId);
       if (i>=0) arr[i] = {...arr[i], shares, avg_cost, entry_date, notes};
     } else {
-      if (arr.find(p=>p.ticker===ticker)) { alert(`פוזיציה ב-${ticker} כבר קיימת`); return; }
-      arr.push({ id:uid(), ticker, shares, avg_cost, entry_date, notes, added:new Date().toISOString() });
+      const existIdx = arr.findIndex(p=>p.ticker===ticker);
+      if (existIdx >= 0) {
+        // ממוצע כניסה — חשב עלות חדשה משוקללת
+        const ex = arr[existIdx];
+        const totalShares = Math.round((ex.shares + shares) * 10000) / 10000;
+        const newAvg      = Math.round((ex.shares * ex.avg_cost + shares * avg_cost) / totalShares * 100) / 100;
+        arr[existIdx] = { ...ex, shares: totalShares, avg_cost: newAvg };
+      } else {
+        arr.push({ id:uid(), ticker, shares, avg_cost, entry_date, notes, added:new Date().toISOString() });
+      }
     }
     savePF(arr); closePFModal(); refreshPFPrices();
   }
@@ -4805,31 +4852,55 @@
 
   // ── Trade History Render ──────────────────────────────────────
   function renderTradeHistory() {
-    const hist = getHist();
-    const divider = document.getElementById('pfHistDivider');
+    const hist    = getHist();
     const card    = document.getElementById('pfHistCard');
-    if (!hist.length) { divider.style.display='none'; card.style.display='none'; return; }
-    divider.style.display = '';
-    card.style.display    = '';
+    const empty   = document.getElementById('pfHistEmpty');
+    const body    = document.getElementById('pfHistBody');
+    card.style.display = '';
     document.getElementById('pfHistCount').textContent = hist.length + ' עסקאות';
+    if (!hist.length) {
+      empty.style.display = ''; body.style.display = 'none';
+      document.getElementById('pfHistTableBody').innerHTML = '';
+      return;
+    }
+    empty.style.display = 'none'; body.style.display = '';
 
     // Stats
     const wins   = hist.filter(h => h.pnl >= 0);
     const losses = hist.filter(h => h.pnl < 0);
-    const totalPnl  = hist.reduce((s,h) => s+h.pnl, 0);
-    const winRate   = hist.length ? Math.round(wins.length / hist.length * 100) : 0;
-    const avgWin    = wins.length  ? wins.reduce((s,h)=>s+h.pnl,0)   / wins.length   : null;
-    const avgLoss   = losses.length? losses.reduce((s,h)=>s+h.pnl,0) / losses.length : null;
-    const bestPnl   = hist.reduce((mx,h) => h.pnl>mx?h.pnl:mx, -Infinity);
+    const totalPnl   = hist.reduce((s,h) => s+h.pnl, 0);
+    const totalSold  = hist.reduce((s,h) => s + (h.exit_price||0) * (h.shares||0), 0);
+    const winRate    = hist.length ? Math.round(wins.length / hist.length * 100) : 0;
+    const avgWin     = wins.length   ? wins.reduce((s,h)=>s+h.pnl,0)   / wins.length   : null;
+    const avgLoss    = losses.length ? losses.reduce((s,h)=>s+h.pnl,0) / losses.length : null;
+    const bestPnl    = hist.reduce((mx,h) => h.pnl>mx?h.pnl:mx, -Infinity);
+    const worstPnl   = hist.reduce((mn,h) => h.pnl<mn?h.pnl:mn, Infinity);
 
     const pnlPos = totalPnl >= 0;
-    document.getElementById('phsTotalPnl').innerHTML =
-      `<span style="color:${pnlPos?'#15803d':'#dc2626'}">${pnlPos?'+':''}$${Math.abs(totalPnl).toFixed(0)}</span>`;
-    document.getElementById('phsWinRate').innerHTML  =
-      `<span style="color:${winRate>=50?'#15803d':'#dc2626'}">${winRate}%</span>`;
-    document.getElementById('phsAvgWin').innerHTML   = avgWin!=null  ? `<span style="color:#15803d">+$${avgWin.toFixed(0)}</span>`  : '—';
-    document.getElementById('phsAvgLoss').innerHTML  = avgLoss!=null ? `<span style="color:#dc2626">$${avgLoss.toFixed(0)}</span>`  : '—';
-    document.getElementById('phsBest').innerHTML     = bestPnl > -Infinity ? `<span style="color:${bestPnl>=0?'#15803d':'#dc2626'}">${bestPnl>=0?'+':''}$${Math.abs(bestPnl).toFixed(0)}</span>` : '—';
+    document.getElementById('phsTotalPnl').innerHTML  = `<span style="color:${pnlPos?'#15803d':'#dc2626'}">${pnlPos?'+':''}$${Math.abs(totalPnl).toFixed(0)}</span>`;
+    document.getElementById('phsWinRate').innerHTML   = `<span style="color:${winRate>=50?'#15803d':'#dc2626'}">${winRate}%</span>`;
+    document.getElementById('phsAvgWin').innerHTML    = avgWin!=null   ? `<span style="color:#15803d">+$${avgWin.toFixed(0)}</span>`   : '—';
+    document.getElementById('phsAvgLoss').innerHTML   = avgLoss!=null  ? `<span style="color:#dc2626">$${avgLoss.toFixed(0)}</span>`   : '—';
+    document.getElementById('phsBest').innerHTML      = bestPnl > -Infinity ? `<span style="color:${bestPnl>=0?'#15803d':'#dc2626'}">${bestPnl>=0?'+':''}$${Math.abs(bestPnl).toFixed(0)}</span>` : '—';
+    document.getElementById('phsWorst').innerHTML     = worstPnl < Infinity  ? `<span style="color:${worstPnl>=0?'#15803d':'#dc2626'}">${worstPnl>=0?'+':''}$${Math.abs(worstPnl).toFixed(0)}</span>` : '—';
+    document.getElementById('phsTotalSold').innerHTML = `<span>$${Math.round(totalSold).toLocaleString('en-US')}</span>`;
+
+    // Win/Loss donut
+    Plotly.react('pfWinLoseChart',[{
+      type:'pie', hole:0.45,
+      labels:['ניצחונות','הפסדים'],
+      values:[wins.length, losses.length],
+      marker:{colors:['#22c55e','#ef4444']},
+      textinfo:'value+percent',
+      hovertemplate:'<b>%{label}</b>: %{value} עסקאות (%{percent})<extra></extra>',
+      textfont:{size:11}
+    }],{
+      margin:{t:5,b:5,l:5,r:5},
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      showlegend:true,
+      legend:{orientation:'h', y:-0.15, font:{size:10}},
+      font:{color:'#3a3a3c'}
+    },{responsive:true, displayModeBar:false});
 
     // Cumulative P&L chart (oldest first)
     const sorted    = [...hist].sort((a,b) => new Date(a.exit_date)-new Date(b.exit_date));
