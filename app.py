@@ -3507,5 +3507,100 @@ def stock_news(ticker):
     return jsonify(result)
 
 
+@app.route('/social-posts/<ticker>')
+def social_posts(ticker):
+    """פוסטים חברתיים על מניה — StockTwits (מתורגם) + X.com קישור"""
+    ticker = ticker.upper().strip()
+    cache_key = f'social_{ticker}'
+    cached = cache_get(cache_key, ttl=180)
+    if cached:
+        return jsonify(cached)
+
+    import datetime as _sdt
+    import xml.etree.ElementTree as _ET
+    import urllib.parse as _ulp
+
+    posts = []
+
+    # ── 1. StockTwits — פוסטים של טריידרים בזמן אמת ──────────────────────────
+    try:
+        st_url = f'https://api.stocktwits.com/api/2/streams/symbol/{ticker}.json'
+        st_resp = requests.get(st_url, timeout=7, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json',
+        })
+        st_data = st_resp.json()
+        for msg in (st_data.get('messages') or [])[:10]:
+            body = (msg.get('body') or '').strip()
+            if not body:
+                continue
+            user      = msg.get('user', {}).get('username', '')
+            created   = msg.get('created_at', '')
+            sentiment = (msg.get('entities') or {}).get('sentiment') or {}
+            bull      = True if sentiment.get('basic') == 'Bullish' else \
+                        (False if sentiment.get('basic') == 'Bearish' else None)
+            try:
+                dt_obj  = _sdt.datetime.strptime(created, '%Y-%m-%dT%H:%M:%SZ')
+                age_h   = (_sdt.datetime.utcnow() - dt_obj).total_seconds() / 3600
+                time_str = dt_obj.strftime('%d/%m %H:%M')
+            except Exception:
+                age_h, time_str = 999, ''
+
+            body_he = translate_he(body[:280]) if body else body
+            posts.append({
+                'text':    body_he,
+                'text_en': body[:200],
+                'user':    '@' + user if user else '',
+                'time':    time_str,
+                'age_h':   round(age_h, 1),
+                'bull':    bull,
+                'source':  'StockTwits',
+                'link':    f'https://stocktwits.com/{user}' if user else f'https://stocktwits.com/symbol/{ticker}',
+            })
+    except Exception:
+        pass
+
+    # ── 2. גיבוי — Google News עם שאילתה חברתית אם StockTwits נכשל ──────────
+    if not posts:
+        try:
+            q = _ulp.quote(f'${ticker} stock social media twitter')
+            rss_url = f'https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en'
+            resp = requests.get(rss_url, timeout=6, headers={'User-Agent': 'Mozilla/5.0'})
+            root = _ET.fromstring(resp.content)
+            for item in root.findall('.//item')[:6]:
+                title_en = (item.findtext('title') or '').split(' - ')[0].strip()
+                link     = item.findtext('link') or ''
+                pub_str  = item.findtext('pubDate') or ''
+                try:
+                    from email import utils as _eu2
+                    pub_dt   = _sdt.datetime(*_eu2.parsedate(pub_str)[:6], tzinfo=_sdt.timezone.utc)
+                    age_h    = (_sdt.datetime.now(_sdt.timezone.utc) - pub_dt).total_seconds() / 3600
+                    time_str = pub_dt.strftime('%d/%m %H:%M')
+                except Exception:
+                    age_h, time_str = 999, ''
+                if title_en:
+                    posts.append({
+                        'text':    translate_he(title_en),
+                        'text_en': title_en,
+                        'user':    '',
+                        'time':    time_str,
+                        'age_h':   round(age_h, 1),
+                        'bull':    None,
+                        'source':  'Google News',
+                        'link':    link,
+                    })
+        except Exception:
+            pass
+
+    result = {
+        'ticker':         ticker,
+        'posts':          posts,
+        'x_url':          f'https://x.com/search?q=%24{ticker}&src=typed_query&f=live',
+        'stocktwits_url': f'https://stocktwits.com/symbol/{ticker}',
+    }
+    cache_set(cache_key, result)
+    return jsonify(result)
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)

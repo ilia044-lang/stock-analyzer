@@ -1848,6 +1848,31 @@
     <div id="pfLineChart" style="height:200px;"></div>
   </div>
 
+  <!-- ── NEWS PANEL ───────────────────────────── -->
+  <div id="pfNewsPanel" class="pf-card" style="display:none;">
+    <div class="pf-card-hdr">
+      <span class="pf-card-title" id="pfNewsPanelTitle">📰 חדשות</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <a id="pfXBtn" href="#" target="_blank" rel="noopener"
+           style="background:#000;color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:5px;">
+          𝕏 פתח ב-X.com
+        </a>
+        <a id="pfStBtn" href="#" target="_blank" rel="noopener"
+           style="background:#4e4fac;color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;text-decoration:none;">
+          💬 StockTwits
+        </a>
+        <button onclick="closePFNews()" style="background:none;border:1px solid var(--sep);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--label3);cursor:pointer;">✕ סגור</button>
+      </div>
+    </div>
+    <!-- Tabs: News | Social -->
+    <div style="display:flex;border-bottom:1px solid var(--sep2);">
+      <button id="pfNewsTabBtn" class="app-tab-btn active" style="font-size:12px;padding:10px 16px;" onclick="switchPFNewsTab('news')">📰 חדשות עדכניות</button>
+      <button id="pfSocTabBtn"  class="app-tab-btn"        style="font-size:12px;padding:10px 16px;" onclick="switchPFNewsTab('social')">💬 ציוצים ורשתות</button>
+    </div>
+    <div id="pfNewsContent"   style="max-height:340px;overflow-y:auto;"></div>
+    <div id="pfSocialContent" style="max-height:340px;overflow-y:auto;display:none;"></div>
+  </div>
+
   <!-- ── TRADE HISTORY ─────────────────────────── -->
   <div class="pf-divider" id="pfHistDivider" style="display:none;">📒 היסטוריית עסקאות סגורות</div>
 
@@ -4504,8 +4529,8 @@
       const dayChg  = pr ? pr.change_pct : null;
       const pnlCls  = pnlAbs==null?'pf-chip-n':pnlAbs>=0?'pf-chip-g':'pf-chip-r';
       const dayCls  = dayChg==null?'pf-chip-n':dayChg>=0?'pf-chip-g':'pf-chip-r';
-      return `<tr>
-        <td><strong class="ticker-cell" style="font-size:15px;font-weight:800;letter-spacing:.5px;">${p.ticker}</strong>${p.notes?`<div style="font-size:10px;color:var(--label3);margin-top:2px;">${p.notes}</div>`:''}</td>
+      return `<tr onclick="loadPFStockNews('${p.ticker}')" style="cursor:pointer;" title="לחץ לחדשות ועדכוני ${p.ticker}">
+        <td><strong class="ticker-cell" style="font-size:15px;font-weight:800;letter-spacing:.5px;">${p.ticker}</strong><div style="font-size:9px;color:var(--blue);margin-top:1px;">לחץ לחדשות 📰</div>${p.notes?`<div style="font-size:10px;color:var(--label3);">${p.notes}</div>`:''}</td>
         <td>${p.shares.toLocaleString('en-US',{maximumFractionDigits:4})}</td>
         <td>$${p.avg_cost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
         <td style="font-weight:700;">${curP ? '$'+curP.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '⏳'}</td>
@@ -4801,6 +4826,103 @@
     if (!confirm('למחוק עסקה זו מההיסטוריה?')) return;
     saveHist(getHist().filter(h => h.id !== id));
     renderTradeHistory();
+  }
+
+  // ── Portfolio News Panel ─────────────────────────────────────
+  let _pfNewsTab = 'news';
+
+  function switchPFNewsTab(tab) {
+    _pfNewsTab = tab;
+    document.getElementById('pfNewsContent').style.display   = tab==='news'   ? '' : 'none';
+    document.getElementById('pfSocialContent').style.display = tab==='social' ? '' : 'none';
+    document.querySelectorAll('#pfNewsPanel .app-tab-btn').forEach((b,i)=>{
+      b.classList.toggle('active', (i===0&&tab==='news')||(i===1&&tab==='social'));
+    });
+  }
+
+  function closePFNews() {
+    document.getElementById('pfNewsPanel').style.display = 'none';
+  }
+
+  async function loadPFStockNews(ticker) {
+    const panel = document.getElementById('pfNewsPanel');
+    panel.style.display = '';
+    document.getElementById('pfNewsPanelTitle').textContent = `📰 ${ticker} — חדשות ועדכונים`;
+    document.getElementById('pfXBtn').href  = `https://x.com/search?q=%24${ticker}&src=typed_query&f=live`;
+    document.getElementById('pfStBtn').href = `https://stocktwits.com/symbol/${ticker}`;
+    document.getElementById('pfNewsContent').innerHTML   = '<div style="padding:20px;color:var(--label3);text-align:center;">⏳ טוען חדשות...</div>';
+    document.getElementById('pfSocialContent').innerHTML = '<div style="padding:20px;color:var(--label3);text-align:center;">⏳ טוען פוסטים...</div>';
+    switchPFNewsTab('news');
+    // Scroll panel into view
+    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+    const [newsRes, socRes] = await Promise.allSettled([
+      fetch(`/stock-news/${ticker}`).then(r=>r.json()),
+      fetch(`/social-posts/${ticker}`).then(r=>r.json()),
+    ]);
+
+    // ── News tab ──────────────────────────────────────────────
+    const newsData = newsRes.status === 'fulfilled' ? newsRes.value : null;
+    if (newsData && newsData.items && newsData.items.length) {
+      document.getElementById('pfNewsContent').innerHTML = newsData.items.map(n => {
+        const movBadge = n.is_mover
+          ? `<span style="background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;margin-left:4px;">⚡ חדשות מניע</span>`
+          : '';
+        const srcBadge = n.origin === 'yahoo'
+          ? `<span style="background:#6001d2;color:#fff;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:600;margin-left:4px;">Y</span>`
+          : `<span style="background:#1a73e8;color:#fff;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:600;margin-left:4px;">G</span>`;
+        return `<div style="padding:10px 16px;border-bottom:1px solid var(--sep2);display:flex;gap:10px;align-items:flex-start;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:9px;color:var(--label3);margin-bottom:3px;">${srcBadge}${movBadge}<span style="float:left;">${n.date||''}</span><span>${n.source||''}</span></div>
+            ${n.link
+              ? `<a href="${n.link}" target="_blank" rel="noopener" style="font-size:12px;color:var(--label);text-decoration:none;line-height:1.4;display:block;" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--label)'">${n.title}</a>`
+              : `<div style="font-size:12px;line-height:1.4;">${n.title}</div>`}
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      document.getElementById('pfNewsContent').innerHTML = '<div style="padding:20px;color:var(--label3);text-align:center;">לא נמצאו חדשות</div>';
+    }
+
+    // ── Social tab ────────────────────────────────────────────
+    const socData = socRes.status === 'fulfilled' ? socRes.value : null;
+    if (socData && socData.posts && socData.posts.length) {
+      document.getElementById('pfSocialContent').innerHTML =
+        `<div style="padding:8px 16px 4px;font-size:10px;color:var(--label3);border-bottom:1px solid var(--sep2);">
+          מקור: StockTwits · ${socData.posts.length} פוסטים אחרונים · מתורגמים לעברית
+        </div>` +
+        socData.posts.map(p => {
+          const sentColor = p.bull === true  ? '#15803d'
+                          : p.bull === false ? '#dc2626'
+                          : 'var(--label3)';
+          const sentIcon  = p.bull === true  ? '▲ שורי'
+                          : p.bull === false ? '▼ דובי'
+                          : '●';
+          const ageStr = p.age_h < 1  ? `${Math.round(p.age_h*60)}ד'`
+                       : p.age_h < 24 ? `${Math.round(p.age_h)}ש'`
+                       : `${Math.round(p.age_h/24)}י'`;
+          return `<div style="padding:10px 16px;border-bottom:1px solid var(--sep2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <div>
+                ${p.user ? `<a href="${p.link}" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:var(--blue);text-decoration:none;">${p.user}</a>` : ''}
+                <span style="font-size:10px;color:var(--label3);margin-right:6px;">${p.source}</span>
+              </div>
+              <div style="font-size:10px;color:var(--label3);">${p.time} · ${ageStr}</div>
+            </div>
+            <div style="font-size:12px;line-height:1.5;color:var(--label);">${p.text}</div>
+            ${p.bull !== null ? `<div style="margin-top:4px;font-size:10px;font-weight:700;color:${sentColor};">${sentIcon}</div>` : ''}
+          </div>`;
+        }).join('');
+    } else {
+      document.getElementById('pfSocialContent').innerHTML =
+        `<div style="padding:30px;text-align:center;color:var(--label3);">
+          <div style="font-size:14px;margin-bottom:12px;">לא הצלחנו לטעון פוסטים</div>
+          <a href="${socData?.x_url||''}" target="_blank" rel="noopener"
+             style="background:#000;color:#fff;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:700;text-decoration:none;">
+            𝕏 פתח חיפוש ב-X.com
+          </a>
+        </div>`;
+    }
   }
 
   // Init
