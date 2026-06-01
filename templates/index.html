@@ -1762,6 +1762,15 @@
     </div>
     <div class="pf-hdr-right">
       <button class="pf-btn-secondary" onclick="exportPF()">⬇️ ייצא CSV</button>
+      <button class="pf-btn-secondary" onclick="pfBackup()"
+        style="background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;border-color:#1e40af;"
+        title="מוריד קובץ JSON עם כל הנתונים — גיבוי מלא">
+        💾 גיבוי
+      </button>
+      <label class="pf-btn-secondary" style="cursor:pointer;" title="טען גיבוי JSON שמורדת">
+        📂 שחזור
+        <input type="file" accept=".json" style="display:none;" onchange="pfRestore(event)" />
+      </label>
       <button class="pf-btn-secondary" onclick="refreshPFPrices()">🔄 עדכן מחירים</button>
       <button class="pf-btn-primary"   onclick="openPFModal()">＋ הוסף פוזיציה</button>
     </div>
@@ -4749,6 +4758,47 @@
       yaxis:{showgrid:true,gridcolor:'rgba(0,0,0,.05)',tickprefix:'$',tickfont:{size:10,color:'#6e6e73'}},
       font:{color:'#3a3a3c'}
     },{responsive:true,displayModeBar:false});
+  }
+
+  function pfBackup() {
+    const data = {
+      version:   2,
+      saved_at:  new Date().toISOString(),
+      positions: getPF(),
+      history:   getHist(),
+      snapshots: (()=>{ try{ return JSON.parse(localStorage.getItem(PF_SNAP_KEY))||[]; }catch(e){return[];} })(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `תיק_גיבוי_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function pfRestore(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data.positions && !data.history) throw new Error('קובץ לא תקין');
+        const posCount  = (data.positions || []).length;
+        const histCount = (data.history   || []).length;
+        if (!confirm(`שחזור מ-${file.name}\n${posCount} פוזיציות פתוחות · ${histCount} עסקאות סגורות\n\nהנתונים הנוכחיים יוחלפו. להמשיך?`)) return;
+        if (data.positions) savePF(data.positions);
+        if (data.history)   saveHist(data.history);
+        if (data.snapshots) localStorage.setItem(PF_SNAP_KEY, JSON.stringify(data.snapshots));
+        refreshPFPrices();
+        renderTradeHistory();
+        alert(`✅ שוחזר בהצלחה — ${posCount} פוזיציות, ${histCount} עסקאות`);
+      } catch(err) {
+        alert('שגיאה בקובץ: ' + err.message);
+      }
+      event.target.value = '';
+    };
+    reader.readAsText(file);
   }
 
   function exportPF() {
