@@ -3212,6 +3212,36 @@ def check_outcome():
         return jsonify({'status': 'error', 'msg': str(e)})
 
 
+@app.route('/portfolio-prices')
+def portfolio_prices():
+    """מחירים חיים לרשימת טיקרים — עבור דשבורד תיק ההשקעות"""
+    tickers_raw = request.args.get('tickers', '')
+    ticker_list = [t.strip().upper() for t in tickers_raw.split(',') if t.strip()][:30]
+    if not ticker_list:
+        return jsonify({})
+    cache_key = 'pfprices_' + '_'.join(sorted(ticker_list))
+    cached = cache_get(cache_key, ttl=120)
+    if cached:
+        return jsonify(cached)
+    result = {}
+    for ticker in ticker_list:
+        try:
+            t  = yf.Ticker(ticker)
+            fi = t.fast_info
+            price = float(getattr(fi, 'last_price', None) or getattr(fi, 'regular_market_price', None) or 0)
+            prev  = float(getattr(fi, 'previous_close', None) or price)
+            chg   = round((price - prev) / prev * 100, 2) if prev else 0
+            result[ticker] = {
+                'price':      round(price, 2),
+                'prev_close': round(prev,  2),
+                'change_pct': chg,
+            }
+        except Exception as ex:
+            result[ticker] = {'price': None, 'error': str(ex)}
+    cache_set(cache_key, result)
+    return jsonify(result)
+
+
 @app.route('/quick-predict/<ticker>')
 def quick_predict(ticker):
     """תחזית מהירה לטיקר — ירוק/אדום/ניטרלי"""

@@ -856,6 +856,91 @@
     .trade-cell-value { font-size: 22px; font-weight: 800; color: var(--label); }
     .trade-cell-sub   { font-size: 11px; color: var(--label3); margin-top: 4px; }
 
+    /* ══════════════════════════════════════
+       App Tab Bar
+       ══════════════════════════════════════ */
+    .app-tab-bar {
+      display: flex; gap: 0;
+      background: var(--bg2);
+      border-bottom: 2px solid var(--sep2);
+      padding: 0 24px;
+      position: sticky; top: 0; z-index: 200;
+      box-shadow: 0 1px 0 var(--sep2);
+    }
+    .app-tab-btn {
+      padding: 13px 22px; border: none; background: none;
+      font-size: 13px; font-weight: 600; color: var(--label3);
+      cursor: pointer; border-bottom: 3px solid transparent;
+      margin-bottom: -2px; transition: color .15s, border-color .15s;
+    }
+    .app-tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .app-tab-btn:hover:not(.active) { color: var(--label2); }
+
+    /* ══════════════════════════════════════
+       Portfolio Dashboard
+       ══════════════════════════════════════ */
+    .pf-page { max-width: 1400px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+    .pf-hdr  { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .pf-hdr-left h2 { font-size: 22px; font-weight: 800; color: var(--label); letter-spacing: -.5px; margin: 0; }
+    .pf-hdr-left p  { font-size: 12px; color: var(--label3); margin: 3px 0 0; }
+    .pf-hdr-right   { display: flex; gap: 8px; align-items: center; }
+    .pf-btn-primary   { background: var(--blue); color: #fff; border: none; border-radius: 10px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .pf-btn-secondary { background: var(--bg2); border: 1.5px solid var(--sep); border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600; color: var(--label2); cursor: pointer; }
+    .pf-btn-secondary:hover { background: var(--bg3); }
+
+    .pf-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+    .pf-stat-card {
+      background: var(--bg2); border-radius: 16px; padding: 20px;
+      border: 1px solid var(--sep2); display: flex; align-items: flex-start; gap: 14px;
+    }
+    .pf-stat-icon  { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .pf-stat-body  { flex: 1; min-width: 0; }
+    .pf-stat-label { font-size: 10px; color: var(--label3); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; }
+    .pf-stat-value { font-size: 24px; font-weight: 800; color: var(--label); letter-spacing: -.5px; line-height: 1.1; }
+    .pf-stat-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; margin-top: 6px; }
+    .pf-badge-pos  { background: var(--green-dim); color: #15803d; }
+    .pf-badge-neg  { background: var(--red-dim);   color: #dc2626; }
+    .pf-badge-neu  { background: var(--bg3);        color: var(--label3); }
+
+    .pf-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .pf-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pf-card { background: var(--bg2); border-radius: 16px; border: 1px solid var(--sep2); overflow: hidden; }
+    .pf-card-hdr { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--sep2); }
+    .pf-card-title { font-size: 13px; font-weight: 700; color: var(--label); }
+    .pf-card-sub   { font-size: 11px; color: var(--label3); }
+
+    .pf-tbl-wrap { overflow-x: auto; }
+    .pf-tbl { width: 100%; border-collapse: collapse; }
+    .pf-tbl thead th { font-size: 10px; font-weight: 700; color: var(--label3); padding: 10px 16px; border-bottom: 1px solid var(--sep2); text-align: right; letter-spacing: .4px; text-transform: uppercase; background: var(--bg3); white-space: nowrap; }
+    .pf-tbl tbody td { padding: 13px 16px; border-bottom: 1px solid var(--sep2); font-size: 13px; color: var(--label); white-space: nowrap; }
+    .pf-tbl tbody tr:last-child td { border-bottom: none; }
+    .pf-tbl tbody tr:hover td { background: var(--bg3); cursor: pointer; }
+    .pf-chip { display: inline-block; padding: 3px 9px; border-radius: 7px; font-size: 11px; font-weight: 700; }
+    .pf-chip-g { background: var(--green-dim); color: #15803d; }
+    .pf-chip-r { background: var(--red-dim); color: #dc2626; }
+    .pf-chip-n { background: var(--bg3); color: var(--label3); }
+
+    .pf-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 14px; color: var(--label3); }
+    .pf-empty-icon { font-size: 48px; }
+
+    .pf-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .pf-modal { background: var(--bg2); border-radius: 20px; padding: 28px; width: 420px; max-width: 95vw; box-shadow: 0 24px 80px rgba(0,0,0,.22); }
+    .pf-modal-title { font-size: 18px; font-weight: 800; color: var(--label); margin-bottom: 20px; }
+    .pf-fld { margin-bottom: 14px; }
+    .pf-fld label { display: block; font-size: 10px; font-weight: 700; color: var(--label3); margin-bottom: 5px; letter-spacing: .5px; text-transform: uppercase; }
+    .pf-fld input { width: 100%; box-sizing: border-box; padding: 11px 14px; border: 1.5px solid var(--sep); border-radius: 10px; font-size: 14px; color: var(--label); background: var(--bg3); }
+    .pf-fld input:focus { outline: none; border-color: var(--blue); background: var(--bg2); }
+
+    @media (max-width: 900px) {
+      .pf-stats { grid-template-columns: repeat(2,1fr); }
+      .pf-row3  { grid-template-columns: 1fr; }
+      .pf-row2  { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .pf-stats { grid-template-columns: 1fr; }
+      .pf-page  { padding: 14px; }
+    }
+
     /* ── SL suggestion ── */
     .sl-card {
       display: none;
@@ -904,6 +989,15 @@
     </button>
   </div>
 </header>
+
+<!-- ── Tab Bar ── -->
+<div class="app-tab-bar">
+  <button class="app-tab-btn active" id="tabBtnAnalysis" onclick="switchAppTab('analysis')">📊 ניתוח מניות</button>
+  <button class="app-tab-btn"        id="tabBtnPortfolio" onclick="switchAppTab('portfolio')">💼 תיק ההשקעות</button>
+</div>
+
+<!-- ══ TAB: ניתוח מניות ══ -->
+<div id="tabAnalysis">
 
 <!-- ── Market Drivers ── -->
 <div class="drivers-section" id="driversSection" style="display:none;">
@@ -1620,6 +1714,166 @@
 </div><!-- end .right-col -->
 
 </div><!-- end .page-layout -->
+</div><!-- end #tabAnalysis -->
+
+
+<!-- ══ TAB: תיק ההשקעות ══ -->
+<div id="tabPortfolio" style="display:none;">
+<div class="pf-page">
+
+  <!-- Header -->
+  <div class="pf-hdr">
+    <div class="pf-hdr-left">
+      <h2>💼 תיק ההשקעות שלי</h2>
+      <p id="pfLastUpdated">לא עודכן עדיין — לחץ "עדכן מחירים"</p>
+    </div>
+    <div class="pf-hdr-right">
+      <button class="pf-btn-secondary" onclick="exportPF()">⬇️ ייצא CSV</button>
+      <button class="pf-btn-secondary" onclick="refreshPFPrices()">🔄 עדכן מחירים</button>
+      <button class="pf-btn-primary"   onclick="openPFModal()">＋ הוסף פוזיציה</button>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="pf-stats" id="pfStats">
+    <div class="pf-stat-card">
+      <div class="pf-stat-icon" style="background:#eff6ff;">💰</div>
+      <div class="pf-stat-body">
+        <div class="pf-stat-label">סה"כ הושקע</div>
+        <div class="pf-stat-value" id="pfTotalCost">—</div>
+        <div class="pf-stat-badge pf-badge-neu" id="pfTotalCostSub">0 פוזיציות</div>
+      </div>
+    </div>
+    <div class="pf-stat-card">
+      <div class="pf-stat-icon" style="background:#f0fdf4;">📈</div>
+      <div class="pf-stat-body">
+        <div class="pf-stat-label">שווי נוכחי</div>
+        <div class="pf-stat-value" id="pfTotalValue">—</div>
+        <div class="pf-stat-badge pf-badge-neu" id="pfTodayChg">שינוי היום: —</div>
+      </div>
+    </div>
+    <div class="pf-stat-card">
+      <div class="pf-stat-icon" style="background:#fff7ed;">💵</div>
+      <div class="pf-stat-body">
+        <div class="pf-stat-label">רווח / הפסד</div>
+        <div class="pf-stat-value" id="pfPnlAbs">—</div>
+        <div class="pf-stat-badge pf-badge-neu" id="pfPnlBadge">על ההשקעה המקורית</div>
+      </div>
+    </div>
+    <div class="pf-stat-card">
+      <div class="pf-stat-icon" style="background:#fdf4ff;">📊</div>
+      <div class="pf-stat-body">
+        <div class="pf-stat-label">תשואה כוללת</div>
+        <div class="pf-stat-value" id="pfReturnPct">—</div>
+        <div class="pf-stat-badge pf-badge-neu" id="pfReturnBadge">מה-NAV ההתחלתי</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="pf-row3">
+    <!-- Donut — allocation -->
+    <div class="pf-card">
+      <div class="pf-card-hdr">
+        <span class="pf-card-title">🥧 חלוקת תיק</span>
+        <span class="pf-card-sub">לפי שווי שוק</span>
+      </div>
+      <div id="pfPieChart" style="height:240px;"></div>
+    </div>
+
+    <!-- Bar — P&L per stock -->
+    <div class="pf-card">
+      <div class="pf-card-hdr">
+        <span class="pf-card-title">📊 רווח/הפסד לפי מניה</span>
+        <span class="pf-card-sub">$ מהכניסה</span>
+      </div>
+      <div id="pfBarChart" style="height:240px;"></div>
+    </div>
+
+    <!-- Best / Worst performers -->
+    <div class="pf-card">
+      <div class="pf-card-hdr">
+        <span class="pf-card-title">🏆 ביצועים</span>
+        <span class="pf-card-sub">מאז הכניסה</span>
+      </div>
+      <div id="pfPerformers" style="padding:16px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+
+  <!-- Holdings Table -->
+  <div class="pf-card">
+    <div class="pf-card-hdr">
+      <span class="pf-card-title">📋 פוזיציות פתוחות</span>
+      <span class="pf-card-sub" id="pfPositionCount">0 מניות</span>
+    </div>
+    <div class="pf-tbl-wrap">
+      <table class="pf-tbl">
+        <thead>
+          <tr>
+            <th>מניה</th>
+            <th>כמות</th>
+            <th>עלות ממוצעת</th>
+            <th>מחיר נוכחי</th>
+            <th>שינוי יומי</th>
+            <th>שווי שוק</th>
+            <th>עלות כוללת</th>
+            <th>רווח/הפסד</th>
+            <th>תשואה</th>
+            <th style="width:70px;"></th>
+          </tr>
+        </thead>
+        <tbody id="pfTableBody">
+          <tr><td colspan="10"><div class="pf-empty"><div class="pf-empty-icon">📭</div><div>אין פוזיציות — לחץ "הוסף פוזיציה" להתחיל</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Line chart — value over time -->
+  <div class="pf-card">
+    <div class="pf-card-hdr">
+      <span class="pf-card-title">📈 ערך תיק לאורך זמן</span>
+      <span class="pf-card-sub">מעקב יומי אוטומטי</span>
+    </div>
+    <div id="pfLineChart" style="height:200px;"></div>
+  </div>
+
+</div><!-- end .pf-page -->
+</div><!-- end #tabPortfolio -->
+
+<!-- ── Add/Edit Position Modal ── -->
+<div id="pfModalBg" class="pf-modal-bg" style="display:none;" onclick="if(event.target===this)closePFModal()">
+  <div class="pf-modal">
+    <div class="pf-modal-title" id="pfModalTitle">➕ הוסף פוזיציה</div>
+    <div class="pf-fld">
+      <label>טיקר (סימול מניה)</label>
+      <input id="pfFldTicker" placeholder="NVDA" oninput="this.value=this.value.toUpperCase()" />
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="pf-fld">
+        <label>כמות מניות</label>
+        <input id="pfFldShares" type="number" step="0.0001" placeholder="10" />
+      </div>
+      <div class="pf-fld">
+        <label>עלות ממוצעת ($)</label>
+        <input id="pfFldCost" type="number" step="0.01" placeholder="450.00" />
+      </div>
+    </div>
+    <div class="pf-fld">
+      <label>תאריך כניסה (אופציונלי)</label>
+      <input id="pfFldDate" type="date" />
+    </div>
+    <div class="pf-fld">
+      <label>הערות (אופציונלי)</label>
+      <input id="pfFldNotes" placeholder="אסטרטגיה, יעד מחיר..." />
+    </div>
+    <input type="hidden" id="pfFldEditId" />
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="pf-btn-primary" style="flex:1;" onclick="savePFPosition()">💾 שמור</button>
+      <button class="pf-btn-secondary" onclick="closePFModal()">ביטול</button>
+    </div>
+  </div>
+</div>
 
 <script>
   const tickerInput = document.getElementById('tickerInput');
@@ -3988,6 +4242,316 @@
 
   // הצג זמן הבא מיד בטעינה
   document.getElementById('scanNextScan').textContent = nextScanLabel();
+
+  // ═══════════════════════════════════════════════════════════════
+  //  TAB SWITCHING
+  // ═══════════════════════════════════════════════════════════════
+  function switchAppTab(tab) {
+    document.querySelectorAll('.app-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tabAnalysis').style.display  = 'none';
+    document.getElementById('tabPortfolio').style.display = 'none';
+    document.getElementById(`tabBtn${tab[0].toUpperCase()+tab.slice(1)}`).classList.add('active');
+    document.getElementById(`tab${tab[0].toUpperCase()+tab.slice(1)}`).style.display = '';
+    if (tab === 'portfolio') refreshPFPrices();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PORTFOLIO DASHBOARD
+  // ═══════════════════════════════════════════════════════════════
+  const PF_KEY      = 'pfPositions';
+  const PF_SNAP_KEY = 'pfSnapshots';
+  let _pfPrices = {};
+
+  function getPF()       { try { return JSON.parse(localStorage.getItem(PF_KEY)) || []; } catch(e) { return []; } }
+  function savePF(arr)   { localStorage.setItem(PF_KEY, JSON.stringify(arr)); }
+  function uid()         { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  function usd(n, d=0)   { return n == null || isNaN(n) ? '—' : '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+  function pct(n)        { return n == null || isNaN(n) ? '—' : (n>=0?'+':'')+n.toFixed(2)+'%'; }
+
+  // ── Modal ────────────────────────────────────────────────────
+  function openPFModal(editId) {
+    const pos = editId ? getPF().find(p => p.id === editId) : null;
+    document.getElementById('pfModalTitle').textContent = pos ? '✏️ ערוך פוזיציה' : '➕ הוסף פוזיציה';
+    document.getElementById('pfFldTicker').value  = pos ? pos.ticker     : '';
+    document.getElementById('pfFldShares').value  = pos ? pos.shares     : '';
+    document.getElementById('pfFldCost').value    = pos ? pos.avg_cost   : '';
+    document.getElementById('pfFldDate').value    = pos ? (pos.entry_date||'') : '';
+    document.getElementById('pfFldNotes').value   = pos ? (pos.notes||'')     : '';
+    document.getElementById('pfFldEditId').value  = editId || '';
+    document.getElementById('pfFldTicker').disabled = !!pos;
+    document.getElementById('pfModalBg').style.display = 'flex';
+  }
+  function closePFModal() { document.getElementById('pfModalBg').style.display = 'none'; }
+
+  function savePFPosition() {
+    const ticker    = document.getElementById('pfFldTicker').value.trim().toUpperCase();
+    const shares    = parseFloat(document.getElementById('pfFldShares').value);
+    const avg_cost  = parseFloat(document.getElementById('pfFldCost').value);
+    const entry_date= document.getElementById('pfFldDate').value;
+    const notes     = document.getElementById('pfFldNotes').value.trim();
+    const editId    = document.getElementById('pfFldEditId').value;
+    if (!ticker || isNaN(shares)||shares<=0 || isNaN(avg_cost)||avg_cost<=0) {
+      alert('יש להזין טיקר, כמות ועלות תקינים'); return;
+    }
+    let arr = getPF();
+    if (editId) {
+      const i = arr.findIndex(p=>p.id===editId);
+      if (i>=0) arr[i] = {...arr[i], shares, avg_cost, entry_date, notes};
+    } else {
+      if (arr.find(p=>p.ticker===ticker)) { alert(`פוזיציה ב-${ticker} כבר קיימת`); return; }
+      arr.push({ id:uid(), ticker, shares, avg_cost, entry_date, notes, added:new Date().toISOString() });
+    }
+    savePF(arr); closePFModal(); refreshPFPrices();
+  }
+
+  function deletePF(id) {
+    if (!confirm('למחוק פוזיציה זו?')) return;
+    savePF(getPF().filter(p=>p.id!==id)); renderPortfolio();
+  }
+
+  // ── Live prices ──────────────────────────────────────────────
+  async function refreshPFPrices() {
+    const positions = getPF();
+    if (!positions.length) { renderPortfolio(); return; }
+    const tickers = positions.map(p=>p.ticker).join(',');
+    try {
+      _pfPrices = await fetch(`/portfolio-prices?tickers=${tickers}`).then(r=>r.json());
+      pfSaveSnap();
+      renderPortfolio(_pfPrices);
+      const now = new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('pfLastUpdated').textContent = `עודכן: ${now}`;
+    } catch(e) { renderPortfolio(_pfPrices); }
+  }
+
+  function pfSaveSnap() {
+    const positions = getPF();
+    let total = 0; let ok = true;
+    for (const p of positions) {
+      const pr = _pfPrices[p.ticker];
+      if (!pr||!pr.price) { ok=false; break; }
+      total += p.shares * pr.price;
+    }
+    if (!ok || !total) return;
+    const today = new Date().toISOString().slice(0,10);
+    let snaps = []; try { snaps = JSON.parse(localStorage.getItem(PF_SNAP_KEY))||[]; } catch(e){}
+    const idx = snaps.findIndex(s=>s.date===today);
+    if (idx>=0) snaps[idx].value = Math.round(total*100)/100;
+    else snaps.push({date:today, value:Math.round(total*100)/100});
+    localStorage.setItem(PF_SNAP_KEY, JSON.stringify(snaps.slice(-365)));
+  }
+
+  // ── Render ────────────────────────────────────────────────────
+  function renderPortfolio(prices) {
+    prices = prices || _pfPrices;
+    const positions = getPF();
+    document.getElementById('pfPositionCount').textContent = positions.length + ' מניות';
+    if (!positions.length) {
+      document.getElementById('pfTableBody').innerHTML =
+        '<tr><td colspan="10"><div class="pf-empty"><div class="pf-empty-icon">📭</div><div>אין פוזיציות — לחץ "הוסף פוזיציה" להתחיל</div></div></td></tr>';
+      pfClearStats(); pfClearCharts(); return;
+    }
+    pfRenderStats(positions, prices);
+    pfRenderTable(positions, prices);
+    pfRenderPerformers(positions, prices);
+    pfRenderPie(positions, prices);
+    pfRenderBar(positions, prices);
+    pfRenderLine();
+  }
+
+  function pfClearStats() {
+    ['pfTotalCost','pfTotalValue','pfPnlAbs','pfReturnPct'].forEach(id=>document.getElementById(id).textContent='—');
+  }
+  function pfClearCharts() {
+    ['pfPieChart','pfBarChart','pfLineChart'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.innerHTML='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--label3);font-size:12px;">אין נתונים</div>';
+    });
+    document.getElementById('pfPerformers').innerHTML='';
+  }
+
+  function pfRenderStats(positions, prices) {
+    let totalCost=0, totalVal=0, todayPnl=0;
+    for (const p of positions) {
+      const pr = prices[p.ticker];
+      const cost = p.shares * p.avg_cost;
+      const val  = pr&&pr.price ? p.shares*pr.price : cost;
+      const prev = pr&&pr.prev_close&&pr.price ? p.shares*(pr.price-pr.prev_close) : 0;
+      totalCost += cost; totalVal += val; todayPnl += prev;
+    }
+    const pnl    = totalVal - totalCost;
+    const retPct = totalCost > 0 ? pnl/totalCost*100 : 0;
+    const pnlPos = pnl >= 0;
+    const retPos = retPct >= 0;
+    const tdPos  = todayPnl >= 0;
+
+    document.getElementById('pfTotalCost').textContent  = usd(totalCost);
+    document.getElementById('pfTotalCostSub').textContent = positions.length + ' פוזיציות';
+    document.getElementById('pfTotalCostSub').className   = 'pf-stat-badge pf-badge-neu';
+
+    document.getElementById('pfTotalValue').textContent = usd(totalVal);
+    const tdEl = document.getElementById('pfTodayChg');
+    tdEl.textContent = `שינוי היום: ${todayPnl>=0?'+':''}${usd(todayPnl)}`;
+    tdEl.className = 'pf-stat-badge ' + (tdPos?'pf-badge-pos':'pf-badge-neg');
+
+    document.getElementById('pfPnlAbs').innerHTML = `<span style="color:${pnlPos?'var(--green)':'var(--red)'};">${pnl>=0?'+':''}${usd(pnl)}</span>`;
+    const pnlBadge = document.getElementById('pfPnlBadge');
+    pnlBadge.textContent = `${pnlPos?'+':''}${pct(retPct)} מההשקעה`;
+    pnlBadge.className = 'pf-stat-badge ' + (pnlPos?'pf-badge-pos':'pf-badge-neg');
+
+    document.getElementById('pfReturnPct').innerHTML = `<span style="color:${retPos?'var(--green)':'var(--red)'};">${pct(retPct)}</span>`;
+    const retBadge = document.getElementById('pfReturnBadge');
+    retBadge.textContent = `${pnlPos?'+':''}${usd(pnl)} רווח/הפסד`;
+    retBadge.className = 'pf-stat-badge ' + (retPos?'pf-badge-pos':'pf-badge-neg');
+  }
+
+  function pfRenderTable(positions, prices) {
+    const rows = positions.map(p => {
+      const pr      = prices[p.ticker];
+      const curP    = pr&&pr.price ? pr.price : null;
+      const cost    = p.shares * p.avg_cost;
+      const mktVal  = curP ? p.shares * curP : null;
+      const pnlAbs  = mktVal != null ? mktVal - cost : null;
+      const retPct2 = pnlAbs != null ? pnlAbs/cost*100 : null;
+      const dayChg  = pr ? pr.change_pct : null;
+      const pnlCls  = pnlAbs==null?'pf-chip-n':pnlAbs>=0?'pf-chip-g':'pf-chip-r';
+      const dayCls  = dayChg==null?'pf-chip-n':dayChg>=0?'pf-chip-g':'pf-chip-r';
+      return `<tr>
+        <td><strong class="ticker-cell" style="font-size:15px;font-weight:800;letter-spacing:.5px;">${p.ticker}</strong>${p.notes?`<div style="font-size:10px;color:var(--label3);margin-top:2px;">${p.notes}</div>`:''}</td>
+        <td>${p.shares.toLocaleString('en-US',{maximumFractionDigits:4})}</td>
+        <td>$${p.avg_cost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td style="font-weight:700;">${curP ? '$'+curP.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '⏳'}</td>
+        <td><span class="pf-chip ${dayCls}">${dayChg!=null?(dayChg>=0?'+':'')+dayChg.toFixed(2)+'%':'—'}</span></td>
+        <td style="font-weight:600;">${mktVal!=null?usd(mktVal):'—'}</td>
+        <td style="color:var(--label3);">${usd(cost)}</td>
+        <td style="font-weight:700;"><span class="pf-chip ${pnlCls}">${pnlAbs!=null?(pnlAbs>=0?'+':'')+usd(pnlAbs):'—'}</span></td>
+        <td><span class="pf-chip ${pnlCls}">${retPct2!=null?pct(retPct2):'—'}</span></td>
+        <td>
+          <button onclick="openPFModal('${p.id}')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px;padding:2px 5px;" title="ערוך">✏️</button>
+          <button onclick="deletePF('${p.id}')"   style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 5px;"  title="מחק">🗑</button>
+        </td>
+      </tr>`;
+    });
+    document.getElementById('pfTableBody').innerHTML = rows.join('');
+  }
+
+  function pfRenderPerformers(positions, prices) {
+    const enriched = positions.map(p => {
+      const pr  = prices[p.ticker];
+      const cost = p.shares * p.avg_cost;
+      const val  = pr&&pr.price ? p.shares*pr.price : cost;
+      const ret  = (val-cost)/cost*100;
+      const dayChg = pr ? pr.change_pct : 0;
+      return { ticker:p.ticker, ret, dayChg };
+    }).sort((a,b)=>b.ret-a.ret);
+
+    const el = document.getElementById('pfPerformers');
+    if (!enriched.length) { el.innerHTML=''; return; }
+    el.innerHTML = enriched.map((e,i) => {
+      const col  = e.ret>=0 ? '#15803d' : '#dc2626';
+      const bg   = e.ret>=0 ? 'var(--green-dim)' : 'var(--red-dim)';
+      const rank = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : `${i+1}.`;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:${bg};border-radius:10px;">
+        <span style="font-size:16px;">${rank}</span>
+        <span style="flex:1;font-weight:700;font-size:13px;">${e.ticker}</span>
+        <span style="font-weight:800;color:${col};font-size:13px;">${e.ret>=0?'+':''}${e.ret.toFixed(1)}%</span>
+        <span style="font-size:11px;color:${e.dayChg>=0?'#15803d':'#dc2626'};">(${e.dayChg>=0?'+':''}${e.dayChg.toFixed(1)}% היום)</span>
+      </div>`;
+    }).join('');
+  }
+
+  const _pfPalette = ['#0071e3','#22c55e','#f59e0b','#ef4444','#a855f7','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#06b6d4','#d97706'];
+
+  function pfRenderPie(positions, prices) {
+    const labels=[], values=[], colors=[];
+    positions.forEach((p,i) => {
+      const pr  = prices[p.ticker];
+      const val = pr&&pr.price ? p.shares*pr.price : p.shares*p.avg_cost;
+      labels.push(p.ticker); values.push(Math.round(val*100)/100);
+      colors.push(_pfPalette[i%_pfPalette.length]);
+    });
+    Plotly.react('pfPieChart',[{
+      type:'pie', labels, values, marker:{colors},
+      textinfo:'label+percent', hole:0.42,
+      hovertemplate:'<b>%{label}</b><br>%{value:$,.0f}<br>%{percent}<extra></extra>',
+      textfont:{size:11}
+    }],{
+      margin:{t:10,b:10,l:10,r:10},
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      showlegend:false, font:{color:'#3a3a3c'}
+    },{responsive:true,displayModeBar:false});
+  }
+
+  function pfRenderBar(positions, prices) {
+    const tickers=[], pnls=[], barColors=[];
+    positions.forEach((p,i) => {
+      const pr   = prices[p.ticker];
+      const cost = p.shares*p.avg_cost;
+      const val  = pr&&pr.price ? p.shares*pr.price : cost;
+      const pnl  = val - cost;
+      tickers.push(p.ticker); pnls.push(Math.round(pnl*100)/100);
+      barColors.push(pnl>=0?'#22c55e':'#ef4444');
+    });
+    Plotly.react('pfBarChart',[{
+      type:'bar', x:tickers, y:pnls,
+      marker:{color:barColors},
+      hovertemplate:'<b>%{x}</b><br>%{y:+$,.0f}<extra></extra>',
+      text:pnls.map(v=>(v>=0?'+':'')+'$'+Math.round(Math.abs(v)).toLocaleString()),
+      textposition:'outside', textfont:{size:10}
+    }],{
+      margin:{t:30,b:40,l:10,r:10},
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      xaxis:{tickfont:{size:12,color:'#3a3a3c'},showgrid:false},
+      yaxis:{showgrid:true,gridcolor:'rgba(0,0,0,.05)',zeroline:true,zerolinecolor:'rgba(0,0,0,.15)',tickfont:{size:10,color:'#6e6e73'},tickprefix:'$'},
+      font:{color:'#3a3a3c'}
+    },{responsive:true,displayModeBar:false});
+  }
+
+  function pfRenderLine() {
+    let snaps=[]; try{snaps=JSON.parse(localStorage.getItem(PF_SNAP_KEY))||[];}catch(e){}
+    const el = document.getElementById('pfLineChart');
+    if (snaps.length < 2) {
+      el.innerHTML='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--label3);font-size:12px;padding:20px;">מעקב יומי יתחיל מחר — חזור לאחר יום נוסף</div>';
+      return;
+    }
+    const lineCol = snaps[snaps.length-1].value >= snaps[0].value ? '#22c55e' : '#ef4444';
+    Plotly.react('pfLineChart',[{
+      type:'scatter', mode:'lines+markers',
+      x:snaps.map(s=>s.date), y:snaps.map(s=>s.value),
+      line:{color:lineCol,width:2.5},
+      marker:{color:lineCol,size:5},
+      fill:'tozeroy', fillcolor:lineCol+'22',
+      hovertemplate:'<b>%{x}</b><br>%{y:$,.0f}<extra></extra>'
+    }],{
+      margin:{t:10,b:30,l:65,r:10},
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      xaxis:{showgrid:false,tickfont:{size:10,color:'#6e6e73'}},
+      yaxis:{showgrid:true,gridcolor:'rgba(0,0,0,.05)',tickprefix:'$',tickfont:{size:10,color:'#6e6e73'}},
+      font:{color:'#3a3a3c'}
+    },{responsive:true,displayModeBar:false});
+  }
+
+  function exportPF() {
+    const arr = getPF();
+    if (!arr.length) { alert('אין פוזיציות לייצוא'); return; }
+    const hdrs = ['טיקר','כמות','עלות ממוצעת','מחיר נוכחי','שווי שוק','עלות כוללת','רווח/הפסד','תשואה%','שינוי יומי%','תאריך כניסה','הערות'];
+    const rows = arr.map(p => {
+      const pr   = _pfPrices[p.ticker];
+      const cost = p.shares * p.avg_cost;
+      const price= pr&&pr.price ? pr.price : '';
+      const mktV = pr&&pr.price ? (p.shares*pr.price).toFixed(2) : '';
+      const pnl  = pr&&pr.price ? (p.shares*pr.price - cost).toFixed(2) : '';
+      const ret  = pr&&pr.price ? ((p.shares*pr.price-cost)/cost*100).toFixed(2)+'%' : '';
+      return [p.ticker,p.shares,p.avg_cost,price,mktV,cost.toFixed(2),pnl,ret,pr?pr.change_pct+'%':'',p.entry_date||'',p.notes||''];
+    });
+    const csv = '﻿' + [hdrs,...rows].map(r=>r.join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    a.download = `תיק_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  }
+
+  // Init
+  (function(){ const p=getPF(); if(p.length) renderPortfolio(); })();
 </script>
 </body>
 </html>
