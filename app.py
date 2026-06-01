@@ -3507,6 +3507,28 @@ def stock_news(ticker):
     return jsonify(result)
 
 
+@app.route('/sparkline/<ticker>')
+def sparkline(ticker):
+    """נתוני sparkline יומיים — 5 דקות, יום נוכחי"""
+    ticker = ticker.upper().strip()
+    cache_key = f'spark_{ticker}'
+    cached = cache_get(cache_key, ttl=300)
+    if cached:
+        return jsonify(cached)
+    try:
+        hist = yf.Ticker(ticker).history(period='1d', interval='5m')
+        prices = [round(float(p), 2) for p in hist['Close'].dropna().tolist()]
+        if not prices:
+            return jsonify({'prices': [], 'is_up': None})
+        is_up = prices[-1] >= prices[0]
+        result = {'prices': prices, 'is_up': is_up,
+                  'open': prices[0], 'last': prices[-1]}
+        cache_set(cache_key, result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'prices': [], 'is_up': None, 'error': str(e)})
+
+
 @app.route('/social-posts/<ticker>')
 def social_posts(ticker):
     """פוסטים חברתיים על מניה — StockTwits (מתורגם) + X.com קישור"""

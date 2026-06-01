@@ -1821,6 +1821,7 @@
         <thead>
           <tr>
             <th>מניה</th>
+            <th style="width:100px;">גרף יומי</th>
             <th>כמות</th>
             <th>עלות ממוצעת</th>
             <th>מחיר נוכחי</th>
@@ -1833,7 +1834,7 @@
           </tr>
         </thead>
         <tbody id="pfTableBody">
-          <tr><td colspan="10"><div class="pf-empty"><div class="pf-empty-icon">📭</div><div>אין פוזיציות — לחץ "הוסף פוזיציה" להתחיל</div></div></td></tr>
+          <tr><td colspan="11"><div class="pf-empty"><div class="pf-empty-icon">📭</div><div>אין פוזיציות — לחץ "הוסף פוזיציה" להתחיל</div></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -4461,11 +4462,12 @@
     document.getElementById('pfPositionCount').textContent = positions.length + ' מניות';
     if (!positions.length) {
       document.getElementById('pfTableBody').innerHTML =
-        '<tr><td colspan="10"><div class="pf-empty"><div class="pf-empty-icon">📭</div><div>אין פוזיציות — לחץ "הוסף פוזיציה" להתחיל</div></div></td></tr>';
+        '<tr><td colspan="11"><div class="pf-empty"><div class="pf-empty-icon">📭</div><div>אין פוזיציות — לחץ "הוסף פוזיציה" להתחיל</div></div></td></tr>';
       pfClearStats(); pfClearCharts(); return;
     }
     pfRenderStats(positions, prices);
     pfRenderTable(positions, prices);
+    loadSparklines(positions.map(p => p.ticker));
     pfRenderPerformers(positions, prices);
     pfRenderPie(positions, prices);
     pfRenderBar(positions, prices);
@@ -4531,6 +4533,7 @@
       const dayCls  = dayChg==null?'pf-chip-n':dayChg>=0?'pf-chip-g':'pf-chip-r';
       return `<tr onclick="loadPFStockNews('${p.ticker}')" style="cursor:pointer;" title="לחץ לחדשות ועדכוני ${p.ticker}">
         <td><strong class="ticker-cell" style="font-size:15px;font-weight:800;letter-spacing:.5px;">${p.ticker}</strong><div style="font-size:9px;color:var(--blue);margin-top:1px;">לחץ לחדשות 📰</div>${p.notes?`<div style="font-size:10px;color:var(--label3);">${p.notes}</div>`:''}</td>
+        <td id="spark_${p.ticker}" style="padding:8px 12px;vertical-align:middle;"><div style="width:90px;height:34px;background:var(--bg3);border-radius:4px;"></div></td>
         <td>${p.shares.toLocaleString('en-US',{maximumFractionDigits:4})}</td>
         <td>$${p.avg_cost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
         <td style="font-weight:700;">${curP ? '$'+curP.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '⏳'}</td>
@@ -4826,6 +4829,40 @@
     if (!confirm('למחוק עסקה זו מההיסטוריה?')) return;
     saveHist(getHist().filter(h => h.id !== id));
     renderTradeHistory();
+  }
+
+  // ── Sparklines ───────────────────────────────────────────────
+  function makeSVGSparkline(prices, isUp, W=90, H=34) {
+    if (!prices || prices.length < 2) return '';
+    const min = Math.min(...prices), max = Math.max(...prices);
+    const range = max - min || 1;
+    const pad = 2;
+    const pts = prices.map((p, i) => [
+      pad + (i / (prices.length - 1)) * (W - pad * 2),
+      (H - pad) - ((p - min) / range) * (H - pad * 2)
+    ]);
+    const line = pts.map((p, i) => `${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    const fill = line + ` L${W-pad},${H-pad} L${pad},${H-pad} Z`;
+    const c = isUp ? '#22c55e' : '#ef4444';
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;border-radius:4px;">
+      <path d="${fill}" fill="${c}" opacity="0.18"/>
+      <path d="${line}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  async function loadSparklines(tickers) {
+    for (const ticker of tickers) {
+      try {
+        const d = await fetch(`/sparkline/${ticker}`).then(r => r.json());
+        const el = document.getElementById(`spark_${ticker}`);
+        if (!el) continue;
+        if (d.prices && d.prices.length > 1) {
+          el.innerHTML = makeSVGSparkline(d.prices, d.is_up);
+        } else {
+          el.innerHTML = '<div style="width:90px;height:34px;background:var(--bg3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--label3);">אין נתונים</div>';
+        }
+      } catch(e) {}
+    }
   }
 
   // ── Portfolio News Panel ─────────────────────────────────────
