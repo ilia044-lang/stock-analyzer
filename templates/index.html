@@ -1967,10 +1967,19 @@
   <div class="pf-modal">
     <div class="pf-modal-title">🔒 סגור פוזיציה</div>
     <div style="background:var(--bg3);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--label2);" id="pfCloseInfo">—</div>
+    <div class="pf-fld">
+      <label>כמות מניות למכירה</label>
+      <div style="position:relative;">
+        <input id="pfCloseSellShares" type="number" step="0.0001" placeholder="כמה מניות?" min="0.0001"
+               oninput="pfUpdateClosePreview()" />
+        <button onclick="pfSetAllShares()" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);background:var(--blue);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:700;">הכל</button>
+      </div>
+      <div id="pfCloseSharesHint" style="font-size:10px;color:var(--label3);margin-top:3px;"></div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div class="pf-fld">
         <label>מחיר יציאה ($)</label>
-        <input id="pfClosePrice" type="number" step="0.01" placeholder="524.00" />
+        <input id="pfClosePrice" type="number" step="0.01" placeholder="524.00" oninput="pfUpdateClosePreview()" />
       </div>
       <div class="pf-fld">
         <label>תאריך יציאה</label>
@@ -1981,10 +1990,10 @@
       <label>הערות (אופציונלי)</label>
       <input id="pfCloseNotes" placeholder="סיבת המכירה, אסטרטגיה..." />
     </div>
-    <div id="pfClosePnlPreview" style="display:none;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:14px;font-weight:700;text-align:center;"></div>
+    <div id="pfClosePnlPreview" style="display:none;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13px;font-weight:700;text-align:center;line-height:1.6;"></div>
     <input type="hidden" id="pfCloseId" />
     <div style="display:flex;gap:10px;margin-top:20px;">
-      <button class="pf-btn-primary" style="flex:1;background:#ef4444;" onclick="confirmClosePosition()">🔒 סגור פוזיציה</button>
+      <button class="pf-btn-primary" style="flex:1;background:#ef4444;" onclick="confirmClosePosition()">🔒 מכור</button>
       <button class="pf-btn-secondary" onclick="closePFCloseModal()">ביטול</button>
     </div>
   </div>
@@ -4673,71 +4682,124 @@
   function getHist()     { try { return JSON.parse(localStorage.getItem(PF_HIST_KEY)) || []; } catch(e) { return []; } }
   function saveHist(arr) { localStorage.setItem(PF_HIST_KEY, JSON.stringify(arr)); }
 
+  let _closePos = null; // פוזיציה פעילה במודל הסגירה
+
   function openCloseModal(id) {
-    const pos = getPF().find(p => p.id === id);
-    if (!pos) return;
-    document.getElementById('pfCloseId').value = id;
-    document.getElementById('pfClosePrice').value = '';
-    document.getElementById('pfCloseDate').value  = new Date().toISOString().slice(0,10);
-    document.getElementById('pfCloseNotes').value = '';
+    _closePos = getPF().find(p => p.id === id);
+    if (!_closePos) return;
+    document.getElementById('pfCloseId').value           = id;
+    document.getElementById('pfClosePrice').value        = '';
+    document.getElementById('pfCloseDate').value         = new Date().toISOString().slice(0,10);
+    document.getElementById('pfCloseNotes').value        = '';
+    document.getElementById('pfCloseSellShares').value   = '';
     document.getElementById('pfClosePnlPreview').style.display = 'none';
-    const pr = _pfPrices[pos.ticker];
+    const pr = _pfPrices[_closePos.ticker];
     const curStr = pr && pr.price ? ` · מחיר נוכחי: $${pr.price}` : '';
     document.getElementById('pfCloseInfo').textContent =
-      `${pos.ticker} · ${pos.shares} מניות · עלות: $${pos.avg_cost}${curStr}`;
+      `${_closePos.ticker} · יש לך ${_closePos.shares} מניות · עלות ממוצעת: $${_closePos.avg_cost}${curStr}`;
+    document.getElementById('pfCloseSharesHint').textContent =
+      `מקסימום: ${_closePos.shares} מניות`;
     document.getElementById('pfCloseModalBg').style.display = 'flex';
-    // preview on price input
-    document.getElementById('pfClosePrice').oninput = () => {
-      const exitP  = parseFloat(document.getElementById('pfClosePrice').value);
-      const prev   = document.getElementById('pfClosePnlPreview');
-      if (isNaN(exitP)) { prev.style.display='none'; return; }
-      const pnl    = (exitP - pos.avg_cost) * pos.shares;
-      const pnlPct = (exitP - pos.avg_cost) / pos.avg_cost * 100;
-      const pos2   = pnl >= 0;
-      prev.style.display   = 'block';
-      prev.style.background = pos2 ? 'var(--green-dim)' : 'var(--red-dim)';
-      prev.style.color      = pos2 ? '#15803d' : '#dc2626';
-      prev.textContent      = `${pos2?'▲ רווח':'▼ הפסד'}: ${pos2?'+':''}$${Math.abs(pnl).toFixed(2)} (${pos2?'+':''}${pnlPct.toFixed(2)}%)`;
-    };
   }
-  function closePFCloseModal() { document.getElementById('pfCloseModalBg').style.display = 'none'; }
 
-  function confirmClosePosition() {
-    const id      = document.getElementById('pfCloseId').value;
-    const exitP   = parseFloat(document.getElementById('pfClosePrice').value);
-    const exitDt  = document.getElementById('pfCloseDate').value;
-    const notes   = document.getElementById('pfCloseNotes').value.trim();
-    if (isNaN(exitP) || exitP <= 0) { alert('יש להזין מחיר יציאה תקין'); return; }
-    const pos = getPF().find(p => p.id === id);
-    if (!pos) return;
+  function pfSetAllShares() {
+    if (!_closePos) return;
+    document.getElementById('pfCloseSellShares').value = _closePos.shares;
+    pfUpdateClosePreview();
+  }
 
-    const pnl    = (exitP - pos.avg_cost) * pos.shares;
-    const pnlPct = (exitP - pos.avg_cost) / pos.avg_cost * 100;
-    const entryDt = pos.entry_date || pos.added?.slice(0,10) || '';
-    let daysHeld = null;
-    if (entryDt && exitDt) {
-      daysHeld = Math.round((new Date(exitDt) - new Date(entryDt)) / 86400000);
+  function pfUpdateClosePreview() {
+    if (!_closePos) return;
+    const exitP  = parseFloat(document.getElementById('pfClosePrice').value);
+    const sellQ  = parseFloat(document.getElementById('pfCloseSellShares').value);
+    const prev   = document.getElementById('pfClosePnlPreview');
+    const hint   = document.getElementById('pfCloseSharesHint');
+
+    // update hint
+    if (!isNaN(sellQ) && sellQ > 0) {
+      const remain = Math.round((_closePos.shares - sellQ) * 10000) / 10000;
+      if (sellQ > _closePos.shares) {
+        hint.style.color = '#dc2626';
+        hint.textContent = `⚠️ יש לך רק ${_closePos.shares} מניות`;
+      } else if (remain > 0) {
+        hint.style.color = 'var(--label3)';
+        hint.textContent = `נשאר בפוזיציה: ${remain} מניות`;
+      } else {
+        hint.style.color = '#15803d';
+        hint.textContent = `מכירה מלאה — הפוזיציה תיסגר`;
+      }
+    } else {
+      hint.style.color = 'var(--label3)';
+      hint.textContent = `מקסימום: ${_closePos.shares} מניות`;
     }
 
+    if (isNaN(exitP) || exitP <= 0 || isNaN(sellQ) || sellQ <= 0) {
+      prev.style.display = 'none'; return;
+    }
+    const qty    = Math.min(sellQ, _closePos.shares);
+    const pnl    = (exitP - _closePos.avg_cost) * qty;
+    const pnlPct = (exitP - _closePos.avg_cost) / _closePos.avg_cost * 100;
+    const isPos  = pnl >= 0;
+    prev.style.display    = 'block';
+    prev.style.background = isPos ? 'var(--green-dim)' : 'var(--red-dim)';
+    prev.style.color      = isPos ? '#15803d' : '#dc2626';
+    const remain = Math.round((_closePos.shares - qty) * 10000) / 10000;
+    prev.innerHTML =
+      `${isPos ? '▲ רווח' : '▼ הפסד'}: ${isPos?'+':''}$${Math.abs(pnl).toFixed(2)} (${isPos?'+':''}${pnlPct.toFixed(2)})%` +
+      `<br><span style="font-size:11px;font-weight:400;opacity:.8;">מכירת ${qty} מניות · עלות $${(qty*_closePos.avg_cost).toFixed(2)} · תמורה $${(qty*exitP).toFixed(2)}</span>` +
+      (remain > 0 ? `<br><span style="font-size:11px;font-weight:400;opacity:.8;">נשאר ${remain} מניות בפוזיציה הפתוחה</span>` : '');
+  }
+
+  function closePFCloseModal() { document.getElementById('pfCloseModalBg').style.display = 'none'; _closePos = null; }
+
+  function confirmClosePosition() {
+    const id     = document.getElementById('pfCloseId').value;
+    const exitP  = parseFloat(document.getElementById('pfClosePrice').value);
+    const exitDt = document.getElementById('pfCloseDate').value;
+    const notes  = document.getElementById('pfCloseNotes').value.trim();
+    const sellQ  = parseFloat(document.getElementById('pfCloseSellShares').value);
+
+    if (isNaN(exitP) || exitP <= 0) { alert('יש להזין מחיר יציאה תקין'); return; }
+    if (isNaN(sellQ) || sellQ <= 0) { alert('יש להזין כמות מניות למכירה'); return; }
+
+    const pos = getPF().find(p => p.id === id);
+    if (!pos) return;
+    if (sellQ > pos.shares) { alert(`יש לך רק ${pos.shares} מניות`); return; }
+
+    const qty    = Math.round(sellQ * 10000) / 10000;
+    const pnl    = (exitP - pos.avg_cost) * qty;
+    const pnlPct = (exitP - pos.avg_cost) / pos.avg_cost * 100;
+    const entryDt = pos.entry_date || pos.added?.slice(0,10) || '';
+    const daysHeld = (entryDt && exitDt)
+      ? Math.round((new Date(exitDt) - new Date(entryDt)) / 86400000) : null;
+
+    // רשום בהיסטוריה
     const hist = getHist();
     hist.unshift({
-      id:        uid(),
-      ticker:    pos.ticker,
-      shares:    pos.shares,
-      entry_price: pos.avg_cost,
-      entry_date:  entryDt,
-      exit_price:  exitP,
-      exit_date:   exitDt,
-      pnl:         Math.round(pnl * 100) / 100,
-      pnl_pct:     Math.round(pnlPct * 100) / 100,
-      days_held:   daysHeld,
-      notes,
-      closed_at:  new Date().toISOString(),
+      id: uid(), ticker: pos.ticker,
+      shares: qty,
+      entry_price: pos.avg_cost, entry_date: entryDt,
+      exit_price: exitP,         exit_date: exitDt,
+      pnl:     Math.round(pnl * 100) / 100,
+      pnl_pct: Math.round(pnlPct * 100) / 100,
+      days_held: daysHeld, notes,
+      closed_at: new Date().toISOString(),
     });
     saveHist(hist);
-    savePF(getPF().filter(p => p.id !== id));
+
+    // עדכן / מחק פוזיציה
+    const remain = Math.round((pos.shares - qty) * 10000) / 10000;
+    const arr = getPF();
+    if (remain <= 0) {
+      savePF(arr.filter(p => p.id !== id));
+    } else {
+      const idx = arr.findIndex(p => p.id === id);
+      if (idx >= 0) arr[idx] = { ...arr[idx], shares: remain };
+      savePF(arr);
+    }
+
     closePFCloseModal();
-    renderPortfolio();
+    refreshPFPrices();
     renderTradeHistory();
   }
 
