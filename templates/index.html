@@ -4543,11 +4543,7 @@
   function getCapital()  { return parseFloat(localStorage.getItem(PF_CAPITAL_KEY)) || 0; }
   function saveCapital(v){ localStorage.setItem(PF_CAPITAL_KEY, v); pfAutoSave(); }
 
-  function pfCapitalChanged() {
-    const v = parseFloat(document.getElementById('pfCapitalInput').value) || 0;
-    saveCapital(v);
-    renderPortfolio(_pfPrices); // re-render with new capital
-  }
+  // pfCapitalChanged removed — capital input removed from UI
 
   function getPF()       { try { return JSON.parse(localStorage.getItem(PF_KEY)) || []; } catch(e) { return []; } }
   function savePF(arr)   { localStorage.setItem(PF_KEY, JSON.stringify(arr)); pfAutoSave(); }
@@ -4952,7 +4948,7 @@
         if (data.positions) savePF(data.positions);
         if (data.history)   saveHist(data.history);
         if (data.snapshots) localStorage.setItem(PF_SNAP_KEY,    JSON.stringify(data.snapshots));
-        if (data.capital)   { saveCapital(data.capital); document.getElementById('pfCapitalInput').value = data.capital; }
+        if (data.capital)   saveCapital(data.capital);
         refreshPFPrices();
         renderTradeHistory();
         alert(`✅ שוחזר בהצלחה — ${posCount} פוזיציות, ${histCount} עסקאות`);
@@ -5585,9 +5581,7 @@
 
   // Init — טעינה מהקובץ המקומי, אחר כך רינדור
   (async function(){
-    await pfLoadFromServer();          // קובץ על הדיסק = מקור האמת
-    const cap = getCapital();
-    if (cap) document.getElementById('pfCapitalInput').value = cap;
+    await pfLoadFromServer();
     const p = getPF();
     if (p.length) renderPortfolio();
     renderTradeHistory();
