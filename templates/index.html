@@ -4900,21 +4900,28 @@
       el.innerHTML='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--label3);font-size:12px;padding:20px;">מעקב יומי יתחיל מחר — חזור לאחר יום נוסף</div>';
       return;
     }
-    const lineCol = snaps[snaps.length-1].value >= snaps[0].value ? '#22c55e' : '#ef4444';
+    const isUp    = snaps[snaps.length-1].value >= snaps[0].value;
+    const lineCol = isUp ? '#22c55e' : '#ef4444';
+    const fillCol = isUp ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+    const vals    = snaps.map(s=>s.value);
+    const minV    = Math.min(...vals), maxV = Math.max(...vals);
+    const pad     = (maxV - minV) * 0.12 || 50;
     Plotly.react('pfLineChart',[{
-      type:'scatter', mode:'lines+markers',
-      x:snaps.map(s=>s.date), y:snaps.map(s=>s.value),
-      line:{color:lineCol,width:2.5},
-      marker:{color:lineCol,size:5},
-      fill:'tozeroy', fillcolor:lineCol+'22',
-      hovertemplate:'<b>%{x}</b><br>%{y:$,.0f}<extra></extra>'
+      type:'scatter', mode:'lines',
+      x:snaps.map(s=>s.date), y:vals,
+      line:{color:lineCol, width:2.5, shape:'spline', smoothing:0.8},
+      fill:'tozeroy', fillcolor:fillCol,
+      hovertemplate:'<b>%{x}</b><br><b style="color:'+lineCol+'">$%{y:,.2f}</b><extra></extra>'
     }],{
-      margin:{t:10,b:30,l:65,r:10},
+      margin:{t:8,b:32,l:70,r:12},
       paper_bgcolor:'transparent', plot_bgcolor:'transparent',
-      xaxis:{showgrid:false,tickfont:{size:10,color:'#6e6e73'}},
-      yaxis:{showgrid:true,gridcolor:'rgba(0,0,0,.05)',tickprefix:'$',tickfont:{size:10,color:'#6e6e73'}},
+      xaxis:{showgrid:false, tickfont:{size:10,color:'#6e6e73'}, showline:false, zeroline:false},
+      yaxis:{showgrid:true, gridcolor:'rgba(0,0,0,.06)', tickprefix:'$',
+             tickfont:{size:10,color:'#6e6e73'}, range:[minV-pad, maxV+pad],
+             showline:false, zeroline:false},
+      hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'#1d1d1f',font:{color:'#fff',size:12}},
       font:{color:'#3a3a3c'}
-    },{responsive:true,displayModeBar:false});
+    },{responsive:true, displayModeBar:false});
   }
 
   function pfBackup() {
@@ -5163,19 +5170,32 @@
     const cumDates  = [], cumVals = [];
     let running = 0;
     for (const h of sorted) { running += h.pnl; cumDates.push(h.exit_date); cumVals.push(Math.round(running*100)/100); }
-    const lineCol = running >= 0 ? '#22c55e' : '#ef4444';
+    const cumUp    = running >= 0;
+    const cumCol   = cumUp ? '#22c55e' : '#ef4444';
+    const cumFill  = cumUp ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+    const cumMin   = Math.min(0, ...cumVals), cumMax = Math.max(0, ...cumVals);
+    const cumPad   = (cumMax - cumMin) * 0.15 || 20;
+    // צבע הקו משתנה לפי כל נקודה — ירוק מעל 0, אדום מתחת
+    const cumColors = cumVals.map(v => v >= 0 ? '#22c55e' : '#ef4444');
     Plotly.react('pfCumChart',[{
-      type:'scatter', mode:'lines+markers',
+      type:'scatter', mode:'lines',
       x:cumDates, y:cumVals,
-      line:{color:lineCol, width:2},
-      marker:{color:lineCol, size:6},
-      fill:'tozeroy', fillcolor:lineCol+'22',
-      hovertemplate:'<b>%{x}</b><br>%{y:+$,.0f}<extra></extra>'
+      line:{color:cumCol, width:2.5, shape:'spline', smoothing:0.7},
+      fill:'tozeroy', fillcolor:cumFill,
+      hovertemplate:'<b>%{x}</b><br><b>%{y:+$,.2f}</b><extra></extra>'
+    },{
+      type:'scatter', mode:'markers',
+      x:cumDates, y:cumVals,
+      marker:{color:cumColors, size:7, line:{color:'#fff',width:1.5}},
+      hoverinfo:'skip', showlegend:false
     }],{
-      margin:{t:5,b:30,l:60,r:10},
+      margin:{t:5,b:32,l:62,r:10},
       paper_bgcolor:'transparent', plot_bgcolor:'transparent',
-      xaxis:{showgrid:false, tickfont:{size:9,color:'#6e6e73'}},
-      yaxis:{showgrid:true, gridcolor:'rgba(0,0,0,.05)', tickprefix:'$', tickfont:{size:9,color:'#6e6e73'}, zeroline:true, zerolinecolor:'rgba(0,0,0,.2)'},
+      xaxis:{showgrid:false, tickfont:{size:9,color:'#6e6e73'}, showline:false, zeroline:false},
+      yaxis:{showgrid:true, gridcolor:'rgba(0,0,0,.06)', tickprefix:'$',
+             tickfont:{size:9,color:'#6e6e73'}, range:[cumMin-cumPad, cumMax+cumPad],
+             zeroline:true, zerolinecolor:'rgba(0,0,0,.2)', zerolinewidth:1.5},
+      hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'#1d1d1f',font:{color:'#fff',size:12}},
     },{responsive:true, displayModeBar:false});
 
     // Per-trade bar
