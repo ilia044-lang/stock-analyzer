@@ -1800,29 +1800,8 @@
     </div>
   </div>
 
-  <!-- Capital Bar -->
-  <div class="pf-capital-bar">
-    <label>💼 הון בסיס שלי ($) — מה היה לך כשפתחת את התיק (כולל מזומן):</label>
-    <input class="pf-capital-input" id="pfCapitalInput" type="number" step="100"
-           placeholder="100,000" oninput="pfCapitalChanged()" />
-    <span class="pf-capital-chip" id="pfCashChip">💵 מזומן: —</span>
-    <span class="pf-capital-chip" id="pfInvestedChip">📈 מושקע: —%</span>
-    <span class="pf-capital-chip" id="pfCapitalRetChip">📊 תשואה על הון: —%</span>
-    <span style="font-size:11px;opacity:.6;margin-right:auto;">מה שלא מושקע = מזומן בצד</span>
-  </div>
-
-  <!-- Stat Cards -->
-  <div class="pf-stats" id="pfStats">
-    <!-- כרטיס 1: סה"כ שיש לי — מה שהזנת -->
-    <div class="pf-stat-card">
-      <div class="pf-stat-icon" style="background:#eff6ff;">💰</div>
-      <div class="pf-stat-body">
-        <div class="pf-stat-label">סה"כ שיש לי</div>
-        <div class="pf-stat-value" id="pfCapitalDisplay">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfTotalCostSub">מניות + מזומן ביחד</div>
-      </div>
-    </div>
-    <!-- כרטיס 2: שווי מניות — דינמי -->
+  <!-- Stat Cards — 4 כרטיסים בלבד, רק מפוזיציות -->
+  <div class="pf-stats" id="pfStats" style="grid-template-columns:repeat(4,1fr);">
     <div class="pf-stat-card">
       <div class="pf-stat-icon" style="background:#f0fdf4;">📈</div>
       <div class="pf-stat-body">
@@ -1831,40 +1810,28 @@
         <div class="pf-stat-badge pf-badge-neu" id="pfTodayChg">שינוי היום: —</div>
       </div>
     </div>
-    <!-- כרטיס 3: מזומן = סה"כ פחות שווי מניות -->
-    <div class="pf-stat-card">
-      <div class="pf-stat-icon" style="background:#ecfdf5;">💵</div>
-      <div class="pf-stat-body">
-        <div class="pf-stat-label">מזומן בצד</div>
-        <div class="pf-stat-value" id="pfCashVal">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfCashPct">% מהתיק</div>
-      </div>
-    </div>
-    <!-- כרטיס 4: רווח/הפסד לא ממומש -->
     <div class="pf-stat-card">
       <div class="pf-stat-icon" style="background:#fff7ed;">🎯</div>
       <div class="pf-stat-body">
-        <div class="pf-stat-label">רווח/הפסד לא ממומש</div>
+        <div class="pf-stat-label">רווח / הפסד</div>
         <div class="pf-stat-value" id="pfPnlAbs">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfPnlBadge">מחיר קנייה→עכשיו</div>
+        <div class="pf-stat-badge pf-badge-neu" id="pfPnlBadge">מחיר קנייה → עכשיו</div>
       </div>
     </div>
-    <!-- כרטיס 5: % מושקע -->
     <div class="pf-stat-card">
       <div class="pf-stat-icon" style="background:#fdf4ff;">📊</div>
       <div class="pf-stat-body">
-        <div class="pf-stat-label">% מושקע במניות</div>
+        <div class="pf-stat-label">תשואה</div>
         <div class="pf-stat-value" id="pfReturnPct">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfReturnBadge">מהסכום הכולל</div>
+        <div class="pf-stat-badge pf-badge-neu" id="pfReturnBadge">על ההשקעה</div>
       </div>
     </div>
-    <!-- כרטיס 6: תשואה על המניות -->
     <div class="pf-stat-card">
-      <div class="pf-stat-icon" style="background:#fefce8;">🏦</div>
+      <div class="pf-stat-icon" style="background:#eff6ff;">📅</div>
       <div class="pf-stat-body">
-        <div class="pf-stat-label">תשואה על המניות</div>
-        <div class="pf-stat-value" id="pfCapReturn">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfCapReturnBadge">מחיר קנייה</div>
+        <div class="pf-stat-label">שינוי יומי</div>
+        <div class="pf-stat-value" id="pfDayChange">—</div>
+        <div class="pf-stat-badge pf-badge-neu" id="pfDayChangeSub">היום בלבד</div>
       </div>
     </div>
   </div>
@@ -4751,8 +4718,7 @@
   }
 
   function pfClearStats() {
-    ['pfCapitalDisplay','pfTotalCost','pfNowVsInitial','pfTotalValue','pfPnlAbs','pfReturnPct',
-     'pfCashVal','pfCashPct','pfCapReturn','pfCapReturnBadge'].forEach(id=>{
+    ['pfTotalValue','pfPnlAbs','pfReturnPct','pfDayChange','pfDayChangeSub'].forEach(id=>{
       const el = document.getElementById(id);
       if (el) el.textContent = '—';
     });
@@ -4766,108 +4732,57 @@
   }
 
   function pfRenderStats(positions, prices) {
-    // helper: null-safe element update
-    const set = (id, html, isHtml) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      if (isHtml) el.innerHTML = html; else el.textContent = html;
-    };
-    const setCls = (id, cls) => { const el=document.getElementById(id); if(el) el.className=cls; };
+    const set    = (id, html, isHtml) => { const el=document.getElementById(id); if(!el) return; if(isHtml) el.innerHTML=html; else el.textContent=html; };
+    const setCls = (id, cls)          => { const el=document.getElementById(id); if(el) el.className=cls; };
 
-    let totalCost=0, totalVal=0, todayUnrealized=0;
-    let pricesLoaded = 0;
+    let totalCost=0, totalVal=0, todayUnrealized=0, pricesLoaded=0;
     for (const p of positions) {
-      const pr    = prices[p.ticker];
-      const cost  = p.shares * p.avg_cost;
+      const pr       = prices[p.ticker];
+      const cost     = p.shares * p.avg_cost;
       const hasPrice = pr && typeof pr.price === 'number' && pr.price > 0;
-      const val   = hasPrice ? p.shares * pr.price : cost;
-      const prev  = hasPrice && pr.prev_close > 0 ? p.shares*(pr.price - pr.prev_close) : 0;
+      const val      = hasPrice ? p.shares * pr.price : cost;
+      const dayMove  = hasPrice && pr.prev_close > 0 ? p.shares*(pr.price - pr.prev_close) : 0;
       if (hasPrice) pricesLoaded++;
-      totalCost += cost; totalVal += val; todayUnrealized += prev;
+      totalCost += cost; totalVal += val; todayUnrealized += dayMove;
     }
 
-    // רווח ממומש מעסקאות שנסגרו היום (ET)
-    // תאריכי היום בכמה טיימזונים — ET, UTC, ומקומי
-    const _now = Date.now();
-    const todayUTC  = new Date(_now).toISOString().slice(0,10);
-    const todayET2  = new Date(_now - 4*3600000).toISOString().slice(0,10);
-    const todayLoc  = (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
-    const todayDates = new Set([todayUTC, todayET2, todayLoc]);
+    // רווח ממומש היום
+    const _n = Date.now();
+    const todayDates = new Set([
+      new Date(_n).toISOString().slice(0,10),
+      new Date(_n - 4*3600000).toISOString().slice(0,10),
+      (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()
+    ]);
+    const todayTrades   = getHist().filter(h => todayDates.has(h.exit_date || (h.closed_at||'').slice(0,10)));
+    const todayRealized = todayTrades.reduce((s,h) => s+(h.pnl||0), 0);
+    const todayPnl      = todayUnrealized + todayRealized;
 
-    const todayTrades = getHist().filter(h => {
-      const d = h.exit_date || (h.closed_at||'').slice(0,10);
-      return todayDates.has(d);
-    });
-    const todayRealized = todayTrades.reduce((s,h) => s + (h.pnl||0), 0);
-    const todayPnl = todayUnrealized + todayRealized;
+    const pnl    = totalVal - totalCost;
+    const retPct = totalCost > 0 ? pnl/totalCost*100 : 0;
+    const pnlPos = pnl >= 0;
+    const tdPos  = todayPnl >= 0;
 
-    const pnl     = totalVal - totalCost;
-    const retPct  = totalCost > 0 ? pnl/totalCost*100 : 0;
-    const pnlPos  = pnl >= 0;
-    const retPos  = retPct >= 0;
-    const tdPos   = todayPnl >= 0;
-    const capital = getCapital();
-    // מזומן = מה שהוזן פחות עלות הקנייה (קבוע — משתנה רק ברכישה/מכירה)
-    const cash        = capital > 0 ? capital - totalCost : null;
-    // סה"כ עכשיו = מזומן + שווי מניות נוכחי (דינמי — משתנה עם מחירים!)
-    const currentTotal = capital > 0 ? (capital - totalCost) + totalVal : totalVal;
-    const cashPct = currentTotal > 0 ? (cash / currentTotal) * 100 : null;
-    const invPct  = currentTotal > 0 ? (totalVal / currentTotal) * 100 : null;
-    const capRet  = totalCost > 0 ? (totalVal - totalCost) / totalCost * 100 : null;
-
-    // כרטיס 1 — סה"כ שיש לי עכשיו (דינמי!)
-    const totalUp = capital > 0 && currentTotal > capital;
-    const totalDiff = capital > 0 ? currentTotal - capital : 0;
-    set('pfCapitalDisplay', usd(currentTotal));
-    if (capital > 0 && totalDiff !== 0) {
-      set('pfTotalCostSub', `${totalDiff>0?'▲ +':'▼ '}${usd(totalDiff)} מהבסיס (${usd(capital)})`);
-      setCls('pfTotalCostSub','pf-stat-badge '+(totalDiff>0?'pf-badge-pos':'pf-badge-neg'));
-    } else {
-      set('pfTotalCostSub', capital > 0 ? `${positions.length} פוזיציות פעילות` : 'הזן סכום כולל למעלה');
-      setCls('pfTotalCostSub','pf-stat-badge pf-badge-neu');
-    }
-
-    // כרטיס 2 — שווי מניות (דינמי)
+    // כרטיס 1 — שווי מניות
     set('pfTotalValue', usd(totalVal));
-    const loadedStr = pricesLoaded < positions.length
-      ? ` ⚠️ ${pricesLoaded}/${positions.length} מחירים` : ` ✓ ${pricesLoaded} מניות`;
-    const realizedStr = todayTrades.length > 0
-      ? ` · ${todayTrades.length} עסקאות: ${todayRealized>=0?'+':''}${usd(todayRealized)}` : '';
-    set('pfTodayChg', `${todayPnl>=0?'▲':'▼'} ${todayPnl>=0?'+':''}${usd(todayPnl)} היום${realizedStr}${loadedStr}`);
+    const loaded = pricesLoaded < positions.length ? ` ⚠️ ${pricesLoaded}/${positions.length}` : '';
+    set('pfTodayChg', `${tdPos?'▲':'▼'} ${tdPos?'+':''}${usd(todayPnl)} היום${loaded}`);
     setCls('pfTodayChg','pf-stat-badge '+(tdPos?'pf-badge-pos':'pf-badge-neg'));
 
-    // כרטיס 3 — מזומן בצד (= סה"כ שיש לי פחות שווי מניות עכשיו)
-    if (cash !== null) {
-      const cashNeg = cash < 0;
-      set('pfCashVal',`<span style="color:${cashNeg?'var(--red)':'var(--label)'};">${usd(Math.abs(cash))}</span>`,true);
-      set('pfCashPct', `${cashPct?.toFixed(1)}% מהתיק לא במניות`);
-      setCls('pfCashPct','pf-stat-badge pf-badge-neu');
-    } else {
-      set('pfCashVal','—'); set('pfCashPct','הזן סכום כולל למעלה');
-    }
-
-    // כרטיס 4 — רווח/הפסד לא ממומש (שווי עכשיו פחות מחיר קנייה)
+    // כרטיס 2 — רווח/הפסד
     set('pfPnlAbs',`<span style="color:${pnlPos?'var(--green)':'var(--red)'};">${pnl>=0?'+':''}${usd(pnl)}</span>`,true);
-    set('pfPnlBadge',`${pnlPos?'+':''}${pct(retPct)} ממחיר הקנייה`);
+    set('pfPnlBadge', `עלות: ${usd(totalCost)}`);
     setCls('pfPnlBadge','pf-stat-badge '+(pnlPos?'pf-badge-pos':'pf-badge-neg'));
 
-    // כרטיס 5 — % מושקע במניות
-    const invPctDisplay = capital > 0 ? invPct : (totalCost > 0 ? 100 : 0);
-    set('pfReturnPct',`<span style="color:var(--label);">${invPctDisplay?.toFixed(1)}%</span>`,true);
-    set('pfReturnBadge', capital > 0 ? `${usd(totalVal)} מתוך ${usd(capital)}` : `עלות: ${usd(totalCost)}`);
-    setCls('pfReturnBadge','pf-stat-badge pf-badge-neu');
+    // כרטיס 3 — תשואה
+    set('pfReturnPct',`<span style="color:${pnlPos?'var(--green)':'var(--red)'};">${pct(retPct)}</span>`,true);
+    set('pfReturnBadge', `${pnlPos?'+':''}${usd(pnl)} מהכניסה`);
+    setCls('pfReturnBadge','pf-stat-badge '+(pnlPos?'pf-badge-pos':'pf-badge-neg'));
 
-    // כרטיס 6 — תשואה על המניות (שווי עכשיו vs מחיר קנייה)
-    const retPos6 = capRet !== null ? capRet >= 0 : pnlPos;
-    const retVal  = capRet !== null ? capRet : retPct;
-    set('pfCapReturn',`<span style="color:${retPos6?'var(--green)':'var(--red)'};">${pct(retVal)}</span>`,true);
-    set('pfCapReturnBadge', `${pnl>=0?'+':''}${usd(pnl)} מחיר קנייה`);
-    setCls('pfCapReturnBadge','pf-stat-badge '+(retPos6?'pf-badge-pos':'pf-badge-neg'));
-
-    // bar עליון
-    set('pfCashChip',       cash!==null        ? `💵 מזומן: ${usd(Math.abs(cash))}`       : '💵 מזומן: —');
-    set('pfInvestedChip',   invPct!==null      ? `📈 מושקע: ${invPct.toFixed(1)}%`        : '📈 מושקע: —%');
-    set('pfCapitalRetChip', currentTotal > 0   ? `💰 סה"כ: ${usd(currentTotal)}`          : `📊 תשואה: ${pct(retPct)}`);
+    // כרטיס 4 — שינוי יומי
+    const realizedStr = todayTrades.length > 0 ? ` (כולל ${usd(todayRealized)} ממומש)` : '';
+    set('pfDayChange',`<span style="color:${tdPos?'var(--green)':'var(--red)'};">${todayPnl>=0?'+':''}${usd(todayPnl)}</span>`,true);
+    set('pfDayChangeSub', `${positions.length} מניות${realizedStr}`);
+    setCls('pfDayChangeSub','pf-stat-badge '+(tdPos?'pf-badge-pos':'pf-badge-neg'));
   }
 
   function pfRenderTable(positions, prices) {
