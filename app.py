@@ -3795,10 +3795,12 @@ def portfolio_intraday():
                         h, m = pub_il.hour, pub_il.minute
                         if not (16 <= h <= 23):
                             continue
+                        link = item.findtext('link') or ''
                         events.append({
                             'time':  time_str,
                             'title': translate_he(title[:90]),
                             'cat':   cat,
+                            'link':  link,
                         })
                     except Exception:
                         pass

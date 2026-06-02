@@ -1902,7 +1902,7 @@
       <span class="pf-card-title">📈 ערך תיק לאורך זמן</span>
       <span class="pf-card-sub">מעקב יומי אוטומטי</span>
     </div>
-    <div id="pfLineChart" style="height:200px;"></div>
+    <div id="pfLineChart" style="height:300px;"></div>
   </div>
 
   <!-- ── NEWS PANEL ───────────────────────────── -->
@@ -1965,7 +1965,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding:16px;">
       <div style="background:var(--bg3);border-radius:12px;overflow:hidden;grid-column:span 2;">
         <div style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--label);">📈 רווח מצטבר לאורך זמן</div>
-        <div id="pfCumChart" style="height:180px;"></div>
+        <div id="pfCumChart" style="height:280px;"></div>
       </div>
       <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
         <div style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--label);">🎯 ניצחונות / הפסדים</div>
@@ -4946,57 +4946,70 @@
       }
 
       const times  = candles.map(c => c.time);
-      const opens  = candles.map(c => c.open);
-      const highs  = candles.map(c => c.high);
-      const lows   = candles.map(c => c.low);
       const closes = candles.map(c => c.close);
+      const isUp   = closes[closes.length-1] >= closes[0];
+      const lineCol = isUp ? '#22c55e' : '#ef4444';
+      const fillCol = isUp ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+      const minV = Math.min(...closes), maxV = Math.max(...closes);
+      const pad  = (maxV - minV) * 0.2 || 20;
 
-      // annotations לחדשות
+      // חדשות כ-scatter markers לחיצים
       const catColors = { '🇺🇸 Trump':'#f59e0b', '🏛️ Fed':'#6366f1', '🌍 גיאו':'#ef4444', '⚡ חמות':'#ec4899' };
-      const annotations = events.map(ev => {
-        const col = catColors[ev.cat] || '#f59e0b';
-        // מצא את ערך הסגירה הקרוב לשעה
+      const evTimes=[], evVals=[], evTexts=[], evColors=[], evLinks=[];
+      for (const ev of events) {
         const idx = times.findIndex(t => t >= ev.time);
-        const yVal = idx >= 0 ? highs[idx] : highs[highs.length-1];
-        return {
-          x: ev.time, y: yVal, xref: 'x', yref: 'y',
-          text: ev.cat,
-          showarrow: true, arrowhead: 3, arrowwidth: 1.5, arrowcolor: col,
-          ax: 0, ay: -30,
-          bgcolor: col + 'dd', bordercolor: col, borderwidth: 1,
-          font: { color: '#fff', size: 9, family: 'system-ui' },
-          hovertext: ev.title,
-        };
-      });
+        if (idx < 0) continue;
+        evTimes.push(ev.time);
+        evVals.push(closes[idx]);
+        evTexts.push(`<b>${ev.cat}</b> ${ev.time}<br>${ev.title}<br><span style="color:#60a5fa;">לחץ לקריאה »</span>`);
+        evColors.push(catColors[ev.cat] || '#f59e0b');
+        evLinks.push(ev.link || '');
+      }
 
-      Plotly.react('pfLineChart', [{
-        type: 'candlestick',
-        x: times, open: opens, high: highs, low: lows, close: closes,
-        increasing: { line: { color: '#22c55e', width: 1 }, fillcolor: 'rgba(34,197,94,0.75)' },
-        decreasing: { line: { color: '#ef4444', width: 1 }, fillcolor: 'rgba(239,68,68,0.75)' },
-        whiskerwidth: 0.4,
-        hovertemplate:
-          '<b>%{x}</b><br>' +
-          'פתיחה: $%{open:,.2f}<br>סגירה: $%{close:,.2f}<br>' +
-          'גבוה: $%{high:,.2f} · נמוך: $%{low:,.2f}<extra></extra>',
-      }], {
-        margin: { t: 14, b: 36, l: 68, r: 14 },
-        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-        xaxis: {
-          type: 'category', showgrid: false,
-          tickfont: { size: 9, color: '#6e6e73' },
-          nticks: 12, tickangle: -30,
-          rangeslider: { visible: false },
+      const chartEl = document.getElementById('pfLineChart');
+      Plotly.react('pfLineChart', [
+        { // קו מחיר
+          type:'scatter', mode:'lines', name:'שווי תיק',
+          x:times, y:closes,
+          line:{color:lineCol, width:2.5, shape:'spline', smoothing:1.0},
+          fill:'tozeroy', fillcolor:fillCol,
+          hovertemplate:'<b>%{x}</b> · <b>$%{y:,.2f}</b><extra></extra>',
         },
-        yaxis: {
-          showgrid: true, gridcolor: 'rgba(0,0,0,.06)',
-          tickprefix: '$', tickfont: { size: 9, color: '#6e6e73' },
-          zeroline: false,
+        { // סמני חדשות לחיצים
+          type:'scatter', mode:'markers+text', name:'חדשות',
+          x:evTimes, y:evVals,
+          text: evTimes.map((_,i)=>evColors[i]==='#f59e0b'?'🇺🇸':evColors[i]==='#6366f1'?'🏛️':evColors[i]==='#ef4444'?'🌍':'⚡'),
+          textposition:'top center',
+          marker:{ color:evColors, size:14, symbol:'diamond',
+                   line:{color:'#fff', width:2} },
+          hovertemplate: evTexts.map(t=>`${t}<extra></extra>`),
+          customdata: evLinks,
+          showlegend:false,
+        }
+      ], {
+        margin:{ t:14, b:42, l:72, r:16 },
+        paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+        xaxis:{
+          type:'category', showgrid:false, zeroline:false,
+          tickfont:{size:10,color:'#6e6e73'},
+          nticks:14, tickangle:-30,
         },
-        annotations,
-        showlegend: false, dragmode: false,
-        hoverlabel: { bgcolor: '#1d1d1f', bordercolor: 'transparent', font: { color: '#fff', size: 11 } },
-      }, { responsive: true, displayModeBar: false });
+        yaxis:{
+          showgrid:true, gridcolor:'rgba(0,0,0,.07)',
+          tickprefix:'$', tickfont:{size:10,color:'#6e6e73'},
+          zeroline:false, range:[minV-pad, maxV+pad],
+        },
+        showlegend:false, dragmode:false,
+        hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:11}},
+      },{ responsive:true, displayModeBar:false });
+
+      // לחיצה על סמן חדשות → פותח קישור
+      chartEl.on('plotly_click', d => {
+        const pt = d.points[0];
+        if (pt.data.customdata && pt.data.customdata[pt.pointIndex]) {
+          window.open(pt.data.customdata[pt.pointIndex], '_blank', 'noopener');
+        }
+      });
 
     } catch(e) {
       el.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--label3);font-size:12px;">שגיאה בטעינת נתונים</div>';
@@ -5266,30 +5279,47 @@
       cHighs.push(Math.max(o,c)); cLows.push(Math.min(o,c));
       cVols.push(v.trades.reduce((s,x) => s+Math.abs(x), 0));
     }
+    // גרף קו עם נקודות + עמודות נפח (layout נפרד, ללא y2 כפול)
     Plotly.react('pfCumChart',[
-      { // נרות יפנים — רווח מצטבר
-        type:'candlestick', name:'P&L מצטבר',
-        x:cDates, open:cOpens, high:cHighs, low:cLows, close:cCloses,
-        increasing:{ line:{color:'#22c55e',width:1.5}, fillcolor:'rgba(34,197,94,0.8)' },
-        decreasing:{ line:{color:'#ef4444',width:1.5}, fillcolor:'rgba(239,68,68,0.8)' },
-        whiskerwidth:0.5, yaxis:'y',
-        hovertemplate:'<b>%{x}</b><br>מצטבר: %{close:+$,.2f}<br>גבוה: %{high:+$,.2f} · נמוך: %{low:+$,.2f}<extra></extra>',
+      { // קו P&L מצטבר
+        type:'scatter', mode:'lines+markers', name:'מצטבר',
+        x:cDates, y:cCloses,
+        line:{color:'#0071e3', width:2.5, shape:'spline', smoothing:0.8},
+        marker:{
+          color: cCloses.map(v => v >= 0 ? '#22c55e' : '#ef4444'),
+          size: 9, line:{color:'#fff', width:2}
+        },
+        fill:'tozeroy',
+        fillcolor: cCloses[cCloses.length-1] >= 0 ? 'rgba(0,113,227,0.08)' : 'rgba(239,68,68,0.08)',
+        hovertemplate:'<b>%{x}</b><br>רווח מצטבר: <b>%{y:+$,.2f}</b><extra></extra>',
+        yaxis:'y',
       },
-      { // עמודות נפח מתחת
-        type:'bar', name:'נפח $', x:cDates, y:cVols,
-        marker:{color:cCloses.map((c,i)=>c>=cOpens[i]?'rgba(34,197,94,0.45)':'rgba(239,68,68,0.45)')},
+      { // עמודות נפח (ציר Y נפרד בתחתית)
+        type:'bar', name:'נפח יומי', x:cDates, y:cVols,
+        marker:{color: cCloses.map((c,i) => c>=cOpens[i] ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)')},
+        hovertemplate:'<b>%{x}</b><br>נפח: <b>$%{y:,.0f}</b><extra></extra>',
         yaxis:'y2',
-        hovertemplate:'<b>%{x}</b><br>נפח: $%{y:,.0f}<extra></extra>',
       }
     ],{
-      margin:{t:10,b:38,l:68,r:14},
+      margin:{t:12,b:44,l:72,r:16},
       paper_bgcolor:'transparent', plot_bgcolor:'transparent',
-      xaxis:{showgrid:false, tickfont:{size:9,color:'#6e6e73'}, rangeslider:{visible:false}},
-      yaxis:{showgrid:true, gridcolor:'rgba(0,0,0,.06)', tickprefix:'$',
-             tickfont:{size:9,color:'#6e6e73'}, zeroline:true,
-             zerolinecolor:'rgba(0,0,0,.2)', zerolinewidth:1.5, domain:[0.28,1]},
-      yaxis2:{showgrid:false, domain:[0,0.22], tickprefix:'$',
-              tickfont:{size:8,color:'#6e6e73'}, zeroline:false},
+      xaxis:{
+        type:'category',          // מניעת datetime interpolation!
+        showgrid:false, zeroline:false,
+        tickfont:{size:10,color:'#6e6e73'},
+        tickangle: cDates.length > 6 ? -35 : 0,
+      },
+      yaxis:{
+        showgrid:true, gridcolor:'rgba(0,0,0,.07)',
+        tickprefix:'$', tickfont:{size:10,color:'#6e6e73'},
+        zeroline:true, zerolinecolor:'rgba(0,0,0,.25)', zerolinewidth:1.5,
+        domain:[0.30, 1.0],
+      },
+      yaxis2:{
+        showgrid:false, zeroline:false,
+        tickprefix:'$', tickfont:{size:8,color:'#94a3b8'},
+        domain:[0, 0.24],
+      },
       showlegend:false, dragmode:false,
       hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:11}},
     },{responsive:true, displayModeBar:false});
