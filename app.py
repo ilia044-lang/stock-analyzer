@@ -3240,10 +3240,12 @@ def portfolio_prices():
     ticker_list = [t.strip().upper() for t in tickers_raw.split(',') if t.strip()][:30]
     if not ticker_list:
         return jsonify({})
+    force     = request.args.get('force', '0') == '1'
     cache_key = 'pfprices_' + '_'.join(sorted(ticker_list))
-    cached = cache_get(cache_key, ttl=120)
-    if cached:
-        return jsonify(cached)
+    if not force:
+        cached = cache_get(cache_key, ttl=120)
+        if cached:
+            return jsonify(cached)
     result = {}
     for ticker in ticker_list:
         try:
