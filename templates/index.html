@@ -1802,7 +1802,7 @@
 
   <!-- Capital Bar -->
   <div class="pf-capital-bar">
-    <label>💼 הון כולל (מניות + מזומן):</label>
+    <label>💼 הון ראשוני שלי (כמה כסף יש לך בסך הכל):</label>
     <input class="pf-capital-input" id="pfCapitalInput" type="number" step="100"
            placeholder="100,000" oninput="pfCapitalChanged()" />
     <span class="pf-capital-chip" id="pfCashChip">💵 מזומן: —</span>
@@ -1813,14 +1813,25 @@
 
   <!-- Stat Cards -->
   <div class="pf-stats" id="pfStats">
+    <!-- כרטיס 1: הון ראשוני — מה שהזנת, קבוע -->
     <div class="pf-stat-card">
       <div class="pf-stat-icon" style="background:#eff6ff;">💰</div>
       <div class="pf-stat-body">
-        <div class="pf-stat-label">הון כולל</div>
-        <div class="pf-stat-value" id="pfTotalCost">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfTotalCostSub">0 פוזיציות</div>
+        <div class="pf-stat-label">הון ראשוני שלי</div>
+        <div class="pf-stat-value" id="pfCapitalDisplay">—</div>
+        <div class="pf-stat-badge pf-badge-neu" id="pfTotalCostSub">הסכום שהזנת</div>
       </div>
     </div>
+    <!-- כרטיס 2: שווי תיק עכשיו — משתנה עם מחירים -->
+    <div class="pf-stat-card">
+      <div class="pf-stat-icon" style="background:#f0fff4;">📊</div>
+      <div class="pf-stat-body">
+        <div class="pf-stat-label">שווי תיק עכשיו</div>
+        <div class="pf-stat-value" id="pfTotalCost">—</div>
+        <div class="pf-stat-badge pf-badge-neu" id="pfNowVsInitial">מניות + מזומן</div>
+      </div>
+    </div>
+    <!-- כרטיס 3: שווי מניות -->
     <div class="pf-stat-card">
       <div class="pf-stat-icon" style="background:#f0fdf4;">📈</div>
       <div class="pf-stat-body">
@@ -1829,6 +1840,7 @@
         <div class="pf-stat-badge pf-badge-neu" id="pfTodayChg">שינוי היום: —</div>
       </div>
     </div>
+    <!-- כרטיס 4: מזומן -->
     <div class="pf-stat-card">
       <div class="pf-stat-icon" style="background:#ecfdf5;">💵</div>
       <div class="pf-stat-body">
@@ -1837,6 +1849,7 @@
         <div class="pf-stat-badge pf-badge-neu" id="pfCashPct">% מהתיק</div>
       </div>
     </div>
+    <!-- כרטיס 5: רווח/הפסד -->
     <div class="pf-stat-card">
       <div class="pf-stat-icon" style="background:#fff7ed;">🎯</div>
       <div class="pf-stat-body">
@@ -1845,18 +1858,11 @@
         <div class="pf-stat-badge pf-badge-neu" id="pfPnlBadge">על ההשקעה</div>
       </div>
     </div>
-    <div class="pf-stat-card">
-      <div class="pf-stat-icon" style="background:#fdf4ff;">📊</div>
-      <div class="pf-stat-body">
-        <div class="pf-stat-label">תשואה על מושקע</div>
-        <div class="pf-stat-value" id="pfReturnPct">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfReturnBadge">מניות בלבד</div>
-      </div>
-    </div>
+    <!-- כרטיס 6: תשואה -->
     <div class="pf-stat-card">
       <div class="pf-stat-icon" style="background:#fefce8;">🏦</div>
       <div class="pf-stat-body">
-        <div class="pf-stat-label">תשואה על הון כולל</div>
+        <div class="pf-stat-label">תשואה על הון</div>
         <div class="pf-stat-value" id="pfCapReturn">—</div>
         <div class="pf-stat-badge pf-badge-neu" id="pfCapReturnBadge">כולל מזומן</div>
       </div>
@@ -4745,7 +4751,7 @@
   }
 
   function pfClearStats() {
-    ['pfTotalCost','pfTotalValue','pfPnlAbs','pfReturnPct',
+    ['pfCapitalDisplay','pfTotalCost','pfNowVsInitial','pfTotalValue','pfPnlAbs','pfReturnPct',
      'pfCashVal','pfCashPct','pfCapReturn','pfCapReturnBadge'].forEach(id=>{
       const el = document.getElementById(id);
       if (el) el.textContent = '—';
@@ -4809,18 +4815,29 @@
     const capRet     = capital > 0 ? (nowTotal - capital)/capital*100 : null;
     const invPct     = nowTotal > 0 ? totalVal/nowTotal*100 : null;
 
-    // כרטיס 1 — שווי תיק נוכחי (מתעדכן עם מחירים)
+    // כרטיס 1 — הון ראשוני (קבוע — מה שהוזן)
+    if (capital > 0) {
+      set('pfCapitalDisplay', usd(capital));
+      set('pfTotalCostSub', `${positions.length} פוזיציות פעילות`);
+      setCls('pfTotalCostSub','pf-stat-badge pf-badge-neu');
+    } else {
+      set('pfCapitalDisplay', '—');
+      set('pfTotalCostSub', 'הזן הון ראשוני למעלה');
+      setCls('pfTotalCostSub','pf-stat-badge pf-badge-neu');
+    }
+
+    // כרטיס 2 — שווי תיק עכשיו (דינמי — מתעדכן עם מחירים)
     if (nowTotal !== null) {
-      const totalUp = nowTotal >= capital;
+      const diff   = nowTotal - capital;
+      const diffUp = diff >= 0;
       set('pfTotalCost', usd(nowTotal));
-      set('pfTotalCostSub',
-        `${totalUp?'▲':'▼'} ${totalUp?'+':''}${usd(nowTotal-capital)} מהון ראשוני (${usd(capital)})`,
-        false);
-      setCls('pfTotalCostSub','pf-stat-badge '+(totalUp?'pf-badge-pos':'pf-badge-neg'));
+      set('pfNowVsInitial',
+        `${diffUp?'▲':'▼'} ${diffUp?'+':''}${usd(diff)} מהון ראשוני`);
+      setCls('pfNowVsInitial','pf-stat-badge '+(diffUp?'pf-badge-pos':'pf-badge-neg'));
     } else {
       set('pfTotalCost', usd(totalVal));
-      set('pfTotalCostSub', 'הכנס הון כולל למעלה');
-      setCls('pfTotalCostSub','pf-stat-badge pf-badge-neu');
+      set('pfNowVsInitial', 'מניות + מזומן');
+      setCls('pfNowVsInitial','pf-stat-badge pf-badge-neu');
     }
 
     // כרטיס 2 — שווי מניות
