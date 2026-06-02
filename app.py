@@ -3704,5 +3704,113 @@ def api_portfolio_save():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route('/portfolio-intraday')
+def portfolio_intraday():
+    """נרות 5 דקות לשווי תיק + חדשות לאורך היום"""
+    tickers_raw = request.args.get('tickers', '')
+    shares_raw  = request.args.get('shares', '')
+    ticker_list = [t.strip().upper() for t in tickers_raw.split(',') if t.strip()]
+    try:
+        shares_list = [float(s) for s in shares_raw.split(',') if s.strip()]
+    except Exception:
+        return jsonify({'candles': [], 'events': []})
+    if not ticker_list or len(ticker_list) != len(shares_list):
+        return jsonify({'candles': [], 'events': []})
+
+    cache_key = f'intraday_{"_".join(ticker_list)}'
+    cached = cache_get(cache_key, ttl=120)
+    if cached:
+        return jsonify(cached)
+
+    try:
+        import pandas as pd
+        import datetime as _idt
+        import xml.etree.ElementTree as _ET
+        import urllib.parse as _ulp
+        from email import utils as _eu
+
+        def _fetch_intra(args):
+            ticker, num_shares = args
+            try:
+                hist = yf.Ticker(ticker).history(period='1d', interval='5m', prepost=False)
+                if hist.empty:
+                    return None
+                return hist['Close'] * num_shares
+            except Exception:
+                return None
+
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            results = list(ex.map(_fetch_intra, zip(ticker_list, shares_list)))
+
+        series_list = [r for r in results if r is not None]
+        if not series_list:
+            return jsonify({'candles': [], 'events': []})
+
+        import pandas as pd
+        combined = pd.concat(series_list, axis=1).sum(axis=1).dropna()
+        ohlc = combined.resample('5min').ohlc().dropna()
+
+        candles = []
+        for ts, row in ohlc.iterrows():
+            # המרה לשעון ישראל (UTC+3)
+            try:
+                ts_utc = ts.tz_convert('UTC') if ts.tzinfo else ts.tz_localize('UTC')
+                ts_il  = ts_utc + _idt.timedelta(hours=3)
+            except Exception:
+                ts_il = ts
+            candles.append({
+                'time':  ts_il.strftime('%H:%M'),
+                'open':  round(float(row['open']),  2),
+                'high':  round(float(row['high']),  2),
+                'low':   round(float(row['low']),   2),
+                'close': round(float(row['close']), 2),
+            })
+
+        # חדשות היום עם חתימת שעה
+        now_utc   = _idt.datetime.now(_idt.timezone.utc)
+        today_str = now_utc.strftime('%Y-%m-%d')
+        events = []
+        news_queries = [
+            ('🇺🇸 Trump', 'Trump economy tariff market'),
+            ('🏛️ Fed',    'Federal Reserve rate decision'),
+            ('🌍 גיאו',   'geopolitics war sanctions market'),
+            ('⚡ חמות',   'breaking news market economy today'),
+        ]
+        for cat, q in news_queries:
+            try:
+                rss = f'https://news.google.com/rss/search?q={_ulp.quote(q)}&hl=en-US&gl=US&ceid=US:en'
+                r   = requests.get(rss, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
+                root = _ET.fromstring(r.content)
+                for item in root.findall('.//item')[:4]:
+                    title   = (item.findtext('title') or '').split(' - ')[0]
+                    pub_str = item.findtext('pubDate') or ''
+                    try:
+                        pub_dt = _idt.datetime(*_eu.parsedate(pub_str)[:6],
+                                               tzinfo=_idt.timezone.utc)
+                        if pub_dt.strftime('%Y-%m-%d') != today_str:
+                            continue
+                        pub_il    = pub_dt + _idt.timedelta(hours=3)
+                        time_str  = pub_il.strftime('%H:%M')
+                        # רק בשעות מסחר ישראל 16:30–23:15
+                        h, m = pub_il.hour, pub_il.minute
+                        if not (16 <= h <= 23):
+                            continue
+                        events.append({
+                            'time':  time_str,
+                            'title': translate_he(title[:90]),
+                            'cat':   cat,
+                        })
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        result = {'candles': candles, 'events': events}
+        cache_set(cache_key, result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'candles': [], 'events': [], 'error': str(e)})
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
