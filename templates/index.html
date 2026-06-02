@@ -1802,7 +1802,7 @@
 
   <!-- Capital Bar -->
   <div class="pf-capital-bar">
-    <label>💼 כמה יש לי עכשיו סך הכל ($) — מניות + מזומן ביחד:</label>
+    <label>💼 הון בסיס שלי ($) — מה היה לך כשפתחת את התיק (כולל מזומן):</label>
     <input class="pf-capital-input" id="pfCapitalInput" type="number" step="100"
            placeholder="100,000" oninput="pfCapitalChanged()" />
     <span class="pf-capital-chip" id="pfCashChip">💵 מזומן: —</span>
@@ -4806,23 +4806,26 @@
     const pnlPos  = pnl >= 0;
     const retPos  = retPct >= 0;
     const tdPos   = todayPnl >= 0;
-    // capital = מה שהמשתמש מזין = סה"כ שיש לו עכשיו (מניות + מזומן)
     const capital = getCapital();
-    // מזומן = סה"כ פחות שווי מניות עכשיו (דינמי!)
-    const cash    = capital > 0 ? capital - totalVal : null;
-    const cashPct = capital > 0 ? (cash / capital) * 100 : null;
-    const invPct  = capital > 0 ? (totalVal / capital) * 100 : null;
+    // מזומן = מה שהוזן פחות עלות הקנייה (קבוע — משתנה רק ברכישה/מכירה)
+    const cash        = capital > 0 ? capital - totalCost : null;
+    // סה"כ עכשיו = מזומן + שווי מניות נוכחי (דינמי — משתנה עם מחירים!)
+    const currentTotal = capital > 0 ? (capital - totalCost) + totalVal : totalVal;
+    const cashPct = currentTotal > 0 ? (cash / currentTotal) * 100 : null;
+    const invPct  = currentTotal > 0 ? (totalVal / currentTotal) * 100 : null;
     const capRet  = totalCost > 0 ? (totalVal - totalCost) / totalCost * 100 : null;
 
-    // כרטיס 1 — סה"כ שיש לי (קבוע — מה שהוזן)
-    if (capital > 0) {
-      set('pfCapitalDisplay', usd(capital));
-      set('pfTotalCostSub', `${positions.length} פוזיציות · ${invPct?.toFixed(0)}% מושקע`);
+    // כרטיס 1 — סה"כ שיש לי עכשיו (דינמי!)
+    const totalUp = capital > 0 && currentTotal > capital;
+    const totalDiff = capital > 0 ? currentTotal - capital : 0;
+    set('pfCapitalDisplay', usd(currentTotal));
+    if (capital > 0 && totalDiff !== 0) {
+      set('pfTotalCostSub', `${totalDiff>0?'▲ +':'▼ '}${usd(totalDiff)} מהבסיס (${usd(capital)})`);
+      setCls('pfTotalCostSub','pf-stat-badge '+(totalDiff>0?'pf-badge-pos':'pf-badge-neg'));
     } else {
-      set('pfCapitalDisplay', '—');
-      set('pfTotalCostSub', 'הזן סכום כולל למעלה');
+      set('pfTotalCostSub', capital > 0 ? `${positions.length} פוזיציות פעילות` : 'הזן סכום כולל למעלה');
+      setCls('pfTotalCostSub','pf-stat-badge pf-badge-neu');
     }
-    setCls('pfTotalCostSub','pf-stat-badge pf-badge-neu');
 
     // כרטיס 2 — שווי מניות (דינמי)
     set('pfTotalValue', usd(totalVal));
@@ -4862,9 +4865,9 @@
     setCls('pfCapReturnBadge','pf-stat-badge '+(retPos6?'pf-badge-pos':'pf-badge-neg'));
 
     // bar עליון
-    set('pfCashChip',       cash!==null   ? `💵 מזומן: ${usd(Math.abs(cash))}`  : '💵 מזומן: —');
-    set('pfInvestedChip',   invPct!==null ? `📈 מושקע: ${invPct.toFixed(1)}%`   : '📈 מושקע: —%');
-    set('pfCapitalRetChip', capRet!==null ? `📊 תשואה: ${pct(capRet)}`          : `📊 תשואה: ${pct(retPct)}`);
+    set('pfCashChip',       cash!==null        ? `💵 מזומן: ${usd(Math.abs(cash))}`       : '💵 מזומן: —');
+    set('pfInvestedChip',   invPct!==null      ? `📈 מושקע: ${invPct.toFixed(1)}%`        : '📈 מושקע: —%');
+    set('pfCapitalRetChip', currentTotal > 0   ? `💰 סה"כ: ${usd(currentTotal)}`          : `📊 תשואה: ${pct(retPct)}`);
   }
 
   function pfRenderTable(positions, prices) {
