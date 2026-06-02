@@ -4680,7 +4680,11 @@
   }
 
   function pfClearStats() {
-    ['pfTotalCost','pfTotalValue','pfPnlAbs','pfReturnPct'].forEach(id=>document.getElementById(id).textContent='—');
+    ['pfTotalCost','pfTotalValue','pfPnlAbs','pfReturnPct',
+     'pfCashVal','pfCashPct','pfCapReturn','pfCapReturnBadge'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
   }
   function pfClearCharts() {
     ['pfPieChart','pfBarChart','pfLineChart'].forEach(id=>{
@@ -4691,6 +4695,14 @@
   }
 
   function pfRenderStats(positions, prices) {
+    // helper: null-safe element update
+    const set = (id, html, isHtml) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (isHtml) el.innerHTML = html; else el.textContent = html;
+    };
+    const setCls = (id, cls) => { const el=document.getElementById(id); if(el) el.className=cls; };
+
     let totalCost=0, totalVal=0, todayPnl=0;
     for (const p of positions) {
       const pr   = prices[p.ticker];
@@ -4699,80 +4711,60 @@
       const prev = pr&&pr.prev_close&&pr.price ? p.shares*(pr.price-pr.prev_close) : 0;
       totalCost += cost; totalVal += val; todayPnl += prev;
     }
-    const pnl       = totalVal - totalCost;
-    const retPct    = totalCost > 0 ? pnl/totalCost*100 : 0;
-    const pnlPos    = pnl >= 0;
-    const retPos    = retPct >= 0;
-    const tdPos     = todayPnl >= 0;
-    const capital   = getCapital();
-    const cash      = capital > 0 ? capital - totalVal : null;
-    const cashPct   = capital > 0 ? cash/capital*100 : null;
-    const capRet    = capital > 0 ? pnl/capital*100 : null;
-    const invPct    = capital > 0 ? totalVal/capital*100 : null;
+    const pnl     = totalVal - totalCost;
+    const retPct  = totalCost > 0 ? pnl/totalCost*100 : 0;
+    const pnlPos  = pnl >= 0;
+    const retPos  = retPct >= 0;
+    const tdPos   = todayPnl >= 0;
+    const capital = getCapital();
+    const cash    = capital > 0 ? capital - totalVal : null;
+    const cashPct = capital > 0 ? cash/capital*100  : null;
+    const capRet  = capital > 0 ? pnl/capital*100   : null;
+    const invPct  = capital > 0 ? totalVal/capital*100 : null;
 
-    // ── כרטיס 1: הון כולל ──
-    if (capital > 0) {
-      document.getElementById('pfTotalCost').textContent = usd(capital);
-      document.getElementById('pfTotalCostSub').textContent = positions.length + ' פוזיציות פעילות';
-    } else {
-      document.getElementById('pfTotalCost').textContent = usd(totalCost);
-      document.getElementById('pfTotalCostSub').textContent = 'הכנס הון כולל למעלה';
-    }
-    document.getElementById('pfTotalCostSub').className = 'pf-stat-badge pf-badge-neu';
+    // כרטיס 1 — הון כולל
+    set('pfTotalCost', capital > 0 ? usd(capital) : usd(totalCost));
+    set('pfTotalCostSub', capital > 0 ? positions.length+' פוזיציות פעילות' : 'הכנס הון כולל למעלה');
+    setCls('pfTotalCostSub','pf-stat-badge pf-badge-neu');
 
-    // ── כרטיס 2: שווי מניות ──
-    document.getElementById('pfTotalValue').textContent = usd(totalVal);
-    const tdEl = document.getElementById('pfTodayChg');
-    tdEl.textContent = `שינוי היום: ${todayPnl>=0?'+':''}${usd(todayPnl)}`;
-    tdEl.className   = 'pf-stat-badge ' + (tdPos?'pf-badge-pos':'pf-badge-neg');
+    // כרטיס 2 — שווי מניות
+    set('pfTotalValue', usd(totalVal));
+    set('pfTodayChg', `שינוי היום: ${todayPnl>=0?'+':''}${usd(todayPnl)}`);
+    setCls('pfTodayChg','pf-stat-badge '+(tdPos?'pf-badge-pos':'pf-badge-neg'));
 
-    // ── כרטיס 3: מזומן ──
+    // כרטיס 3 — מזומן
     if (cash !== null) {
-      const cashNeg = cash < 0;
-      document.getElementById('pfCashVal').innerHTML =
-        `<span style="color:${cashNeg?'var(--red)':'var(--label)'};">${usd(Math.abs(cash))}</span>`;
-      const cpEl = document.getElementById('pfCashPct');
-      cpEl.textContent = `${cashPct.toFixed(1)}% מהתיק · ${invPct.toFixed(1)}% מושקע`;
-      cpEl.className   = 'pf-stat-badge pf-badge-neu';
+      set('pfCashVal',`<span style="color:${cash<0?'var(--red)':'var(--label)'};">${usd(Math.abs(cash))}</span>`,true);
+      set('pfCashPct',`${cashPct.toFixed(1)}% מהתיק · ${invPct.toFixed(1)}% מושקע`);
+      setCls('pfCashPct','pf-stat-badge pf-badge-neu');
     } else {
-      document.getElementById('pfCashVal').textContent = '—';
-      document.getElementById('pfCashPct').textContent = 'הגדר הון כולל';
+      set('pfCashVal','—'); set('pfCashPct','הגדר הון כולל');
     }
 
-    // ── כרטיס 4: רווח/הפסד ──
-    document.getElementById('pfPnlAbs').innerHTML =
-      `<span style="color:${pnlPos?'var(--green)':'var(--red)'};">${pnl>=0?'+':''}${usd(pnl)}</span>`;
-    const pnlBadge = document.getElementById('pfPnlBadge');
-    pnlBadge.textContent = `${pnlPos?'+':''}${pct(retPct)} מהכניסה`;
-    pnlBadge.className   = 'pf-stat-badge ' + (pnlPos?'pf-badge-pos':'pf-badge-neg');
+    // כרטיס 4 — רווח/הפסד
+    set('pfPnlAbs',`<span style="color:${pnlPos?'var(--green)':'var(--red)'};">${pnl>=0?'+':''}${usd(pnl)}</span>`,true);
+    set('pfPnlBadge',`${pnlPos?'+':''}${pct(retPct)} מהכניסה`);
+    setCls('pfPnlBadge','pf-stat-badge '+(pnlPos?'pf-badge-pos':'pf-badge-neg'));
 
-    // ── כרטיס 5: תשואה על מושקע ──
-    document.getElementById('pfReturnPct').innerHTML =
-      `<span style="color:${retPos?'var(--green)':'var(--red)'};">${pct(retPct)}</span>`;
-    const retBadge = document.getElementById('pfReturnBadge');
-    retBadge.textContent = 'מניות בלבד';
-    retBadge.className   = 'pf-stat-badge pf-badge-neu';
+    // כרטיס 5 — תשואה על מושקע
+    set('pfReturnPct',`<span style="color:${retPos?'var(--green)':'var(--red)'};">${pct(retPct)}</span>`,true);
+    set('pfReturnBadge','מניות בלבד');
+    setCls('pfReturnBadge','pf-stat-badge pf-badge-neu');
 
-    // ── כרטיס 6: תשואה על הון כולל ──
+    // כרטיס 6 — תשואה על הון כולל
     if (capRet !== null) {
       const capPos = capRet >= 0;
-      document.getElementById('pfCapReturn').innerHTML =
-        `<span style="color:${capPos?'var(--green)':'var(--red)'};">${pct(capRet)}</span>`;
-      const crBadge = document.getElementById('pfCapReturnBadge');
-      crBadge.textContent = `כולל ${cashPct.toFixed(0)}% מזומן`;
-      crBadge.className   = 'pf-stat-badge ' + (capPos?'pf-badge-pos':'pf-badge-neg');
+      set('pfCapReturn',`<span style="color:${capPos?'var(--green)':'var(--red)'};">${pct(capRet)}</span>`,true);
+      set('pfCapReturnBadge',`כולל ${cashPct.toFixed(0)}% מזומן`);
+      setCls('pfCapReturnBadge','pf-stat-badge '+(capPos?'pf-badge-pos':'pf-badge-neg'));
     } else {
-      document.getElementById('pfCapReturn').textContent = '—';
-      document.getElementById('pfCapReturnBadge').textContent = 'הגדר הון כולל';
+      set('pfCapReturn','—'); set('pfCapReturnBadge','הגדר הון כולל');
     }
 
-    // ── עדכן bar עליון ──
-    document.getElementById('pfCashChip').textContent =
-      cash !== null ? `💵 מזומן: ${usd(Math.abs(cash))}` : '💵 מזומן: —';
-    document.getElementById('pfInvestedChip').textContent =
-      invPct !== null ? `📈 מושקע: ${invPct.toFixed(1)}%` : '📈 מושקע: —%';
-    document.getElementById('pfCapitalRetChip').textContent =
-      capRet !== null ? `📊 תשואה על הון: ${pct(capRet)}` : '📊 תשואה על הון: —%';
+    // bar עליון
+    set('pfCashChip',        cash!==null   ? `💵 מזומן: ${usd(Math.abs(cash))}`     : '💵 מזומן: —');
+    set('pfInvestedChip',    invPct!==null ? `📈 מושקע: ${invPct.toFixed(1)}%`      : '📈 מושקע: —%');
+    set('pfCapitalRetChip',  capRet!==null ? `📊 תשואה על הון: ${pct(capRet)}`      : '📊 תשואה על הון: —%');
   }
 
   function pfRenderTable(positions, prices) {
