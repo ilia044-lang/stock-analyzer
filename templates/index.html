@@ -1964,11 +1964,18 @@
   <div class="pf-card" id="pfHistCard">
     <div class="pf-card-hdr">
       <span class="pf-card-title">📊 סטטיסטיקות מסחר</span>
-      <span class="pf-card-sub" id="pfHistCount">0 עסקאות</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="pf-card-sub" id="pfHistCount">0 עסקאות</span>
+        <button class="pf-btn-primary" onclick="openAddTradeModal()"
+          style="font-size:11px;padding:5px 12px;">+ הוסף עסקה</button>
+      </div>
     </div>
-    <div id="pfHistEmpty" style="display:none;padding:40px;text-align:center;color:var(--label3);">
+    <div id="pfHistEmpty" style="display:none;padding:30px;text-align:center;color:var(--label3);">
       <div style="font-size:36px;margin-bottom:10px;">📭</div>
-      <div style="font-size:14px;">עדיין לא סגרת עסקאות<br><span style="font-size:12px;">לחץ 🔒 על פוזיציה פתוחה כדי למכור</span></div>
+      <div style="font-size:14px;margin-bottom:14px;">עדיין לא נרשמו עסקאות</div>
+      <button class="pf-btn-primary" onclick="openAddTradeModal()" style="font-size:13px;">
+        + הוסף עסקה שעשית
+      </button>
     </div>
     <div id="pfHistBody" style="display:none;">
     <div class="pf-hist-stats">
@@ -2048,6 +2055,51 @@
 
 </div><!-- end .pf-page -->
 </div><!-- end #tabPortfolio -->
+
+<!-- ── Add Closed Trade Modal ── -->
+<div id="pfAddTradeModalBg" class="pf-modal-bg" style="display:none;" onclick="if(event.target===this)closeAddTradeModal()">
+  <div class="pf-modal">
+    <div class="pf-modal-title">📝 הוסף עסקה סגורה</div>
+    <p style="font-size:12px;color:var(--label3);margin:-10px 0 16px;">לרישום מניה שמכרת כבר — ישירות להיסטוריה</p>
+    <div class="pf-fld">
+      <label>טיקר (סימול מניה)</label>
+      <input id="atTicker" placeholder="NVDA" oninput="this.value=this.value.toUpperCase()" />
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="pf-fld">
+        <label>כמות מניות</label>
+        <input id="atShares" type="number" step="0.0001" placeholder="10" oninput="atUpdatePreview()" />
+      </div>
+      <div class="pf-fld">
+        <label>מחיר כניסה ($)</label>
+        <input id="atEntryPrice" type="number" step="0.01" placeholder="450.00" oninput="atUpdatePreview()" />
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="pf-fld">
+        <label>מחיר יציאה ($)</label>
+        <input id="atExitPrice" type="number" step="0.01" placeholder="524.00" oninput="atUpdatePreview()" />
+      </div>
+      <div class="pf-fld">
+        <label>תאריך מכירה</label>
+        <input id="atExitDate" type="date" />
+      </div>
+    </div>
+    <div class="pf-fld">
+      <label>תאריך קנייה (אופציונלי)</label>
+      <input id="atEntryDate" type="date" />
+    </div>
+    <div class="pf-fld">
+      <label>הערות (אופציונלי)</label>
+      <input id="atNotes" placeholder="אסטרטגיה, סיבת מכירה..." />
+    </div>
+    <div id="atPreview" style="display:none;border-radius:10px;padding:11px 16px;margin:10px 0;font-size:13px;font-weight:700;text-align:center;line-height:1.6;"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="pf-btn-primary" style="flex:1;" onclick="saveAddTrade()">💾 שמור עסקה</button>
+      <button class="pf-btn-secondary" onclick="closeAddTradeModal()">ביטול</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Add/Edit Position Modal ── -->
 <div id="pfModalBg" class="pf-modal-bg" style="display:none;" onclick="if(event.target===this)closePFModal()">
@@ -5511,6 +5563,67 @@
           <span class="pf-chip ${p?'pf-chip-g':'pf-chip-r'}">${p?'+':''}${h.pnl_pct.toFixed(1)}%</span>
         </div>`;
       }).join('');
+  }
+
+  // ── Add Closed Trade (ידני) ──────────────────────────────────
+  function openAddTradeModal() {
+    const today = new Date().toISOString().slice(0,10);
+    document.getElementById('atTicker').value     = '';
+    document.getElementById('atShares').value     = '';
+    document.getElementById('atEntryPrice').value = '';
+    document.getElementById('atExitPrice').value  = '';
+    document.getElementById('atExitDate').value   = today;
+    document.getElementById('atEntryDate').value  = '';
+    document.getElementById('atNotes').value      = '';
+    document.getElementById('atPreview').style.display = 'none';
+    document.getElementById('pfAddTradeModalBg').style.display = 'flex';
+  }
+  function closeAddTradeModal() {
+    document.getElementById('pfAddTradeModalBg').style.display = 'none';
+  }
+
+  function atUpdatePreview() {
+    const shares = parseFloat(document.getElementById('atShares').value);
+    const entry  = parseFloat(document.getElementById('atEntryPrice').value);
+    const exit_  = parseFloat(document.getElementById('atExitPrice').value);
+    const prev   = document.getElementById('atPreview');
+    if (isNaN(shares)||isNaN(entry)||isNaN(exit_)) { prev.style.display='none'; return; }
+    const pnl    = (exit_ - entry) * shares;
+    const pnlPct = (exit_ - entry) / entry * 100;
+    const pos    = pnl >= 0;
+    prev.style.display    = 'block';
+    prev.style.background = pos ? 'var(--green-dim)' : 'var(--red-dim)';
+    prev.style.color      = pos ? '#15803d' : '#dc2626';
+    prev.innerHTML = `${pos?'▲ רווח':'▼ הפסד'}: ${pos?'+':''}$${Math.abs(pnl).toFixed(2)} (${pos?'+':''}${pnlPct.toFixed(2)}%)<br>`
+      + `<span style="font-size:11px;font-weight:400;">קנייה: $${(shares*entry).toFixed(2)} · מכירה: $${(shares*exit_).toFixed(2)}</span>`;
+  }
+
+  function saveAddTrade() {
+    const ticker = document.getElementById('atTicker').value.trim().toUpperCase();
+    const shares = parseFloat(document.getElementById('atShares').value);
+    const entry  = parseFloat(document.getElementById('atEntryPrice').value);
+    const exit_  = parseFloat(document.getElementById('atExitPrice').value);
+    const exitDt = document.getElementById('atExitDate').value;
+    const entryDt= document.getElementById('atEntryDate').value;
+    const notes  = document.getElementById('atNotes').value.trim();
+    if (!ticker || isNaN(shares)||shares<=0 || isNaN(entry)||entry<=0 || isNaN(exit_)||exit_<=0 || !exitDt) {
+      alert('יש למלא: טיקר, כמות, מחיר כניסה, מחיר יציאה ותאריך מכירה'); return;
+    }
+    const pnl     = (exit_ - entry) * shares;
+    const pnlPct  = (exit_ - entry) / entry * 100;
+    const daysHeld= (entryDt && exitDt) ? Math.round((new Date(exitDt)-new Date(entryDt))/86400000) : null;
+    const hist = getHist();
+    hist.unshift({
+      id: uid(), ticker, shares, entry_price: entry, entry_date: entryDt,
+      exit_price: exit_, exit_date: exitDt,
+      pnl: Math.round(pnl*100)/100, pnl_pct: Math.round(pnlPct*100)/100,
+      days_held: daysHeld, notes,
+      closed_at: new Date().toISOString(),
+    });
+    saveHist(hist);
+    closeAddTradeModal();
+    renderTradeHistory();
+    alert(`✅ נשמר — ${ticker}: ${pnl>=0?'+':''}$${Math.abs(pnl).toFixed(2)}`);
   }
 
   // ── Auto-refresh ──────────────────────────────────────────────
