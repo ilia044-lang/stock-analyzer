@@ -1961,21 +1961,15 @@
       <div class="pf-hs"><div class="pf-hs-lbl">📦 סה"כ נמכר ($)</div>  <div class="pf-hs-val" id="phsTotalSold">—</div></div>
     </div>
 
-    <!-- History charts -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding:16px;">
-      <div style="background:var(--bg3);border-radius:12px;overflow:hidden;grid-column:span 2;">
-        <div style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--label);">📈 רווח מצטבר לאורך זמן</div>
-        <div id="pfCumChart" style="height:280px;"></div>
+    <!-- History charts — רוחב מלא -->
+    <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+      <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
+        <div style="padding:12px 16px;font-size:13px;font-weight:700;color:var(--label);">📈 רווח מצטבר לאורך זמן</div>
+        <div id="pfCumChart" style="height:260px;"></div>
       </div>
       <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
-        <div style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--label);">🎯 ניצחונות / הפסדים</div>
-        <div id="pfWinLoseChart" style="height:180px;"></div>
-      </div>
-    </div>
-    <div style="padding:0 16px 16px;">
-      <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
-        <div style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--label);">📊 רווח/הפסד לפי עסקה</div>
-        <div id="pfTradeBarChart" style="height:180px;"></div>
+        <div style="padding:12px 16px;font-size:13px;font-weight:700;color:var(--label);">📊 רווח / הפסד לפי עסקה</div>
+        <div id="pfTradeBarChart" style="height:200px;"></div>
       </div>
     </div>
     </div><!-- end pfHistBody -->
@@ -5240,85 +5234,48 @@
     document.getElementById('phsWorst').innerHTML     = worstPnl < Infinity  ? `<span style="color:${worstPnl>=0?'#15803d':'#dc2626'}">${worstPnl>=0?'+':''}$${Math.abs(worstPnl).toFixed(0)}</span>` : '—';
     document.getElementById('phsTotalSold').innerHTML = `<span>$${Math.round(totalSold).toLocaleString('en-US')}</span>`;
 
-    // Win/Loss donut
-    Plotly.react('pfWinLoseChart',[{
-      type:'pie', hole:0.45,
-      labels:['ניצחונות','הפסדים'],
-      values:[wins.length, losses.length],
-      marker:{colors:['#22c55e','#ef4444']},
-      textinfo:'value+percent',
-      hovertemplate:'<b>%{label}</b>: %{value} עסקאות (%{percent})<extra></extra>',
-      textfont:{size:11}
-    }],{
-      margin:{t:5,b:5,l:5,r:5},
-      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
-      showlegend:true,
-      legend:{orientation:'h', y:-0.15, font:{size:10}},
-      font:{color:'#3a3a3c'}
-    },{responsive:true, displayModeBar:false});
-
     // Cumulative P&L chart (oldest first)
-    const sorted    = [...hist].sort((a,b) => new Date(a.exit_date)-new Date(b.exit_date));
-    const cumDates  = [], cumVals = [];
-    let running = 0;
-    for (const h of sorted) { running += h.pnl; cumDates.push(h.exit_date); cumVals.push(Math.round(running*100)/100); }
-    // בנה OHLC יומי — כל יום = נר אחד
-    const byDay = {};
-    let cumBefore = 0;
+    const sorted = [...hist].sort((a,b) => new Date(a.exit_date)-new Date(b.exit_date));
+    // עמודה לכל עסקה + קו מצטבר מעל
+    const tLabels=[], tPnls=[], tCums=[], tColors=[];
+    let cum = 0;
     for (const h of sorted) {
-      const d = h.exit_date || h.closed_at?.slice(0,10) || '?';
-      if (!byDay[d]) byDay[d] = { open: cumBefore, trades: [] };
-      byDay[d].trades.push(h.pnl);
-      cumBefore += h.pnl;
-      byDay[d].close = cumBefore;
+      const label = `${h.ticker} ${(h.exit_date||'').slice(5)}`;
+      tLabels.push(label);
+      tPnls.push(Math.round(h.pnl * 100) / 100);
+      cum += h.pnl;
+      tCums.push(Math.round(cum * 100) / 100);
+      tColors.push(h.pnl >= 0 ? 'rgba(34,197,94,0.8)' : 'rgba(239,68,68,0.8)');
     }
-    const cDates=[], cOpens=[], cHighs=[], cLows=[], cCloses=[], cVols=[];
-    for (const [d, v] of Object.entries(byDay).sort()) {
-      const o = v.open, c = v.close;
-      cDates.push(d); cOpens.push(o); cCloses.push(c);
-      cHighs.push(Math.max(o,c)); cLows.push(Math.min(o,c));
-      cVols.push(v.trades.reduce((s,x) => s+Math.abs(x), 0));
-    }
-    // גרף קו עם נקודות + עמודות נפח (layout נפרד, ללא y2 כפול)
+    const cumIsUp = tCums.length && tCums[tCums.length-1] >= 0;
+
     Plotly.react('pfCumChart',[
-      { // קו P&L מצטבר
-        type:'scatter', mode:'lines+markers', name:'מצטבר',
-        x:cDates, y:cCloses,
-        line:{color:'#0071e3', width:2.5, shape:'spline', smoothing:0.8},
-        marker:{
-          color: cCloses.map(v => v >= 0 ? '#22c55e' : '#ef4444'),
-          size: 9, line:{color:'#fff', width:2}
-        },
-        fill:'tozeroy',
-        fillcolor: cCloses[cCloses.length-1] >= 0 ? 'rgba(0,113,227,0.08)' : 'rgba(239,68,68,0.08)',
-        hovertemplate:'<b>%{x}</b><br>רווח מצטבר: <b>%{y:+$,.2f}</b><extra></extra>',
-        yaxis:'y',
+      { // עמודה לכל עסקה
+        type:'bar', x:tLabels, y:tPnls,
+        marker:{ color:tColors, line:{color:tColors.map(c=>c.replace('0.8','1')),width:1} },
+        hovertemplate:'<b>%{x}</b><br>עסקה: <b>%{y:+$,.2f}</b><extra></extra>',
+        name:'עסקה', yaxis:'y',
       },
-      { // עמודות נפח (ציר Y נפרד בתחתית)
-        type:'bar', name:'נפח יומי', x:cDates, y:cVols,
-        marker:{color: cCloses.map((c,i) => c>=cOpens[i] ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)')},
-        hovertemplate:'<b>%{x}</b><br>נפח: <b>$%{y:,.0f}</b><extra></extra>',
-        yaxis:'y2',
+      { // קו מצטבר
+        type:'scatter', mode:'lines+markers', x:tLabels, y:tCums,
+        line:{ color: cumIsUp ? '#0071e3' : '#ef4444', width:2.5, shape:'spline' },
+        marker:{ color:'#fff', size:7, line:{color: cumIsUp?'#0071e3':'#ef4444', width:2} },
+        hovertemplate:'<b>%{x}</b><br>מצטבר: <b>%{y:+$,.2f}</b><extra></extra>',
+        name:'מצטבר', yaxis:'y',
       }
     ],{
-      margin:{t:12,b:44,l:72,r:16},
+      margin:{t:10,b:50,l:68,r:16},
       paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      barmode:'relative',
       xaxis:{
-        type:'category',          // מניעת datetime interpolation!
-        showgrid:false, zeroline:false,
+        type:'category', showgrid:false, zeroline:false,
         tickfont:{size:10,color:'#6e6e73'},
-        tickangle: cDates.length > 6 ? -35 : 0,
+        tickangle: tLabels.length > 5 ? -35 : 0,
       },
       yaxis:{
         showgrid:true, gridcolor:'rgba(0,0,0,.07)',
         tickprefix:'$', tickfont:{size:10,color:'#6e6e73'},
         zeroline:true, zerolinecolor:'rgba(0,0,0,.25)', zerolinewidth:1.5,
-        domain:[0.30, 1.0],
-      },
-      yaxis2:{
-        showgrid:false, zeroline:false,
-        tickprefix:'$', tickfont:{size:8,color:'#94a3b8'},
-        domain:[0, 0.24],
       },
       showlegend:false, dragmode:false,
       hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:11}},
