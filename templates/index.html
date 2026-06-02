@@ -1791,7 +1791,11 @@
         📂 שחזור
         <input type="file" accept=".json" style="display:none;" onchange="pfRestore(event)" />
       </label>
-      <button class="pf-btn-secondary" onclick="refreshPFPrices(true)">🔄 עדכן מחירים</button>
+      <button class="pf-btn-secondary" onclick="refreshPFPrices(true)" id="pfRefreshBtn">🔄 עדכן מחירים</button>
+      <button class="pf-btn-secondary" onclick="togglePFAutoRefresh()" id="pfAutoBtn"
+        style="min-width:130px;" title="מרענן מחירים כל 10 שניות בשעות מסחר">
+        ⏱ עדכון אוטו: כבוי
+      </button>
       <button class="pf-btn-primary"   onclick="openPFModal()">＋ הוסף פוזיציה</button>
     </div>
   </div>
@@ -4634,7 +4638,7 @@
     const positions = getPF();
     if (!positions.length) { renderPortfolio(); return; }
     const tickers = positions.map(p=>p.ticker).join(',');
-    const btn = document.querySelector('[onclick="refreshPFPrices(true)"]');
+    const btn = document.getElementById('pfRefreshBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ מעדכן...'; }
     try {
       _pfPrices = await fetch(`/portfolio-prices?tickers=${tickers}${force?'&force=1':''}`).then(r=>r.json());
@@ -4708,14 +4712,22 @@
     };
     const setCls = (id, cls) => { const el=document.getElementById(id); if(el) el.className=cls; };
 
-    let totalCost=0, totalVal=0, todayPnl=0;
+    let totalCost=0, totalVal=0, todayUnrealized=0;
     for (const p of positions) {
       const pr   = prices[p.ticker];
       const cost = p.shares * p.avg_cost;
       const val  = pr&&pr.price ? p.shares*pr.price : cost;
       const prev = pr&&pr.prev_close&&pr.price ? p.shares*(pr.price-pr.prev_close) : 0;
-      totalCost += cost; totalVal += val; todayPnl += prev;
+      totalCost += cost; totalVal += val; todayUnrealized += prev;
     }
+
+    // רווח ממומש מעסקאות שנסגרו היום (ET)
+    const todayET = new Date(Date.now() - 4*3600000).toISOString().slice(0,10);
+    const todayRealized = getHist()
+      .filter(h => (h.exit_date || (h.closed_at||'').slice(0,10)) === todayET)
+      .reduce((s,h) => s + (h.pnl||0), 0);
+    const todayPnl = todayUnrealized + todayRealized;
+
     const pnl     = totalVal - totalCost;
     const retPct  = totalCost > 0 ? pnl/totalCost*100 : 0;
     const pnlPos  = pnl >= 0;
@@ -4746,7 +4758,9 @@
 
     // כרטיס 2 — שווי מניות
     set('pfTotalValue', usd(totalVal));
-    set('pfTodayChg', `שינוי היום: ${todayPnl>=0?'+':''}${usd(todayPnl)}`);
+    const realizedStr = todayRealized !== 0
+      ? ` (כולל ${todayRealized>=0?'+':''}${usd(todayRealized)} ממומש)`  : '';
+    set('pfTodayChg', `${todayPnl>=0?'▲':'▼'} ${todayPnl>=0?'+':''}${usd(todayPnl)} היום${realizedStr}`);
     setCls('pfTodayChg','pf-stat-badge '+(tdPos?'pf-badge-pos':'pf-badge-neg'));
 
     // כרטיס 3 — מזומן
@@ -5467,6 +5481,54 @@
           <span class="pf-chip ${p?'pf-chip-g':'pf-chip-r'}">${p?'+':''}${h.pnl_pct.toFixed(1)}%</span>
         </div>`;
       }).join('');
+  }
+
+  // ── Auto-refresh ──────────────────────────────────────────────
+  let _pfAutoOn  = false;
+  let _pfAutoTimer = null;
+  let _pfCountdown = 10;
+
+  function togglePFAutoRefresh() {
+    _pfAutoOn = !_pfAutoOn;
+    const btn = document.getElementById('pfAutoBtn');
+    if (_pfAutoOn) {
+      btn.style.background = '#15803d';
+      btn.style.color      = '#fff';
+      btn.style.border     = '1.5px solid #15803d';
+      _pfCountdown = 10;
+      _runAutoRefreshTick();
+    } else {
+      btn.textContent = '⏱ עדכון אוטו: כבוי';
+      btn.style.background = '';
+      btn.style.color      = '';
+      btn.style.border     = '';
+      clearTimeout(_pfAutoTimer);
+    }
+  }
+
+  function _runAutoRefreshTick() {
+    if (!_pfAutoOn) return;
+    const btn = document.getElementById('pfAutoBtn');
+    if (btn) btn.textContent = `🟢 אוטו · ${_pfCountdown}s`;
+    if (_pfCountdown <= 0) {
+      _pfCountdown = 10;
+      // רענן רק כשלשונית תיק פעילה
+      if (document.getElementById('tabPortfolio')?.style.display !== 'none') {
+        refreshPFPrices(true);
+      }
+    } else {
+      _pfCountdown--;
+    }
+    _pfAutoTimer = setTimeout(_runAutoRefreshTick, 1000);
+  }
+
+  // עצור auto-refresh כשעוברים ללשונית אחרת
+  const _origSwitchTab = switchAppTab;
+  function switchAppTab(tab) {
+    _origSwitchTab(tab);
+    if (tab !== 'portfolio' && _pfAutoOn) {
+      // ממשיך לרוץ אבל לא שולח בקשות
+    }
   }
 
   // Init — טעינה מהקובץ המקומי, אחר כך רינדור
