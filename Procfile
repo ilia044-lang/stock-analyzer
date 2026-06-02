@@ -1,1 +1,1 @@
-web: python live20_bot.py
+web: gunicorn app:app
