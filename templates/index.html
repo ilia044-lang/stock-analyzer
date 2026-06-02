@@ -4498,8 +4498,12 @@
     document.querySelectorAll('.app-tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tabAnalysis').style.display  = 'none';
     document.getElementById('tabPortfolio').style.display = 'none';
-    document.getElementById(`tabBtn${tab[0].toUpperCase()+tab.slice(1)}`).classList.add('active');
-    document.getElementById(`tab${tab[0].toUpperCase()+tab.slice(1)}`).style.display = '';
+    const capId = `tabBtn${tab[0].toUpperCase()+tab.slice(1)}`;
+    const pgId  = `tab${tab[0].toUpperCase()+tab.slice(1)}`;
+    const capEl = document.getElementById(capId);
+    const pgEl  = document.getElementById(pgId);
+    if (capEl) capEl.classList.add('active');
+    if (pgEl)  pgEl.style.display = '';
     if (tab === 'portfolio') refreshPFPrices();
   }
 
@@ -5522,14 +5526,7 @@
     _pfAutoTimer = setTimeout(_runAutoRefreshTick, 1000);
   }
 
-  // עצור auto-refresh כשעוברים ללשונית אחרת
-  const _origSwitchTab = switchAppTab;
-  function switchAppTab(tab) {
-    _origSwitchTab(tab);
-    if (tab !== 'portfolio' && _pfAutoOn) {
-      // ממשיך לרוץ אבל לא שולח בקשות
-    }
-  }
+  // auto-refresh רץ תמיד אבל שולח בקשה רק כשהלשונית פעילה (בתוך _runAutoRefreshTick)
 
   // Init — טעינה מהקובץ המקומי, אחר כך רינדור
   (async function(){
