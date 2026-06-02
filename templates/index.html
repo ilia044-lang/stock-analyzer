@@ -4902,25 +4902,23 @@
     }
     const isUp    = snaps[snaps.length-1].value >= snaps[0].value;
     const lineCol = isUp ? '#22c55e' : '#ef4444';
-    const fillCol = isUp ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+    const fillCol = isUp ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
     const vals    = snaps.map(s=>s.value);
     const minV    = Math.min(...vals), maxV = Math.max(...vals);
-    const pad     = (maxV - minV) * 0.12 || 50;
+    const pad     = (maxV - minV) * 0.15 || 50;
     Plotly.react('pfLineChart',[{
       type:'scatter', mode:'lines',
       x:snaps.map(s=>s.date), y:vals,
-      line:{color:lineCol, width:2.5, shape:'spline', smoothing:0.8},
+      line:{color:lineCol, width:2.5, shape:'spline', smoothing:1.3},
       fill:'tozeroy', fillcolor:fillCol,
-      hovertemplate:'<b>%{x}</b><br><b style="color:'+lineCol+'">$%{y:,.2f}</b><extra></extra>'
+      hovertemplate:'<b>%{x}</b> · $%{y:,.2f}<extra></extra>'
     }],{
-      margin:{t:8,b:32,l:70,r:12},
+      margin:{t:6,b:6,l:6,r:6},
       paper_bgcolor:'transparent', plot_bgcolor:'transparent',
-      xaxis:{showgrid:false, tickfont:{size:10,color:'#6e6e73'}, showline:false, zeroline:false},
-      yaxis:{showgrid:true, gridcolor:'rgba(0,0,0,.06)', tickprefix:'$',
-             tickfont:{size:10,color:'#6e6e73'}, range:[minV-pad, maxV+pad],
-             showline:false, zeroline:false},
-      hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'#1d1d1f',font:{color:'#fff',size:12}},
-      font:{color:'#3a3a3c'}
+      xaxis:{visible:false, range:[snaps[0].date, snaps[snaps.length-1].date]},
+      yaxis:{visible:false, range:[minV-pad, maxV+pad]},
+      hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:12}},
+      showlegend:false
     },{responsive:true, displayModeBar:false});
   }
 
@@ -5170,32 +5168,25 @@
     const cumDates  = [], cumVals = [];
     let running = 0;
     for (const h of sorted) { running += h.pnl; cumDates.push(h.exit_date); cumVals.push(Math.round(running*100)/100); }
-    const cumUp    = running >= 0;
-    const cumCol   = cumUp ? '#22c55e' : '#ef4444';
-    const cumFill  = cumUp ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
-    const cumMin   = Math.min(0, ...cumVals), cumMax = Math.max(0, ...cumVals);
-    const cumPad   = (cumMax - cumMin) * 0.15 || 20;
-    // צבע הקו משתנה לפי כל נקודה — ירוק מעל 0, אדום מתחת
-    const cumColors = cumVals.map(v => v >= 0 ? '#22c55e' : '#ef4444');
+    const cumUp   = running >= 0;
+    const cumCol  = cumUp ? '#22c55e' : '#ef4444';
+    const cumFill = cumUp ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
+    const cumMin  = Math.min(0, ...cumVals), cumMax = Math.max(0, ...cumVals);
+    const cumPad  = (cumMax - cumMin) * 0.18 || 20;
     Plotly.react('pfCumChart',[{
       type:'scatter', mode:'lines',
       x:cumDates, y:cumVals,
-      line:{color:cumCol, width:2.5, shape:'spline', smoothing:0.7},
+      line:{color:cumCol, width:2.5, shape:'spline', smoothing:1.3},
       fill:'tozeroy', fillcolor:cumFill,
-      hovertemplate:'<b>%{x}</b><br><b>%{y:+$,.2f}</b><extra></extra>'
-    },{
-      type:'scatter', mode:'markers',
-      x:cumDates, y:cumVals,
-      marker:{color:cumColors, size:7, line:{color:'#fff',width:1.5}},
-      hoverinfo:'skip', showlegend:false
+      hovertemplate:'<b>%{x}</b> · %{y:+$,.2f}<extra></extra>'
     }],{
-      margin:{t:5,b:32,l:62,r:10},
+      margin:{t:6,b:6,l:6,r:6},
       paper_bgcolor:'transparent', plot_bgcolor:'transparent',
-      xaxis:{showgrid:false, tickfont:{size:9,color:'#6e6e73'}, showline:false, zeroline:false},
-      yaxis:{showgrid:true, gridcolor:'rgba(0,0,0,.06)', tickprefix:'$',
-             tickfont:{size:9,color:'#6e6e73'}, range:[cumMin-cumPad, cumMax+cumPad],
-             zeroline:true, zerolinecolor:'rgba(0,0,0,.2)', zerolinewidth:1.5},
-      hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'#1d1d1f',font:{color:'#fff',size:12}},
+      xaxis:{visible:false},
+      yaxis:{visible:false, range:[cumMin-cumPad, cumMax+cumPad],
+             zeroline:true, zerolinecolor:'rgba(0,0,0,.15)', zerolinewidth:1},
+      hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:12}},
+      showlegend:false
     },{responsive:true, displayModeBar:false});
 
     // Per-trade bar
