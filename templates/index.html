@@ -4717,11 +4717,14 @@
     const setCls = (id, cls) => { const el=document.getElementById(id); if(el) el.className=cls; };
 
     let totalCost=0, totalVal=0, todayUnrealized=0;
+    let pricesLoaded = 0;
     for (const p of positions) {
-      const pr   = prices[p.ticker];
-      const cost = p.shares * p.avg_cost;
-      const val  = pr&&pr.price ? p.shares*pr.price : cost;
-      const prev = pr&&pr.prev_close&&pr.price ? p.shares*(pr.price-pr.prev_close) : 0;
+      const pr    = prices[p.ticker];
+      const cost  = p.shares * p.avg_cost;
+      const hasPrice = pr && typeof pr.price === 'number' && pr.price > 0;
+      const val   = hasPrice ? p.shares * pr.price : cost;
+      const prev  = hasPrice && pr.prev_close > 0 ? p.shares*(pr.price - pr.prev_close) : 0;
+      if (hasPrice) pricesLoaded++;
       totalCost += cost; totalVal += val; todayUnrealized += prev;
     }
 
@@ -4762,9 +4765,11 @@
 
     // כרטיס 2 — שווי מניות
     set('pfTotalValue', usd(totalVal));
+    const loadedStr = pricesLoaded < positions.length
+      ? ` ⚠️ ${pricesLoaded}/${positions.length} מחירים` : ` ✓ ${pricesLoaded} מניות`;
     const realizedStr = todayRealized !== 0
-      ? ` (כולל ${todayRealized>=0?'+':''}${usd(todayRealized)} ממומש)`  : '';
-    set('pfTodayChg', `${todayPnl>=0?'▲':'▼'} ${todayPnl>=0?'+':''}${usd(todayPnl)} היום${realizedStr}`);
+      ? ` · ממומש: ${todayRealized>=0?'+':''}${usd(todayRealized)}` : '';
+    set('pfTodayChg', `${todayPnl>=0?'▲':'▼'} ${todayPnl>=0?'+':''}${usd(todayPnl)} היום${realizedStr}${loadedStr}`);
     setCls('pfTodayChg','pf-stat-badge '+(tdPos?'pf-badge-pos':'pf-badge-neg'));
 
     // כרטיס 3 — מזומן
@@ -4805,14 +4810,22 @@
   }
 
   function pfRenderTable(positions, prices) {
-    const rows = positions.map(p => {
+    // מיין לפי שווי שוק נוכחי — מהגדול לקטן
+    const sorted = [...positions].sort((a, b) => {
+      const pa = prices[a.ticker], pb = prices[b.ticker];
+      const va = (pa?.price > 0 ? pa.price : a.avg_cost) * a.shares;
+      const vb = (pb?.price > 0 ? pb.price : b.avg_cost) * b.shares;
+      return vb - va;
+    });
+    const rows = sorted.map(p => {
       const pr      = prices[p.ticker];
-      const curP    = pr&&pr.price ? pr.price : null;
+      const hasP    = pr && typeof pr.price === 'number' && pr.price > 0;
+      const curP    = hasP ? pr.price : null;
       const cost    = p.shares * p.avg_cost;
-      const mktVal  = curP ? p.shares * curP : null;
+      const mktVal  = curP != null ? p.shares * curP : null;
       const pnlAbs  = mktVal != null ? mktVal - cost : null;
       const retPct2 = pnlAbs != null ? pnlAbs/cost*100 : null;
-      const dayChg  = pr ? pr.change_pct : null;
+      const dayChg  = hasP ? pr.change_pct : null;
       const pnlCls  = pnlAbs==null?'pf-chip-n':pnlAbs>=0?'pf-chip-g':'pf-chip-r';
       const dayCls  = dayChg==null?'pf-chip-n':dayChg>=0?'pf-chip-g':'pf-chip-r';
       return `<tr onclick="loadPFStockNews('${p.ticker}')" style="cursor:pointer;" title="לחץ לחדשות ועדכוני ${p.ticker}">
@@ -5258,11 +5271,16 @@
   async function loadSparklines(tickers) {
     for (const ticker of tickers) {
       try {
-        const d = await fetch(`/sparkline/${ticker}`).then(r => r.json());
+        const d  = await fetch(`/sparkline/${ticker}`).then(r => r.json());
         const el = document.getElementById(`spark_${ticker}`);
         if (!el) continue;
         if (d.prices && d.prices.length > 1) {
-          el.innerHTML = makeSVGSparkline(d.prices, d.is_up);
+          // צבע לפי change_pct מהמחירים העדכניים — יותר מדויק מ-is_up של ה-sparkline
+          const pf  = _pfPrices[ticker];
+          const isUp = pf && typeof pf.change_pct === 'number'
+            ? pf.change_pct >= 0
+            : d.is_up;
+          el.innerHTML = makeSVGSparkline(d.prices, isUp);
         } else {
           el.innerHTML = '<div style="width:90px;height:34px;background:var(--bg3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--label3);">אין נתונים</div>';
         }

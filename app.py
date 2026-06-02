@@ -3246,29 +3246,61 @@ def portfolio_prices():
         cached = cache_get(cache_key, ttl=120)
         if cached:
             return jsonify(cached)
-    def _fetch_one(ticker):
-        try:
-            t     = yf.Ticker(ticker)
-            intra = t.history(period='1d', interval='5m', prepost=True)
-            daily = t.history(period='5d', interval='1d')
-            if not intra.empty:
-                price = float(intra['Close'].iloc[-1])
-            elif not daily.empty:
-                price = float(daily['Close'].iloc[-1])
-            else:
-                price = float(getattr(t.fast_info, 'last_price', None) or 0)
-            prev = float(daily['Close'].iloc[-2]) if len(daily) >= 2 \
-                   else (float(daily['Open'].iloc[-1]) if not daily.empty else price)
-            chg  = round((price - prev) / prev * 100, 2) if prev else 0
-            return ticker, {'price': round(price, 2), 'prev_close': round(prev, 2), 'change_pct': chg}
-        except Exception as ex:
-            return ticker, {'price': None, 'error': str(ex)}
-
-    # שליפה מקבילית — כל הטיקרים בו-זמנית
     result = {}
-    with ThreadPoolExecutor(max_workers=min(len(ticker_list), 8)) as ex:
-        for ticker, data in ex.map(_fetch_one, ticker_list):
-            result[ticker] = data
+    try:
+        # batch download — בקשה אחת לכל הטיקרים
+        tickers_str = ' '.join(ticker_list)
+        raw = yf.download(tickers_str, period='5d', interval='1d',
+                          group_by='ticker', auto_adjust=True,
+                          progress=False, threads=True)
+        intra_raw = yf.download(tickers_str, period='1d', interval='5m',
+                                group_by='ticker', auto_adjust=True,
+                                prepost=True, progress=False, threads=True)
+
+        for ticker in ticker_list:
+            try:
+                # מחיר עדכני — מהיום intraday
+                if len(ticker_list) == 1:
+                    intra_close = intra_raw['Close']
+                    daily_close = raw['Close']
+                else:
+                    intra_close = intra_raw[ticker]['Close'] if ticker in intra_raw.columns.get_level_values(0) else None
+                    daily_close = raw[ticker]['Close']       if ticker in raw.columns.get_level_values(0)       else None
+
+                intra_vals = intra_close.dropna() if intra_close is not None else None
+                daily_vals = daily_close.dropna() if daily_close is not None else None
+
+                price = None
+                if intra_vals is not None and len(intra_vals) > 0:
+                    price = float(intra_vals.iloc[-1])
+                elif daily_vals is not None and len(daily_vals) > 0:
+                    price = float(daily_vals.iloc[-1])
+
+                if not price:
+                    fi    = yf.Ticker(ticker).fast_info
+                    price = float(getattr(fi, 'last_price', None) or
+                                  getattr(fi, 'regular_market_price', None) or 0)
+
+                prev = float(daily_vals.iloc[-2]) if (daily_vals is not None and len(daily_vals) >= 2) \
+                       else price
+
+                chg = round((price - prev) / prev * 100, 2) if prev else 0
+                result[ticker] = {'price': round(price, 2), 'prev_close': round(prev, 2), 'change_pct': chg}
+            except Exception as e:
+                result[ticker] = {'price': None, 'error': str(e)}
+    except Exception as e:
+        # fallback — שליפה אחת-אחת
+        for ticker in ticker_list:
+            try:
+                t     = yf.Ticker(ticker)
+                fi    = t.fast_info
+                price = float(getattr(fi, 'last_price', None) or
+                              getattr(fi, 'regular_market_price', None) or 0)
+                prev  = float(getattr(fi, 'previous_close', None) or price)
+                chg   = round((price - prev) / prev * 100, 2) if prev else 0
+                result[ticker] = {'price': round(price, 2), 'prev_close': round(prev, 2), 'change_pct': chg}
+            except Exception as e2:
+                result[ticker] = {'price': None, 'error': str(e2)}
 
     cache_set(cache_key, result)
     return jsonify(result)
