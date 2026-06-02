@@ -3249,11 +3249,28 @@ def portfolio_prices():
     result = {}
     for ticker in ticker_list:
         try:
-            t  = yf.Ticker(ticker)
-            fi = t.fast_info
-            price = float(getattr(fi, 'last_price', None) or getattr(fi, 'regular_market_price', None) or 0)
-            prev  = float(getattr(fi, 'previous_close', None) or price)
-            chg   = round((price - prev) / prev * 100, 2) if prev else 0
+            t = yf.Ticker(ticker)
+
+            # history() מחזיר נתוני מחיר אמיתיים ועדכניים — אמין יותר מ-fast_info
+            intra = t.history(period='1d', interval='5m', prepost=True)
+            daily = t.history(period='5d', interval='1d')
+
+            if not intra.empty:
+                price = float(intra['Close'].iloc[-1])
+            elif not daily.empty:
+                price = float(daily['Close'].iloc[-1])
+            else:
+                fi    = t.fast_info
+                price = float(getattr(fi, 'last_price', None) or 0)
+
+            if len(daily) >= 2:
+                prev = float(daily['Close'].iloc[-2])   # יום מסחר קודם
+            elif not daily.empty:
+                prev = float(daily['Open'].iloc[-1])
+            else:
+                prev = price
+
+            chg = round((price - prev) / prev * 100, 2) if prev else 0
             result[ticker] = {
                 'price':      round(price, 2),
                 'prev_close': round(prev,  2),

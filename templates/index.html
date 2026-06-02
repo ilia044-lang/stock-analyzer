@@ -4634,7 +4634,7 @@
     const positions = getPF();
     if (!positions.length) { renderPortfolio(); return; }
     const tickers = positions.map(p=>p.ticker).join(',');
-    const btn = document.querySelector('[onclick="refreshPFPrices()"]');
+    const btn = document.querySelector('[onclick="refreshPFPrices(true)"]');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ מעדכן...'; }
     try {
       _pfPrices = await fetch(`/portfolio-prices?tickers=${tickers}${force?'&force=1':''}`).then(r=>r.json());
