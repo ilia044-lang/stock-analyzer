@@ -4729,10 +4729,18 @@
     }
 
     // רווח ממומש מעסקאות שנסגרו היום (ET)
-    const todayET = new Date(Date.now() - 4*3600000).toISOString().slice(0,10);
-    const todayRealized = getHist()
-      .filter(h => (h.exit_date || (h.closed_at||'').slice(0,10)) === todayET)
-      .reduce((s,h) => s + (h.pnl||0), 0);
+    // תאריכי היום בכמה טיימזונים — ET, UTC, ומקומי
+    const _now = Date.now();
+    const todayUTC  = new Date(_now).toISOString().slice(0,10);
+    const todayET2  = new Date(_now - 4*3600000).toISOString().slice(0,10);
+    const todayLoc  = (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+    const todayDates = new Set([todayUTC, todayET2, todayLoc]);
+
+    const todayTrades = getHist().filter(h => {
+      const d = h.exit_date || (h.closed_at||'').slice(0,10);
+      return todayDates.has(d);
+    });
+    const todayRealized = todayTrades.reduce((s,h) => s + (h.pnl||0), 0);
     const todayPnl = todayUnrealized + todayRealized;
 
     const pnl     = totalVal - totalCost;
@@ -4767,8 +4775,8 @@
     set('pfTotalValue', usd(totalVal));
     const loadedStr = pricesLoaded < positions.length
       ? ` ⚠️ ${pricesLoaded}/${positions.length} מחירים` : ` ✓ ${pricesLoaded} מניות`;
-    const realizedStr = todayRealized !== 0
-      ? ` · ממומש: ${todayRealized>=0?'+':''}${usd(todayRealized)}` : '';
+    const realizedStr = todayTrades.length > 0
+      ? ` · ${todayTrades.length} עסקאות ממומשות: ${todayRealized>=0?'+':''}${usd(todayRealized)}` : ' · אין עסקאות סגורות היום';
     set('pfTodayChg', `${todayPnl>=0?'▲':'▼'} ${todayPnl>=0?'+':''}${usd(todayPnl)} היום${realizedStr}${loadedStr}`);
     setCls('pfTodayChg','pf-stat-badge '+(tdPos?'pf-badge-pos':'pf-badge-neg'));
 
