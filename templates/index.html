@@ -4823,25 +4823,55 @@
 
   function pfRenderPerformers(positions, prices) {
     const enriched = positions.map(p => {
-      const pr  = prices[p.ticker];
-      const cost = p.shares * p.avg_cost;
-      const val  = pr&&pr.price ? p.shares*pr.price : cost;
-      const ret  = (val-cost)/cost*100;
-      const dayChg = pr ? pr.change_pct : 0;
-      return { ticker:p.ticker, ret, dayChg };
-    }).sort((a,b)=>b.ret-a.ret);
+      const pr     = prices[p.ticker];
+      const hasP   = pr && typeof pr.price === 'number' && pr.price > 0;
+      const cost   = p.shares * p.avg_cost;
+      const val    = hasP ? p.shares * pr.price : cost;
+      const pnlAbs = val - cost;
+      const ret    = cost > 0 ? (val - cost) / cost * 100 : 0;
+      const dayChg = hasP ? pr.change_pct : null;
+      const dayAbs = hasP && pr.prev_close > 0 ? p.shares * (pr.price - pr.prev_close) : null;
+      return { ticker: p.ticker, ret, pnlAbs, dayChg, dayAbs, hasP };
+    }).sort((a, b) => b.ret - a.ret);
 
     const el = document.getElementById('pfPerformers');
-    if (!enriched.length) { el.innerHTML=''; return; }
-    el.innerHTML = enriched.map((e,i) => {
-      const col  = e.ret>=0 ? '#15803d' : '#dc2626';
-      const bg   = e.ret>=0 ? 'var(--green-dim)' : 'var(--red-dim)';
-      const rank = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : `${i+1}.`;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:${bg};border-radius:10px;">
-        <span style="font-size:16px;">${rank}</span>
-        <span style="flex:1;font-weight:700;font-size:13px;">${e.ticker}</span>
-        <span style="font-weight:800;color:${col};font-size:13px;">${e.ret>=0?'+':''}${e.ret.toFixed(1)}%</span>
-        <span style="font-size:11px;color:${e.dayChg>=0?'#15803d':'#dc2626'};">(${e.dayChg>=0?'+':''}${e.dayChg.toFixed(1)}% היום)</span>
+    if (!enriched.length) { el.innerHTML = ''; return; }
+
+    el.innerHTML = enriched.map(e => {
+      const cumPos = e.ret >= 0;
+      const dayPos = e.dayChg == null ? null : e.dayChg >= 0;
+      const cumCol = cumPos ? '#15803d' : '#dc2626';
+      const dayCol = dayPos == null ? '#6e6e73' : (dayPos ? '#15803d' : '#dc2626');
+      const cumBg  = cumPos ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.08)';
+      const dayBg  = dayPos == null ? 'var(--bg3)' : (dayPos ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)');
+
+      const dayStr   = e.dayChg  != null ? `${e.dayChg>=0?'+':''}${e.dayChg.toFixed(2)}%`   : '—';
+      const dayAbs$  = e.dayAbs  != null ? ` (${e.dayAbs>=0?'+':''}$${Math.abs(e.dayAbs).toFixed(0)})` : '';
+      const cumStr   = `${e.ret>=0?'+':''}${e.ret.toFixed(2)}%`;
+      const cumAbs$  = ` (${e.pnlAbs>=0?'+':''}$${Math.abs(e.pnlAbs).toFixed(0)})`;
+
+      return `<div style="background:var(--bg2);border:1px solid var(--sep2);border-radius:12px;overflow:hidden;margin-bottom:4px;">
+        <!-- שם מניה -->
+        <div style="padding:8px 14px 4px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:15px;font-weight:800;letter-spacing:.5px;">${e.ticker}</span>
+          <span style="font-size:10px;color:var(--label3);">עלות: $${(e.pnlAbs < 0 ? (Math.abs(e.pnlAbs)+e.pnlAbs) : (e.pnlAbs>=0?e.pnlAbs:0)).toFixed(0)}</span>
+        </div>
+        <!-- שורת יום -->
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:6px 14px;background:${dayBg};border-top:1px solid var(--sep2);">
+          <span style="font-size:10px;color:var(--label3);font-weight:600;letter-spacing:.3px;">📅 שינוי יומי</span>
+          <span style="font-size:14px;font-weight:800;color:${dayCol};">
+            ${dayPos!=null?(dayPos?'▲':'▼'):''} ${dayStr}${dayAbs$}
+          </span>
+        </div>
+        <!-- שורה מצטברת -->
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:6px 14px;background:${cumBg};border-top:1px solid var(--sep2);">
+          <span style="font-size:10px;color:var(--label3);font-weight:600;letter-spacing:.3px;">📈 מצטבר מהכניסה</span>
+          <span style="font-size:14px;font-weight:800;color:${cumCol};">
+            ${cumPos?'▲':'▼'} ${cumStr}${cumAbs$}
+          </span>
+        </div>
       </div>`;
     }).join('');
   }
