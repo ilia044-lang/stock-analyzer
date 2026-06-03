@@ -4531,6 +4531,21 @@
   // ═══════════════════════════════════════════════════════════════
   const PF_KEY         = 'pfPositions';
   const PF_SNAP_KEY    = 'pfSnapshots';
+  const PF_DAILY_KEY   = 'pfDailyLog';   // יומן P&L יומי אוטומטי
+
+  function getDailyLog()       { try { return JSON.parse(localStorage.getItem(PF_DAILY_KEY)) || {}; } catch(e) { return {}; } }
+  function saveDailyLog(log)   { localStorage.setItem(PF_DAILY_KEY, JSON.stringify(log)); pfAutoSave(); }
+
+  function pfSaveDailyPnl(pnl) {
+    if (!_pfPrices || !Object.keys(_pfPrices).length) return;
+    const today  = new Date().toISOString().slice(0,10);
+    const log    = getDailyLog();
+    log[today]   = { pnl: Math.round(pnl * 100) / 100, type: 'auto', ts: Date.now() };
+    // שמור רק 365 ימים אחרונים
+    const keys = Object.keys(log).sort();
+    if (keys.length > 365) { delete log[keys[0]]; }
+    saveDailyLog(log);
+  }
   const PF_CAPITAL_KEY = 'pfTotalCapital';
   let _pfPrices = {};
 
@@ -4555,6 +4570,7 @@
           positions: getPF(),
           history:   getHist(),
           snapshots: (()=>{ try{ return JSON.parse(localStorage.getItem(PF_SNAP_KEY))||[]; }catch(e){return[];} })(),
+          dailyLog:  getDailyLog(),
           capital:   getCapital(),
         };
         await fetch('/api/portfolio/save', {
@@ -4571,9 +4587,10 @@
       const data = await fetch('/api/portfolio/load').then(r => r.json());
       if (data.positions?.length || data.history?.length) {
         // Server file is the source of truth — overwrite localStorage
-        if (data.positions) localStorage.setItem(PF_KEY,        JSON.stringify(data.positions));
-        if (data.history)   localStorage.setItem(PF_HIST_KEY,  JSON.stringify(data.history));
-        if (data.snapshots) localStorage.setItem(PF_SNAP_KEY,  JSON.stringify(data.snapshots));
+        if (data.positions) localStorage.setItem(PF_KEY,          JSON.stringify(data.positions));
+        if (data.history)   localStorage.setItem(PF_HIST_KEY,    JSON.stringify(data.history));
+        if (data.snapshots) localStorage.setItem(PF_SNAP_KEY,    JSON.stringify(data.snapshots));
+        if (data.dailyLog)  localStorage.setItem(PF_DAILY_KEY,   JSON.stringify(data.dailyLog));
         if (data.capital)   localStorage.setItem(PF_CAPITAL_KEY, data.capital);
       }
     } catch(e) {} // offline — keep localStorage values
@@ -4673,19 +4690,26 @@
 
   function pfSaveSnap() {
     const positions = getPF();
-    let total = 0; let ok = true;
+    let total = 0, dayPnl = 0; let ok = true;
     for (const p of positions) {
       const pr = _pfPrices[p.ticker];
-      if (!pr||!pr.price) { ok=false; break; }
-      total += p.shares * pr.price;
+      if (!pr || !pr.price) { ok = false; break; }
+      total  += p.shares * pr.price;
+      // P&L יומי = שינוי מחיר × כמות מניות
+      if (pr.prev_close && pr.prev_close > 0) {
+        dayPnl += p.shares * (pr.price - pr.prev_close);
+      }
     }
     if (!ok || !total) return;
     const today = new Date().toISOString().slice(0,10);
+    // שמור snapshot ערך יומי
     let snaps = []; try { snaps = JSON.parse(localStorage.getItem(PF_SNAP_KEY))||[]; } catch(e){}
     const idx = snaps.findIndex(s=>s.date===today);
     if (idx>=0) snaps[idx].value = Math.round(total*100)/100;
     else snaps.push({date:today, value:Math.round(total*100)/100});
     localStorage.setItem(PF_SNAP_KEY, JSON.stringify(snaps.slice(-365)));
+    // שמור P&L יומי אוטומטי → מופיע בלוח שנה
+    pfSaveDailyPnl(dayPnl);
   }
 
   // ── Render ────────────────────────────────────────────────────
@@ -5062,6 +5086,7 @@
       positions: getPF(),
       history:   getHist(),
       snapshots: (()=>{ try{ return JSON.parse(localStorage.getItem(PF_SNAP_KEY))||[]; }catch(e){return[];} })(),
+      dailyLog:  getDailyLog(),
       capital:   getCapital(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -5520,15 +5545,34 @@
   }
 
   function renderPFCalendar() {
-    const hist = getHist();
-    // Build dayPnl map  { 'YYYY-MM-DD': {pnl, trades:[]} }
+    const hist     = getHist();
+    const dailyLog = getDailyLog(); // P&L אוטומטי יומי מעדכון מחירים
+
+    // Build dayPnl map — משלב עסקאות סגורות + P&L יומי אוטומטי
     const dayMap = {};
+
+    // 1. P&L אוטומטי יומי (unrealized — שינוי מחיר ביום)
+    for (const [date, entry] of Object.entries(dailyLog)) {
+      if (!dayMap[date]) dayMap[date] = { pnl: 0, trades: [], auto: true };
+      // אם אין עסקאות סגורות באותו יום — השתמש ב-P&L האוטומטי
+      dayMap[date]._autoPnl = entry.pnl;
+    }
+
+    // 2. עסקאות סגורות (realized — מחיר כניסה → יציאה)
     for (const h of hist) {
       const d = h.exit_date || h.closed_at?.slice(0,10);
       if (!d) continue;
-      if (!dayMap[d]) dayMap[d] = { pnl: 0, trades: [] };
+      if (!dayMap[d]) dayMap[d] = { pnl: 0, trades: [], auto: false };
       dayMap[d].pnl    += h.pnl;
       dayMap[d].trades.push(h);
+      dayMap[d].auto    = false; // יש עסקאות → לא אוטומטי
+    }
+
+    // סכם P&L לכל יום (עסקאות סגורות + אוטומטי אם אין עסקאות)
+    for (const [d, entry] of Object.entries(dayMap)) {
+      if (entry.auto && entry._autoPnl !== undefined) {
+        entry.pnl = entry._autoPnl;
+      }
     }
 
     // Max abs value for color intensity
@@ -5568,12 +5612,14 @@
       const amtStr  = (isProfit ? '+' : '') + (Math.abs(pnl) >= 1000
         ? (pnl/1000).toFixed(1) + 'K'
         : pnl.toFixed(0));
+      const autoTag = entry.auto ? `<span style="font-size:7px;opacity:.6;">📊</span>` : '';
       cells += `<div class="pf-cal-cell ${isProfit?'profit':'loss'}${todayCls}"
           style="background:${bg};"
           onclick="pfCalSelectDay('${dateStr}')"
-          title="${dateStr}: ${isProfit?'+':''}$${Math.abs(pnl).toFixed(2)}">
+          title="${entry.auto?'שינוי מחיר אוטומטי · ':''}${dateStr}: ${isProfit?'+':''}$${Math.abs(pnl).toFixed(2)}">
         <span class="pf-cal-num">${d}</span>
         <span class="pf-cal-amt" style="color:${txtColor};">${amtStr}$</span>
+        ${autoTag}
       </div>`;
     }
     document.getElementById('pfCalGrid').innerHTML = cells;
