@@ -4975,30 +4975,24 @@
     }, {responsive:true, displayModeBar:false});
   }
 
-  let _pfLineLoading = false; // guard מניעת קריאה מקבילית
+  let _pfLineLoading = false;
 
   async function pfRenderLine() {
-    if (_pfLineLoading) return; // כבר טוען — לא להתחיל שוב
-    const el = document.getElementById('pfLineChart');
+    if (_pfLineLoading) return;
     const positions = getPF();
-    if (!positions.length) {
-      el.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--label3);font-size:12px;">הוסף פוזיציות כדי לראות את הגרף</div>';
-      return;
-    }
 
-    // בדוק אם שעות מסחר ישראל (16:30–23:15)
-    const nowIL   = new Date(Date.now() + 3*3600000); // UTC+3
+    // מציג תמיד נתונים יומיים מיד — ללא טעינה
+    pfRenderDailySnapshots();
+
+    if (!positions.length) return;
+
+    // בשעות מסחר — מנסה לטעון intraday ברקע ומחליף אם מצליח
+    const nowIL = new Date(Date.now() + 3*3600000);
     const h = nowIL.getUTCHours(), m = nowIL.getUTCMinutes();
-    const isMarketHours = (h === 16 && m >= 30) || (h >= 17 && h <= 22) || (h === 23 && m <= 15);
-
-    if (!isMarketHours) {
-      pfRenderDailySnapshots();
-      return;
-    }
+    const inMarket = (h === 16 && m >= 30) || (h >= 17 && h <= 22) || (h === 23 && m <= 15);
+    if (!inMarket) return;
 
     _pfLineLoading = true;
-    el.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--label3);font-size:12px;">⏳ טוען נתוני מסחר...</div>';
-
     const tickers = positions.map(p => p.ticker).join(',');
     const shares  = positions.map(p => p.shares).join(',');
 
