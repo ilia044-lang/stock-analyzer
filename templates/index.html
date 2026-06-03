@@ -1792,10 +1792,10 @@
         <input type="file" accept=".json" style="display:none;" onchange="pfRestore(event)" />
       </label>
       <button class="pf-btn-secondary" onclick="refreshPFPrices(true)" id="pfRefreshBtn">🔄 עדכן מחירים</button>
-      <button class="pf-btn-secondary" onclick="togglePFAutoRefresh()" id="pfAutoBtn"
-        style="min-width:130px;" title="מרענן מחירים כל 10 שניות בשעות מסחר">
-        ⏱ עדכון אוטו: כבוי
-      </button>
+      <div id="pfLiveStatus" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;font-size:12px;font-weight:600;background:var(--bg3);border:1.5px solid var(--sep);">
+        <span id="pfLiveDot" style="width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0;"></span>
+        <span id="pfLiveTxt">בודק שוק...</span>
+      </div>
       <button class="pf-btn-primary"   onclick="openPFModal()">＋ הוסף פוזיציה</button>
     </div>
   </div>
@@ -4523,7 +4523,7 @@
     const pgEl  = document.getElementById(pgId);
     if (capEl) capEl.classList.add('active');
     if (pgEl)  pgEl.style.display = '';
-    if (tab === 'portfolio') refreshPFPrices();
+    if (tab === 'portfolio') { refreshPFPrices(); startAutoRefresh(); }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -5732,46 +5732,83 @@
     alert(`✅ נשמר — ${ticker}: ${pnl>=0?'+':''}$${Math.abs(pnl).toFixed(2)}`);
   }
 
-  // ── Auto-refresh ──────────────────────────────────────────────
-  let _pfAutoOn  = false;
-  let _pfAutoTimer = null;
-  let _pfCountdown = 10;
+  // ── Auto-refresh — פועל אוטומטי בשעות מסחר ──────────────────
+  const REFRESH_INTERVAL = 30; // שניות בין רענונים
+  let _arTimer    = null;
+  let _arCountdown = REFRESH_INTERVAL;
 
-  function togglePFAutoRefresh() {
-    _pfAutoOn = !_pfAutoOn;
-    const btn = document.getElementById('pfAutoBtn');
-    if (_pfAutoOn) {
-      btn.style.background = '#15803d';
-      btn.style.color      = '#fff';
-      btn.style.border     = '1.5px solid #15803d';
-      _pfCountdown = 10;
-      _runAutoRefreshTick();
+  function isMarketOpen() {
+    const nowIL = new Date(Date.now() + 3 * 3600000); // UTC+3 = ישראל
+    const h = nowIL.getUTCHours(), m = nowIL.getUTCMinutes();
+    const dow = nowIL.getUTCDay(); // 0=Sun, 6=Sat
+    if (dow === 0 || dow === 6) return false; // סוף שבוע
+    return (h === 16 && m >= 30) || (h >= 17 && h <= 22) || (h === 23 && m <= 15);
+  }
+
+  function pfUpdateLiveStatus(state, countdown) {
+    const dot = document.getElementById('pfLiveDot');
+    const txt = document.getElementById('pfLiveTxt');
+    const box = document.getElementById('pfLiveStatus');
+    if (!dot || !txt) return;
+    if (state === 'live') {
+      dot.style.background = '#22c55e';
+      dot.style.boxShadow  = '0 0 0 3px rgba(34,197,94,.25)';
+      dot.style.animation  = 'pfPulse 1.5s infinite';
+      txt.textContent      = countdown > 0 ? `🟢 חי · ${countdown}s` : '🟢 מעדכן...';
+      box.style.borderColor = 'var(--green)';
+    } else if (state === 'closed') {
+      dot.style.background = '#94a3b8';
+      dot.style.boxShadow  = 'none';
+      dot.style.animation  = 'none';
+      txt.textContent      = '🔴 שוק סגור';
+      box.style.borderColor = 'var(--sep)';
     } else {
-      btn.textContent = '⏱ עדכון אוטו: כבוי';
-      btn.style.background = '';
-      btn.style.color      = '';
-      btn.style.border     = '';
-      clearTimeout(_pfAutoTimer);
+      dot.style.background = '#f59e0b';
+      dot.style.animation  = 'none';
+      txt.textContent      = '⏸ לא בלשונית';
+      box.style.borderColor = 'var(--sep)';
     }
   }
 
-  function _runAutoRefreshTick() {
-    if (!_pfAutoOn) return;
-    const btn = document.getElementById('pfAutoBtn');
-    if (btn) btn.textContent = `🟢 אוטו · ${_pfCountdown}s`;
-    if (_pfCountdown <= 0) {
-      _pfCountdown = 10;
-      // רענן רק כשלשונית תיק פעילה
-      if (document.getElementById('tabPortfolio')?.style.display !== 'none') {
-        refreshPFPrices(true);
-      }
-    } else {
-      _pfCountdown--;
+  function _arTick() {
+    clearTimeout(_arTimer);
+    const portfolioVisible = document.getElementById('tabPortfolio')?.style.display !== 'none';
+    const open = isMarketOpen();
+
+    if (!open) {
+      pfUpdateLiveStatus('closed');
+      _arTimer = setTimeout(_arTick, 60000); // בדוק שוב עוד דקה
+      return;
     }
-    _pfAutoTimer = setTimeout(_runAutoRefreshTick, 1000);
+    if (!portfolioVisible) {
+      pfUpdateLiveStatus('paused');
+      _arTimer = setTimeout(_arTick, 5000);
+      return;
+    }
+
+    _arCountdown--;
+    pfUpdateLiveStatus('live', _arCountdown);
+
+    if (_arCountdown <= 0) {
+      _arCountdown = REFRESH_INTERVAL;
+      refreshPFPrices(true); // רענון עם bypass cache
+    }
+
+    _arTimer = setTimeout(_arTick, 1000); // tick כל שניה
   }
 
-  // auto-refresh רץ תמיד אבל שולח בקשה רק כשהלשונית פעילה (בתוך _runAutoRefreshTick)
+  function startAutoRefresh() {
+    clearTimeout(_arTimer);
+    _arCountdown = 5; // רענון ראשון עוד 5 שניות
+    _arTick();
+  }
+
+  // CSS animation לנקודה הירוקה
+  (function injectPulse() {
+    const s = document.createElement('style');
+    s.textContent = `@keyframes pfPulse { 0%,100%{opacity:1} 50%{opacity:.4} }`;
+    document.head.appendChild(s);
+  })();
 
   // Init — טעינה מהקובץ המקומי, אחר כך רינדור
   (async function(){
@@ -5779,6 +5816,7 @@
     const p = getPF();
     if (p.length) renderPortfolio();
     renderTradeHistory();
+    startAutoRefresh(); // עדכון אוטומטי מיד בטעינה
   })();
 </script>
 </body>
