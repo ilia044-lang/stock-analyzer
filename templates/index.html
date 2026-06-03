@@ -1969,7 +1969,28 @@
       </div>
       <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
         <div style="padding:12px 16px;font-size:13px;font-weight:700;color:var(--label);">📊 רווח / הפסד לפי עסקה</div>
-        <div id="pfTradeBarChart" style="min-height:200px;" id="pfTradeBarChart"></div>
+        <div id="pfTradeBarChart" style="min-height:200px;"></div>
+      </div>
+
+      <!-- טבלת סטטיסטיקה לכל מניה -->
+      <div style="background:var(--bg2);border-radius:12px;border:1px solid var(--sep2);overflow:hidden;">
+        <div style="padding:12px 16px;font-size:13px;font-weight:700;color:var(--label);border-bottom:1px solid var(--sep2);">
+          📈 סטטיסטיקה לפי מניה
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:var(--bg3);">
+                <th style="padding:8px 14px;text-align:right;font-size:10px;color:var(--label3);font-weight:700;letter-spacing:.4px;text-transform:uppercase;">מניה</th>
+                <th style="padding:8px 8px;text-align:right;font-size:10px;color:var(--label3);font-weight:700;">עסקאות</th>
+                <th style="padding:8px 8px;text-align:right;font-size:10px;color:var(--label3);font-weight:700;">סה"כ רווח/הפסד</th>
+                <th style="padding:8px 8px;text-align:right;font-size:10px;color:var(--label3);font-weight:700;">אחוז הצלחה</th>
+                <th style="padding:8px 8px;text-align:right;font-size:10px;color:var(--label3);font-weight:700;">עסקה אחרונה</th>
+              </tr>
+            </thead>
+            <tbody id="pfTickerStats"></tbody>
+          </table>
+        </div>
       </div>
     </div>
     </div><!-- end pfHistBody -->
@@ -5370,43 +5391,95 @@
       hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:12}},
     },{responsive:true, displayModeBar:false});
 
-    // ── גרף 2: עמודות אופקיות — הכיי ברור לקריאה ──────────────────────────
-    // גובה דינמי: 38px לכל עסקה, מינימום 180px
-    const barH = Math.max(180, sorted.length * 38);
+    // ── גרף 2: עמודות אופקיות — כל עסקה שורה נפרדת ────────────────────────
+    const sortedByPnl = [...sorted].sort((a,b) => b.pnl - a.pnl);
+    // תווית: "ASTS  +$77  06-01" — הכל בשורה אחת, ברורה
+    const hLabels = sortedByPnl.map(h =>
+      `${h.ticker.padEnd(6)}  ${h.exit_date.slice(5)}`);
+    const hVals   = sortedByPnl.map(h => h.pnl);
+    const hColors = sortedByPnl.map(h => h.pnl >= 0 ? '#22c55e' : '#ef4444');
+    const hText   = sortedByPnl.map(h =>
+      (h.pnl >= 0 ? '+' : '') + '$' + Math.abs(h.pnl).toFixed(0) +
+      '  (' + (h.pnl_pct >= 0 ? '+' : '') + h.pnl_pct.toFixed(1) + '%)');
+
+    const barH = Math.max(220, sortedByPnl.length * 44);
     const barEl = document.getElementById('pfTradeBarChart');
     if (barEl) barEl.style.height = barH + 'px';
-    // מיין לפי P&L — הכי טוב למעלה
-    const sortedByPnl = [...sorted].sort((a,b) => b.pnl - a.pnl);
+
+    const xMax = Math.max(...hVals.map(Math.abs)) * 1.35; // מרווח לתוויות
+
     Plotly.react('pfTradeBarChart',[{
       type:'bar', orientation:'h',
-      y: sortedByPnl.map(h => `${h.ticker}  ${h.exit_date.slice(5)}`),
-      x: sortedByPnl.map(h => h.pnl),
-      marker:{
-        color: sortedByPnl.map(h => h.pnl >= 0 ? '#22c55e' : '#ef4444'),
-        line:{ width:0 }, opacity:0.9,
-      },
-      text: sortedByPnl.map(h => (h.pnl >= 0 ? '+$' : '-$') + Math.abs(h.pnl).toFixed(0)),
-      textposition:'outside',
-      textfont:{ size:12, color: sortedByPnl.map(h => h.pnl >= 0 ? '#15803d' : '#dc2626') },
-      hovertemplate:'<b>%{y}</b><br>%{x:+$,.2f}<extra></extra>',
+      y: hLabels, x: hVals,
+      marker:{ color:hColors, line:{width:0}, opacity:0.88 },
+      text: hText,
+      textposition: hVals.map(v => Math.abs(v) > xMax*0.35 ? 'inside' : 'outside'),
+      textfont:{ size:12,
+        color: hVals.map(v => Math.abs(v) > xMax*0.35 ? '#fff'
+                             : (v >= 0 ? '#15803d' : '#dc2626')) },
+      hovertemplate: sortedByPnl.map(h =>
+        `<b>${h.ticker}</b>  ${h.exit_date}<br>` +
+        `רווח/הפסד: <b>${h.pnl >= 0?'+':''}$${Math.abs(h.pnl).toFixed(2)}</b><br>` +
+        `תשואה: <b>${h.pnl_pct >= 0?'+':''}${h.pnl_pct.toFixed(2)}%</b><br>` +
+        `${h.shares} מניות · כניסה: $${h.entry_price} · יציאה: $${h.exit_price}` +
+        `<extra></extra>`),
       cliponaxis: false,
     }],{
-      margin:{t:10,b:14,l:100,r:70},
+      margin:{ t:8, b:14, l:110, r:90 },
       paper_bgcolor:'transparent', plot_bgcolor:'transparent',
-      bargap:0.28,
+      bargap:0.30,
       xaxis:{
+        range:[-xMax, xMax],
         showgrid:true, gridcolor:'rgba(0,0,0,.06)',
         tickprefix:'$', tickfont:{size:11,color:'#6e6e73'},
-        zeroline:true, zerolinecolor:'rgba(0,0,0,.3)', zerolinewidth:1.5,
+        zeroline:true, zerolinecolor:'rgba(0,0,0,.3)', zerolinewidth:2,
         showline:false,
       },
       yaxis:{
         showgrid:false, zeroline:false, showline:false,
-        tickfont:{size:11,color:'#3a3a3c'}, automargin:true,
+        tickfont:{size:12,color:'#1d1d1f', family:'monospace'}, automargin:true,
       },
       showlegend:false, dragmode:false,
       hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:12}},
     },{responsive:true, displayModeBar:false});
+
+    // ── טבלת סטטיסטיקה לכל מניה ─────────────────────────────────────────────
+    const byTicker = {};
+    for (const h of hist) {
+      if (!byTicker[h.ticker]) byTicker[h.ticker] = { trades:[], totalPnl:0, wins:0 };
+      byTicker[h.ticker].trades.push(h);
+      byTicker[h.ticker].totalPnl += h.pnl;
+      if (h.pnl >= 0) byTicker[h.ticker].wins++;
+    }
+    const statsRows = Object.entries(byTicker)
+      .sort((a,b) => b[1].totalPnl - a[1].totalPnl)
+      .map(([ticker, data]) => {
+        const n   = data.trades.length;
+        const pnl = data.totalPnl;
+        const pos = pnl >= 0;
+        const winPct = Math.round(data.wins / n * 100);
+        const lastDate = data.trades.sort((a,b)=>a.exit_date>b.exit_date?1:-1)
+                           .slice(-1)[0].exit_date;
+        return `<tr style="border-bottom:1px solid var(--sep2);">
+          <td style="padding:10px 14px;font-size:14px;font-weight:800;">${ticker}</td>
+          <td style="padding:10px 8px;font-size:12px;color:var(--label3);">${n} עסקאות</td>
+          <td style="padding:10px 8px;">
+            <span style="font-size:14px;font-weight:800;color:${pos?'#15803d':'#dc2626'};">
+              ${pos?'+':''}$${Math.abs(pnl).toFixed(0)}
+            </span>
+          </td>
+          <td style="padding:10px 8px;">
+            <span class="pf-chip ${pos?'pf-chip-g':'pf-chip-r'}" style="font-size:11px;">
+              ${winPct}% הצלחה (${data.wins}/${n})
+            </span>
+          </td>
+          <td style="padding:10px 8px;font-size:11px;color:var(--label3);">
+            אחרון: ${lastDate}
+          </td>
+        </tr>`;
+      }).join('');
+    const statsEl = document.getElementById('pfTickerStats');
+    if (statsEl) statsEl.innerHTML = statsRows || '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--label3);">אין נתונים</td></tr>';
 
     // History table
     const rows = hist.map(h => {
