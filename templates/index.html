@@ -1969,7 +1969,7 @@
       </div>
       <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
         <div style="padding:12px 16px;font-size:13px;font-weight:700;color:var(--label);">📊 רווח / הפסד לפי עסקה</div>
-        <div id="pfTradeBarChart" style="height:200px;"></div>
+        <div id="pfTradeBarChart" style="min-height:200px;" id="pfTradeBarChart"></div>
       </div>
     </div>
     </div><!-- end pfHistBody -->
@@ -5323,64 +5323,86 @@
     }
     const cumIsUp = tCums.length && tCums[tCums.length-1] >= 0;
 
-    // ── גרף 1: Equity Curve — קו רווח מצטבר בסגנון TradingView ─────────────
-    const cumCol  = cumIsUp ? '#22c55e' : '#ef4444';
-    const cumFill = cumIsUp ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)';
+    // ── גרף 1: Equity Curve — נקודה אחת ליום (לא לעסקה) ────────────────────
+    // קבץ לפי תאריך — מונע קווים מבלבלים כשיש כמה עסקאות ביום
+    const byDate = {};
+    for (const h of sorted) {
+      const d = h.exit_date || h.closed_at?.slice(0,10) || '?';
+      byDate[d] = (byDate[d] || 0) + h.pnl;
+    }
+    const eDates = Object.keys(byDate).sort();
+    let eCum = 0;
+    const eCumVals = eDates.map(d => { eCum += byDate[d]; return Math.round(eCum * 100) / 100; });
+    const eDayVals = eDates.map(d => Math.round(byDate[d] * 100) / 100);
+    const eUp = eCum >= 0;
+
     Plotly.react('pfCumChart',[{
       type:'scatter', mode:'lines+markers',
-      x:tLabels, y:tCums,
-      line:{ color:cumCol, width:2.5, shape:'linear' },
+      x: eDates, y: eCumVals,
+      customdata: eDayVals,
+      line:{ color: eUp ? '#22c55e' : '#ef4444', width:3, shape:'spline', smoothing:0.6 },
       marker:{
-        color: tCums.map(v => v >= 0 ? '#22c55e' : '#ef4444'),
-        size:8, line:{color:'#fff',width:2.5}
+        color: eCumVals.map(v => v >= 0 ? '#22c55e' : '#ef4444'),
+        size:10, line:{color:'#fff', width:2.5}
       },
-      fill:'tozeroy', fillcolor:cumFill,
-      hovertemplate:'<b>%{x}</b><br>מצטבר: <b>%{y:+$,.2f}</b><extra></extra>',
+      fill:'tozeroy',
+      fillcolor: eUp ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
+      hovertemplate:
+        '<b>%{x}</b><br>' +
+        'מצטבר: <b>%{y:+$,.2f}</b><br>' +
+        'שינוי יומי: <b>%{customdata:+$,.2f}</b>' +
+        '<extra></extra>',
     }],{
-      margin:{t:12,b:54,l:72,r:18},
+      margin:{t:14,b:42,l:74,r:18},
       paper_bgcolor:'transparent', plot_bgcolor:'transparent',
       xaxis:{
-        type:'category', showgrid:false, zeroline:false,
-        tickfont:{size:11,color:'#6e6e73'}, tickangle:-30,
-        showline:false,
+        showgrid:false, zeroline:false, showline:false,
+        tickfont:{size:11,color:'#6e6e73'}, tickangle: eDates.length > 5 ? -20 : 0,
+        tickformat:'%d/%m',
       },
       yaxis:{
-        showgrid:true, gridcolor:'rgba(0,0,0,.06)', gridwidth:1,
+        showgrid:true, gridcolor:'rgba(0,0,0,.06)',
         tickprefix:'$', tickfont:{size:11,color:'#6e6e73'},
-        zeroline:true, zerolinecolor:'rgba(0,0,0,.3)', zerolinewidth:1.5,
-        showline:false,
+        zeroline:true, zerolinecolor: eUp ? 'rgba(34,197,94,.4)' : 'rgba(239,68,68,.4)',
+        zerolinewidth:1.5, showline:false,
       },
       showlegend:false, dragmode:false,
       hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:12}},
     },{responsive:true, displayModeBar:false});
 
-    // ── גרף 2: Waterfall — רווח/הפסד לפי עסקה בסגנון Bloomberg ─────────────
-    const barColors  = sorted.map(h => h.pnl >= 0 ? '#22c55e' : '#ef4444');
-    const barTexts   = sorted.map(h => (h.pnl >= 0 ? '+$' : '-$') + Math.abs(h.pnl).toFixed(0));
-    const barLabels  = sorted.map(h => `${h.ticker}<br><span style="font-size:9px">${h.exit_date.slice(5)}</span>`);
+    // ── גרף 2: עמודות אופקיות — הכיי ברור לקריאה ──────────────────────────
+    // גובה דינמי: 38px לכל עסקה, מינימום 180px
+    const barH = Math.max(180, sorted.length * 38);
+    const barEl = document.getElementById('pfTradeBarChart');
+    if (barEl) barEl.style.height = barH + 'px';
+    // מיין לפי P&L — הכי טוב למעלה
+    const sortedByPnl = [...sorted].sort((a,b) => b.pnl - a.pnl);
     Plotly.react('pfTradeBarChart',[{
-      type:'bar',
-      x: sorted.map(h => `${h.ticker} ${h.exit_date.slice(5)}`),
-      y: sorted.map(h => h.pnl),
-      marker:{ color:barColors, line:{width:0}, opacity:0.9 },
-      text: barTexts,
-      textposition: sorted.map(h => h.pnl >= 0 ? 'outside' : 'outside'),
-      textfont:{ size:11, color:barColors },
-      hovertemplate:'<b>%{x}</b><br>%{y:+$,.2f}<extra></extra>',
-      width: sorted.length <= 4 ? 0.4 : sorted.length <= 8 ? 0.55 : 0.7,
-    }],{
-      margin:{t:16,b:56,l:68,r:18},
-      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
-      bargap:0.30,
-      xaxis:{
-        type:'category', showgrid:false, zeroline:false,
-        tickfont:{size:10,color:'#6e6e73'}, tickangle:-30, showline:false,
+      type:'bar', orientation:'h',
+      y: sortedByPnl.map(h => `${h.ticker}  ${h.exit_date.slice(5)}`),
+      x: sortedByPnl.map(h => h.pnl),
+      marker:{
+        color: sortedByPnl.map(h => h.pnl >= 0 ? '#22c55e' : '#ef4444'),
+        line:{ width:0 }, opacity:0.9,
       },
-      yaxis:{
-        showgrid:true, gridcolor:'rgba(0,0,0,.06)', gridwidth:1,
+      text: sortedByPnl.map(h => (h.pnl >= 0 ? '+$' : '-$') + Math.abs(h.pnl).toFixed(0)),
+      textposition:'outside',
+      textfont:{ size:12, color: sortedByPnl.map(h => h.pnl >= 0 ? '#15803d' : '#dc2626') },
+      hovertemplate:'<b>%{y}</b><br>%{x:+$,.2f}<extra></extra>',
+      cliponaxis: false,
+    }],{
+      margin:{t:10,b:14,l:100,r:70},
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      bargap:0.28,
+      xaxis:{
+        showgrid:true, gridcolor:'rgba(0,0,0,.06)',
         tickprefix:'$', tickfont:{size:11,color:'#6e6e73'},
         zeroline:true, zerolinecolor:'rgba(0,0,0,.3)', zerolinewidth:1.5,
         showline:false,
+      },
+      yaxis:{
+        showgrid:false, zeroline:false, showline:false,
+        tickfont:{size:11,color:'#3a3a3c'}, automargin:true,
       },
       showlegend:false, dragmode:false,
       hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:12}},
