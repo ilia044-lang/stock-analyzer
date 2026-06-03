@@ -4523,7 +4523,11 @@
     const pgEl  = document.getElementById(pgId);
     if (capEl) capEl.classList.add('active');
     if (pgEl)  pgEl.style.display = '';
-    if (tab === 'portfolio') { refreshPFPrices(); startAutoRefresh(); }
+    if (tab === 'portfolio') {
+      refreshPFPrices();
+      startAutoRefresh();
+      pfRenderLine(); // גרף ערך תיק — פעם אחת בפתיחה
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -4728,7 +4732,7 @@
     pfRenderPerformers(positions, prices);
     pfRenderPie(positions, prices);
     pfRenderBar(positions, prices);
-    pfRenderLine();
+    // pfRenderLine נקרא בנפרד — פעם אחת בטעינת הלשונית, לא בכל רענון מחירים
   }
 
   function pfClearStats() {
@@ -4971,7 +4975,10 @@
     }, {responsive:true, displayModeBar:false});
   }
 
+  let _pfLineLoading = false; // guard מניעת קריאה מקבילית
+
   async function pfRenderLine() {
+    if (_pfLineLoading) return; // כבר טוען — לא להתחיל שוב
     const el = document.getElementById('pfLineChart');
     const positions = getPF();
     if (!positions.length) {
@@ -4989,15 +4996,16 @@
       return;
     }
 
+    _pfLineLoading = true;
     el.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--label3);font-size:12px;">⏳ טוען נתוני מסחר...</div>';
 
     const tickers = positions.map(p => p.ticker).join(',');
     const shares  = positions.map(p => p.shares).join(',');
 
     try {
-      // timeout של 12 שניות — אם לא מגיב נפנה לנתונים יומיים
+      // timeout של 10 שניות — אם לא מגיב נפנה לנתונים יומיים
       const controller = new AbortController();
-      const timeout    = setTimeout(() => controller.abort(), 12000);
+      const timeout    = setTimeout(() => controller.abort(), 10000);
       const data = await fetch(`/portfolio-intraday?tickers=${tickers}&shares=${shares}`,
                                { signal: controller.signal }).then(r => r.json());
       clearTimeout(timeout);
@@ -5076,6 +5084,8 @@
 
     } catch(e) {
       pfRenderDailySnapshots(); // fallback לנתונים יומיים
+    } finally {
+      _pfLineLoading = false; // שחרר guard בכל מקרה
     }
   }
 
@@ -5816,7 +5826,8 @@
     const p = getPF();
     if (p.length) renderPortfolio();
     renderTradeHistory();
-    startAutoRefresh(); // עדכון אוטומטי מיד בטעינה
+    pfRenderLine();      // גרף ערך תיק — פעם אחת בטעינה
+    startAutoRefresh();  // עדכון מחירים אוטומטי
   })();
 </script>
 </body>
