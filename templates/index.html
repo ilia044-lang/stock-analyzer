@@ -907,19 +907,21 @@
       padding: 6px 12px; font-size: 12px; font-weight: 700; white-space: nowrap;
     }
     .pf-stat-card {
-      background: var(--bg2); border-radius: 16px; padding: 20px;
-      border: 1px solid var(--sep2); display: flex; align-items: flex-start; gap: 14px;
+      background: var(--bg2); border-radius: 18px; padding: 22px 20px 18px;
+      border: 1px solid var(--sep2); display: flex; flex-direction: column;
+      gap: 10px; min-height: 130px;
     }
-    .pf-stat-icon  { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .pf-stat-top   { display: flex; align-items: center; gap: 12px; }
+    .pf-stat-icon  { width: 44px; height: 44px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
     .pf-stat-body  { flex: 1; min-width: 0; }
-    .pf-stat-label { font-size: 10px; color: var(--label3); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; }
-    .pf-stat-value { font-size: 24px; font-weight: 800; color: var(--label); letter-spacing: -.5px; line-height: 1.1; }
-    .pf-stat-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; margin-top: 6px; }
+    .pf-stat-label { font-size: 11px; color: var(--label3); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 6px; }
+    .pf-stat-value { font-size: 28px; font-weight: 800; color: var(--label); letter-spacing: -.5px; line-height: 1.05; }
+    .pf-stat-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .pf-badge-pos  { background: var(--green-dim); color: #15803d; }
     .pf-badge-neg  { background: var(--red-dim);   color: #dc2626; }
     .pf-badge-neu  { background: var(--bg3);        color: var(--label3); }
 
-    .pf-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .pf-row3 { display: grid; grid-template-columns: 300px 1fr 260px; gap: 16px; }
     .pf-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .pf-card { background: var(--bg2); border-radius: 16px; border: 1px solid var(--sep2); overflow: hidden; }
     .pf-card-hdr { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--sep2); }
@@ -980,16 +982,17 @@
     .pf-divider::before,.pf-divider::after { content:''; flex:1; height:1px; background:var(--sep2); }
 
     @media (max-width: 1200px) {
-      .pf-stats { grid-template-columns: repeat(3,1fr); }
+      .pf-stats { grid-template-columns: repeat(2,1fr) !important; }
+      .pf-row3  { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 900px) {
-      .pf-stats { grid-template-columns: repeat(2,1fr); }
+      .pf-stats { grid-template-columns: repeat(2,1fr) !important; }
       .pf-row3  { grid-template-columns: 1fr; }
       .pf-row2  { grid-template-columns: 1fr; }
       .pf-hist-stats { grid-template-columns: repeat(3,1fr); }
     }
     @media (max-width: 600px) {
-      .pf-stats { grid-template-columns: 1fr; }
+      .pf-stats { grid-template-columns: 1fr !important; }
       .pf-page  { padding: 14px; }
       .pf-hist-stats { grid-template-columns: repeat(2,1fr); }
     }
@@ -1800,40 +1803,45 @@
     </div>
   </div>
 
-  <!-- Stat Cards — 4 כרטיסים בלבד, רק מפוזיציות -->
+  <!-- Stat Cards — 4 כרטיסים -->
   <div class="pf-stats" id="pfStats" style="grid-template-columns:repeat(4,1fr);">
+
     <div class="pf-stat-card">
-      <div class="pf-stat-icon" style="background:#f0fdf4;">📈</div>
-      <div class="pf-stat-body">
+      <div class="pf-stat-top">
+        <div class="pf-stat-icon" style="background:#f0fdf4;">📈</div>
         <div class="pf-stat-label">שווי מניות</div>
-        <div class="pf-stat-value" id="pfTotalValue">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfTodayChg">שינוי היום: —</div>
       </div>
+      <div class="pf-stat-value" id="pfTotalValue">—</div>
+      <div class="pf-stat-badge pf-badge-neu" id="pfTodayChg">שינוי היום: —</div>
     </div>
+
     <div class="pf-stat-card">
-      <div class="pf-stat-icon" style="background:#fff7ed;">🎯</div>
-      <div class="pf-stat-body">
+      <div class="pf-stat-top">
+        <div class="pf-stat-icon" style="background:#fff7ed;">🎯</div>
         <div class="pf-stat-label">רווח / הפסד</div>
-        <div class="pf-stat-value" id="pfPnlAbs">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfPnlBadge">מחיר קנייה → עכשיו</div>
       </div>
+      <div class="pf-stat-value" id="pfPnlAbs">—</div>
+      <div class="pf-stat-badge pf-badge-neu" id="pfPnlBadge">מחיר קנייה → עכשיו</div>
     </div>
+
     <div class="pf-stat-card">
-      <div class="pf-stat-icon" style="background:#fdf4ff;">📊</div>
-      <div class="pf-stat-body">
+      <div class="pf-stat-top">
+        <div class="pf-stat-icon" style="background:#fdf4ff;">📊</div>
         <div class="pf-stat-label">תשואה</div>
-        <div class="pf-stat-value" id="pfReturnPct">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfReturnBadge">על ההשקעה</div>
       </div>
+      <div class="pf-stat-value" id="pfReturnPct">—</div>
+      <div class="pf-stat-badge pf-badge-neu" id="pfReturnBadge">על ההשקעה</div>
     </div>
+
     <div class="pf-stat-card">
-      <div class="pf-stat-icon" style="background:#eff6ff;">📅</div>
-      <div class="pf-stat-body">
+      <div class="pf-stat-top">
+        <div class="pf-stat-icon" style="background:#eff6ff;">📅</div>
         <div class="pf-stat-label">שינוי יומי</div>
-        <div class="pf-stat-value" id="pfDayChange">—</div>
-        <div class="pf-stat-badge pf-badge-neu" id="pfDayChangeSub">היום בלבד</div>
       </div>
+      <div class="pf-stat-value" id="pfDayChange">—</div>
+      <div class="pf-stat-badge pf-badge-neu" id="pfDayChangeSub">היום בלבד</div>
     </div>
+
   </div>
 
   <!-- Charts Row -->
@@ -4893,27 +4901,36 @@
       const cumStr   = `${e.ret>=0?'+':''}${e.ret.toFixed(2)}%`;
       const cumAbs$  = ` (${e.pnlAbs>=0?'+':''}$${Math.abs(e.pnlAbs).toFixed(0)})`;
 
-      return `<div style="background:var(--bg2);border:1px solid var(--sep2);border-radius:12px;overflow:hidden;margin-bottom:4px;">
-        <!-- שם מניה -->
-        <div style="padding:8px 14px 4px;display:flex;align-items:center;justify-content:space-between;">
-          <span style="font-size:15px;font-weight:800;letter-spacing:.5px;">${e.ticker}</span>
-          <span style="font-size:10px;color:var(--label3);">עלות: $${(e.pnlAbs < 0 ? (Math.abs(e.pnlAbs)+e.pnlAbs) : (e.pnlAbs>=0?e.pnlAbs:0)).toFixed(0)}</span>
+      const arrow = v => v >= 0 ? '▲' : '▼';
+      return `<div style="background:var(--bg2);border:1px solid var(--sep2);border-radius:14px;overflow:hidden;margin-bottom:8px;">
+        <!-- שם מניה + עלות -->
+        <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:16px;font-weight:800;letter-spacing:.5px;">${e.ticker}</span>
+          <span style="font-size:10px;color:var(--label3);background:var(--bg3);border-radius:6px;padding:2px 7px;">
+            עלות: $${Math.abs((e.pnlAbs||0) - (e.pnlAbs||0) + (e.hasP ? e.pnlAbs+Math.abs(e.pnlAbs-e.pnlAbs):0)).toFixed(0)}
+          </span>
         </div>
         <!-- שורת יום -->
-        <div style="display:flex;align-items:center;justify-content:space-between;
-                    padding:6px 14px;background:${dayBg};border-top:1px solid var(--sep2);">
-          <span style="font-size:10px;color:var(--label3);font-weight:600;letter-spacing:.3px;">📅 שינוי יומי</span>
-          <span style="font-size:14px;font-weight:800;color:${dayCol};">
-            ${dayPos!=null?(dayPos?'▲':'▼'):''} ${dayStr}${dayAbs$}
-          </span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;
+                    padding:8px 14px;background:${dayBg};border-top:1px solid var(--sep2);">
+          <span style="font-size:11px;color:var(--label3);font-weight:600;white-space:nowrap;">📅 שינוי יומי</span>
+          <div style="text-align:left;">
+            <div style="font-size:16px;font-weight:800;color:${dayCol};line-height:1.1;">
+              ${dayPos!=null?arrow(e.dayChg):''} ${dayStr}
+            </div>
+            ${e.dayAbs!=null?`<div style="font-size:11px;color:${dayCol};opacity:.8;">${e.dayAbs>=0?'+':''}$${Math.abs(e.dayAbs).toFixed(0)}</div>`:''}
+          </div>
         </div>
         <!-- שורה מצטברת -->
-        <div style="display:flex;align-items:center;justify-content:space-between;
-                    padding:6px 14px;background:${cumBg};border-top:1px solid var(--sep2);">
-          <span style="font-size:10px;color:var(--label3);font-weight:600;letter-spacing:.3px;">📈 מצטבר מהכניסה</span>
-          <span style="font-size:14px;font-weight:800;color:${cumCol};">
-            ${cumPos?'▲':'▼'} ${cumStr}${cumAbs$}
-          </span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;
+                    padding:8px 14px;background:${cumBg};border-top:1px solid var(--sep2);">
+          <span style="font-size:11px;color:var(--label3);font-weight:600;white-space:nowrap;">📈 מהכניסה</span>
+          <div style="text-align:left;">
+            <div style="font-size:16px;font-weight:800;color:${cumCol};line-height:1.1;">
+              ${arrow(e.ret)} ${cumStr}
+            </div>
+            <div style="font-size:11px;color:${cumCol};opacity:.8;">${e.pnlAbs>=0?'+':''}$${Math.abs(e.pnlAbs).toFixed(0)}</div>
+          </div>
         </div>
       </div>`;
     }).join('');
