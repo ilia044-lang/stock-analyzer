@@ -1290,6 +1290,7 @@
 </header>
 
 <!-- ── Tab Bar ── -->
+<div id="_jsErrorBanner" style="display:none;background:#7f1d1d;color:#fca5a5;padding:8px 16px;font-size:13px;font-family:monospace;direction:ltr;"></div>
 <div class="app-tab-bar">
   <button class="app-tab-btn active" id="tabBtnAnalysis"     onclick="switchAppTab('analysis')">📊 ניתוח מניות</button>
   <button class="app-tab-btn"        id="tabBtnPortfolio"    onclick="switchAppTab('portfolio')">💼 תיק ההשקעות</button>
@@ -2490,8 +2491,16 @@
 </div>
 
 <script>
+  // ── Global error catcher (debug) ─────────────────────────────────────────────
+  window.onerror = function(msg, src, line, col, err) {
+    console.error('JS ERROR:', msg, 'at', src, 'line', line);
+    const el = document.getElementById('_jsErrorBanner');
+    if (el) { el.style.display = 'block'; el.textContent = '⚠️ JS Error line ' + line + ': ' + msg; }
+    return false;
+  };
+
   const tickerInput = document.getElementById('tickerInput');
-  tickerInput.addEventListener('keydown', e => { if (e.key === 'Enter') runAnalysis(); });
+  if (tickerInput) tickerInput.addEventListener('keydown', e => { if (e.key === 'Enter') runAnalysis(); });
 
   // ── Market Overview ──────────────────────────────────────────────────────────
   let marketExpanded = false;
@@ -4625,8 +4634,10 @@
 
   // אתחול בטעינת דף
   (function initStockPred() {
-    const tickers = loadSavedTickers();
-    buildStockDisplay(tickers);
+    try {
+      const tickers = loadSavedTickers();
+      buildStockDisplay(tickers);
+    } catch(e) { console.warn('initStockPred error:', e); }
   })();
 
   // טעינה בפתיחה ורענון כל 5 דקות
@@ -4855,7 +4866,7 @@
   }, 60000);
 
   // הצג זמן הבא מיד בטעינה
-  document.getElementById('scanNextScan').textContent = nextScanLabel();
+  try { document.getElementById('scanNextScan').textContent = nextScanLabel(); } catch(e) { console.warn('scanNextScan error:', e); }
 
   // ═══════════════════════════════════════════════════════════════
   //  TAB SWITCHING
