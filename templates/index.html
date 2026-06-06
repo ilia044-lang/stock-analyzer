@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>מנתח מניות - שיטת מיכה סטוקס</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
   <style>
     /* ══════════════════════════════════════
        Apple Light Design System (apple.com)
@@ -876,6 +877,64 @@
     .app-tab-btn:hover:not(.active) { color: var(--label2); }
 
     /* ══════════════════════════════════════
+       Fundamental Analysis Tab
+       ══════════════════════════════════════ */
+    #tabFundamental { max-width: 1400px; margin: 0 auto; padding: 20px 16px 60px; }
+    .fa-search-bar { display:flex;gap:10px;align-items:center;background:var(--bg2);border-radius:var(--r-lg);padding:14px 18px;margin-bottom:20px;box-shadow:var(--shadow-sm);border:1px solid var(--sep2); }
+    .fa-search-bar input { flex:1;border:none;background:transparent;outline:none;font-size:16px;font-family:inherit;color:var(--label);direction:ltr;text-transform:uppercase; }
+    .fa-search-bar input::placeholder { color:var(--label3);text-transform:none;direction:rtl; }
+    .fa-search-bar button { background:var(--blue);color:#fff;border:none;border-radius:var(--r-sm);padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit; }
+    .fa-search-bar button:hover { background:#005bbf; }
+    .fa-company-header { background:var(--bg2);border-radius:var(--r-lg);padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm);border:1px solid var(--sep2);display:flex;flex-wrap:wrap;gap:14px;align-items:center; }
+    .fa-company-name { font-size:20px;font-weight:700;color:var(--label); }
+    .fa-company-ticker { font-size:13px;font-weight:700;background:var(--blue-dim);color:var(--blue);padding:3px 10px;border-radius:20px; }
+    .fa-company-meta { display:flex;flex-wrap:wrap;gap:14px;margin-right:auto; }
+    .fa-meta-item { font-size:12px;color:var(--label3); }
+    .fa-meta-item span { color:var(--label);font-weight:600; }
+    .fa-rec-badge { padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:none; }
+    .fa-rec-badge.buy  { background:var(--green-dim);color:#15803d; }
+    .fa-rec-badge.hold { background:var(--yellow-dim);color:var(--yellow); }
+    .fa-rec-badge.sell { background:var(--red-dim);color:var(--red); }
+    .fa-rec-badge.neutral { background:var(--bg3);color:var(--label3); }
+    .fa-period-bar { display:flex;gap:6px;margin-bottom:16px; }
+    .fa-period-btn { padding:6px 16px;border-radius:20px;border:1px solid var(--sep);background:var(--bg2);color:var(--label3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit; }
+    .fa-period-btn.active { background:var(--blue);color:#fff;border-color:var(--blue); }
+    .fa-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px; }
+    .fa-grid-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px; }
+    @media(max-width:800px) { .fa-grid-2,.fa-grid-3 { grid-template-columns:1fr; } }
+    .fa-chart-card { background:var(--bg2);border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow-sm);border:1px solid var(--sep2); }
+    .fa-chart-title { font-size:13px;font-weight:700;color:var(--label);margin-bottom:4px; }
+    .fa-chart-subtitle { font-size:11px;color:var(--label3);margin-bottom:10px; }
+    .fa-metrics-section { margin-bottom:14px; }
+    .fa-section-title { font-size:12px;font-weight:700;color:var(--label3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-right:2px; }
+    .fa-metrics-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px; }
+    .fa-metric-card { background:var(--bg2);border-radius:var(--r-md);padding:14px;box-shadow:var(--shadow-sm);border:1px solid var(--sep2);cursor:default;position:relative; }
+    .fa-metric-card:hover .fa-metric-tip { opacity:1;pointer-events:auto; }
+    .fa-metric-label { font-size:11px;color:var(--label3);margin-bottom:6px;font-weight:500; }
+    .fa-metric-value { font-size:20px;font-weight:700;color:var(--label);line-height:1.1; }
+    .fa-metric-value.green { color:#15803d; } .fa-metric-value.red { color:var(--red); } .fa-metric-value.blue { color:var(--blue); }
+    .fa-metric-tip { position:absolute;bottom:calc(100% + 6px);right:0;left:0;background:#1d1d1f;color:#fff;font-size:11px;line-height:1.5;padding:8px 10px;border-radius:var(--r-sm);z-index:50;opacity:0;pointer-events:none;transition:opacity 0.15s;text-align:right;direction:rtl;box-shadow:var(--shadow); }
+    .fa-analyst-bar { display:flex;height:10px;border-radius:6px;overflow:hidden;margin:8px 0; }
+    .fa-analyst-bar .buy { background:var(--green); } .fa-analyst-bar .hold { background:#f59e0b; } .fa-analyst-bar .sell { background:var(--red); }
+    .fa-target-track { flex:1;height:6px;background:var(--bg3);border-radius:3px;position:relative;direction:ltr; }
+    .fa-target-fill  { position:absolute;top:0;left:0;height:100%;background:var(--blue);border-radius:3px; }
+    .fa-target-dot   { position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;background:#ff9f0a;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 2px #ff9f0a;cursor:pointer;transition:transform .15s,box-shadow .15s; }
+    .fa-target-dot:hover { transform:translate(-50%,-50%) scale(1.4);box-shadow:0 0 0 4px rgba(255,159,10,0.35); }
+    .fa-target-dot .fa-dot-tip { display:none;position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);background:#1d1d1f;color:#fff;font-size:12px;font-family:-apple-system,sans-serif;white-space:nowrap;padding:7px 11px;border-radius:8px;pointer-events:none;z-index:99;line-height:1.5; }
+    .fa-target-dot .fa-dot-tip::after { content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1d1d1f; }
+    .fa-target-dot:hover .fa-dot-tip { display:block; }
+    .fa-desc-box { background:var(--bg2);border-radius:var(--r-lg);padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow-sm);border:1px solid var(--sep2);font-size:13px;line-height:1.6;color:var(--label2);max-height:120px;overflow:hidden;position:relative; }
+    .fa-desc-box.expanded { max-height:none; }
+    .fa-desc-more { position:absolute;bottom:0;right:0;left:0;background:linear-gradient(transparent,var(--bg2));text-align:center;padding-top:30px;padding-bottom:8px;font-size:12px;color:var(--blue);cursor:pointer;font-weight:600; }
+    .fa-desc-box.expanded .fa-desc-more { display:none; }
+    .fa-loading { text-align:center;padding:60px;color:var(--label3);font-size:14px; }
+    .fa-error   { text-align:center;padding:40px;color:var(--red);font-size:14px; }
+    .fa-empty   { text-align:center;padding:80px 20px;color:var(--label3); }
+    .fa-empty-icon { font-size:48px;margin-bottom:12px; }
+    .fa-empty-text { font-size:15px;font-weight:600;margin-bottom:8px;color:var(--label2); }
+    .fa-empty-sub  { font-size:13px; }
+
+    /* ══════════════════════════════════════
        Portfolio Dashboard
        ══════════════════════════════════════ */
     .pf-page { max-width: 1400px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
@@ -887,7 +946,7 @@
     .pf-btn-secondary { background: var(--bg2); border: 1.5px solid var(--sep); border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600; color: var(--label2); cursor: pointer; }
     .pf-btn-secondary:hover { background: var(--bg3); }
 
-    .pf-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+    .pf-stats { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; }
     .pf-capital-bar {
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
       background: linear-gradient(135deg,#1e3a5f,#1e40af);
@@ -920,7 +979,7 @@
     .pf-badge-neg  { background: var(--red-dim);   color: #dc2626; }
     .pf-badge-neu  { background: var(--bg3);        color: var(--label3); }
 
-    .pf-row3 { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 16px; }
+    .pf-row3 { display: grid; grid-template-columns: 300px 1fr 260px; gap: 16px; }
     .pf-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .pf-card { background: var(--bg2); border-radius: 16px; border: 1px solid var(--sep2); overflow: hidden; }
     .pf-card-hdr { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--sep2); }
@@ -980,19 +1039,20 @@
     .pf-divider { display: flex; align-items: center; gap: 12px; color: var(--label3); font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
     .pf-divider::before,.pf-divider::after { content:''; flex:1; height:1px; background:var(--sep2); }
 
-    @media (max-width: 1100px) {
-      .pf-stats { grid-template-columns: repeat(2,1fr); }
+    @media (max-width: 1200px) {
+      .pf-stats { grid-template-columns: repeat(2,1fr) !important; }
       .pf-row3  { grid-template-columns: 1fr 1fr; }
     }
-    @media (max-width: 700px) {
-      .pf-stats { grid-template-columns: repeat(2,1fr); }
+    @media (max-width: 900px) {
+      .pf-stats { grid-template-columns: repeat(2,1fr) !important; }
       .pf-row3  { grid-template-columns: 1fr; }
       .pf-row2  { grid-template-columns: 1fr; }
-      .pf-hist-stats { grid-template-columns: repeat(2,1fr); }
+      .pf-hist-stats { grid-template-columns: repeat(3,1fr); }
     }
-    @media (max-width: 480px) {
-      .pf-stats { grid-template-columns: 1fr; }
-      .pf-page  { padding: 12px; gap: 14px; }
+    @media (max-width: 600px) {
+      .pf-stats { grid-template-columns: 1fr !important; }
+      .pf-page  { padding: 14px; }
+      .pf-hist-stats { grid-template-columns: repeat(2,1fr); }
     }
 
     /* ── SL suggestion ── */
@@ -1022,250 +1082,6 @@
       .checklist-grid { grid-template-columns: 1fr; }
       .ww-cols { flex-direction: column; }
     }
-
-    /* ══════════════════════════════════════
-       AI CHAT TAB
-       ══════════════════════════════════════ */
-    #tabAichat {
-      max-width: 860px; margin: 0 auto; padding: 20px 16px 0;
-      display: flex; flex-direction: column; height: calc(100vh - 130px);
-    }
-    .ai-chat-header {
-      background: var(--bg2); border-radius: var(--r-lg) var(--r-lg) 0 0;
-      padding: 16px 20px; border: 1px solid var(--sep2); border-bottom: none;
-      display: flex; align-items: center; gap: 12px;
-    }
-    .ai-chat-avatar {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: linear-gradient(135deg, #0071e3, #7c3aed);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; flex-shrink: 0;
-    }
-    .ai-chat-title { font-size: 15px; font-weight: 700; color: var(--label); }
-    .ai-chat-sub   { font-size: 11px; color: var(--label3); margin-top: 1px; }
-    .ai-chat-status { margin-right: auto; font-size: 11px; color: #16a34a; display: flex; align-items: center; gap: 5px; }
-    .ai-status-dot  { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; animation: aiPulse 2s infinite; }
-    @keyframes aiPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-    .ai-messages {
-      flex: 1; overflow-y: auto; padding: 20px;
-      background: var(--bg2); border: 1px solid var(--sep2); border-bottom: none;
-      display: flex; flex-direction: column; gap: 14px;
-    }
-    .ai-msg { display: flex; gap: 10px; align-items: flex-end; }
-    .ai-msg.user { flex-direction: row-reverse; }
-    .ai-msg-avatar {
-      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg, #0071e3, #7c3aed);
-      display: flex; align-items: center; justify-content: center; font-size: 14px;
-    }
-    .ai-msg.user .ai-msg-avatar { background: var(--bg4); font-size: 13px; }
-    .ai-bubble {
-      max-width: 78%; padding: 11px 15px; border-radius: 18px;
-      font-size: 13.5px; line-height: 1.6; direction: rtl;
-    }
-    .ai-msg.assistant .ai-bubble {
-      background: var(--bg2); border: 1px solid var(--sep2);
-      border-bottom-right-radius: 4px; color: var(--label);
-      box-shadow: var(--shadow-sm);
-    }
-    .ai-msg.user .ai-bubble {
-      background: var(--blue); color: #fff;
-      border-bottom-left-radius: 4px;
-    }
-    .ai-bubble strong { font-weight: 700; }
-    .ai-bubble code {
-      background: rgba(0,0,0,0.07); padding: 1px 5px; border-radius: 4px;
-      font-size: 12px; font-family: monospace;
-    }
-    .ai-typing {
-      display: flex; gap: 5px; padding: 12px 16px; align-items: center;
-    }
-    .ai-typing span {
-      width: 7px; height: 7px; border-radius: 50%; background: var(--label3);
-      animation: aiTyping 1.2s infinite;
-    }
-    .ai-typing span:nth-child(2) { animation-delay: .2s; }
-    .ai-typing span:nth-child(3) { animation-delay: .4s; }
-    @keyframes aiTyping { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
-
-    .ai-chat-input-row {
-      background: var(--bg2); border: 1px solid var(--sep2);
-      border-radius: 0 0 var(--r-lg) var(--r-lg);
-      padding: 12px 14px; display: flex; gap: 10px; align-items: flex-end;
-      margin-bottom: 16px;
-    }
-    .ai-chat-input {
-      flex: 1; border: 1px solid var(--sep); border-radius: var(--r-md);
-      padding: 10px 14px; font-size: 14px; font-family: inherit;
-      background: var(--bg3); color: var(--label); resize: none;
-      outline: none; direction: rtl; max-height: 120px; overflow-y: auto;
-      line-height: 1.5;
-    }
-    .ai-chat-input:focus { border-color: var(--blue); box-shadow: var(--glow-blue); }
-    .ai-send-btn {
-      width: 40px; height: 40px; border-radius: 50%; border: none;
-      background: var(--blue); color: #fff; font-size: 18px;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; transition: background .15s;
-    }
-    .ai-send-btn:hover { background: #005bbf; }
-    .ai-send-btn:disabled { background: var(--bg4); cursor: default; }
-
-    .ai-quick-btns {
-      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
-    }
-    .ai-quick-btn {
-      padding: 5px 12px; border-radius: 20px; border: 1px solid var(--sep);
-      background: var(--bg2); color: var(--label2); font-size: 12px;
-      cursor: pointer; font-family: inherit; white-space: nowrap;
-    }
-    .ai-quick-btn:hover { background: var(--blue-dim); color: var(--blue); border-color: var(--blue); }
-
-    /* ══════════════════════════════════════
-       FUNDAMENTAL ANALYSIS TAB
-       ══════════════════════════════════════ */
-    #tabFundamental { max-width: 1400px; margin: 0 auto; padding: 20px 16px 60px; }
-
-    .fa-search-bar {
-      display: flex; gap: 10px; align-items: center;
-      background: var(--bg2); border-radius: var(--r-lg);
-      padding: 14px 18px; margin-bottom: 20px;
-      box-shadow: var(--shadow-sm);
-      border: 1px solid var(--sep2);
-    }
-    .fa-search-bar input {
-      flex: 1; border: none; background: transparent; outline: none;
-      font-size: 16px; font-family: inherit; color: var(--label);
-      direction: ltr; text-transform: uppercase;
-    }
-    .fa-search-bar input::placeholder { color: var(--label3); text-transform: none; direction: rtl; }
-    .fa-search-bar button {
-      background: var(--blue); color: #fff; border: none; border-radius: var(--r-sm);
-      padding: 9px 20px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
-    }
-    .fa-search-bar button:hover { background: #005bbf; }
-
-    .fa-company-header {
-      background: var(--bg2); border-radius: var(--r-lg); padding: 18px 20px;
-      margin-bottom: 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--sep2);
-      display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
-    }
-    .fa-company-name { font-size: 20px; font-weight: 700; color: var(--label); }
-    .fa-company-ticker {
-      font-size: 13px; font-weight: 700; background: var(--blue-dim);
-      color: var(--blue); padding: 3px 10px; border-radius: 20px;
-    }
-    .fa-company-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-right: auto; }
-    .fa-meta-item { font-size: 12px; color: var(--label3); }
-    .fa-meta-item span { color: var(--label); font-weight: 600; }
-
-    .fa-rec-badge {
-      padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: none;
-    }
-    .fa-rec-badge.buy { background: var(--green-dim); color: #15803d; }
-    .fa-rec-badge.hold { background: var(--yellow-dim); color: var(--yellow); }
-    .fa-rec-badge.sell { background: var(--red-dim); color: var(--red); }
-    .fa-rec-badge.neutral { background: var(--bg3); color: var(--label3); }
-
-    .fa-period-bar {
-      display: flex; gap: 6px; margin-bottom: 16px;
-    }
-    .fa-period-btn {
-      padding: 6px 16px; border-radius: 20px; border: 1px solid var(--sep);
-      background: var(--bg2); color: var(--label3); font-size: 12px; font-weight: 600;
-      cursor: pointer; font-family: inherit;
-    }
-    .fa-period-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
-
-    .fa-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-    .fa-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-    @media(max-width:800px) { .fa-grid-2,.fa-grid-3 { grid-template-columns: 1fr; } }
-
-    .fa-chart-card {
-      background: var(--bg2); border-radius: var(--r-lg); padding: 18px;
-      box-shadow: var(--shadow-sm); border: 1px solid var(--sep2);
-    }
-    .fa-chart-title {
-      font-size: 13px; font-weight: 700; color: var(--label); margin-bottom: 4px;
-    }
-    .fa-chart-subtitle {
-      font-size: 11px; color: var(--label3); margin-bottom: 10px;
-    }
-
-    .fa-metrics-section { margin-bottom: 14px; }
-    .fa-section-title {
-      font-size: 12px; font-weight: 700; color: var(--label3);
-      text-transform: uppercase; letter-spacing: 0.05em;
-      margin-bottom: 10px; padding-right: 2px;
-    }
-    .fa-metrics-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 10px;
-    }
-    .fa-metric-card {
-      background: var(--bg2); border-radius: var(--r-md); padding: 14px;
-      box-shadow: var(--shadow-sm); border: 1px solid var(--sep2);
-      cursor: default; position: relative;
-    }
-    .fa-metric-card:hover .fa-metric-tip { opacity: 1; pointer-events: auto; }
-    .fa-metric-label { font-size: 11px; color: var(--label3); margin-bottom: 6px; font-weight: 500; }
-    .fa-metric-value { font-size: 20px; font-weight: 700; color: var(--label); line-height: 1.1; }
-    .fa-metric-value.green { color: #15803d; }
-    .fa-metric-value.red { color: var(--red); }
-    .fa-metric-value.blue { color: var(--blue); }
-    .fa-metric-sub { font-size: 11px; color: var(--label3); margin-top: 3px; }
-    .fa-metric-tip {
-      position: absolute; bottom: calc(100% + 6px); right: 0; left: 0;
-      background: #1d1d1f; color: #fff; font-size: 11px; line-height: 1.5;
-      padding: 8px 10px; border-radius: var(--r-sm); z-index: 50;
-      opacity: 0; pointer-events: none; transition: opacity 0.15s;
-      text-align: right; direction: rtl; box-shadow: var(--shadow);
-    }
-
-    .fa-analyst-bar { display: flex; height: 10px; border-radius: 6px; overflow: hidden; margin: 8px 0; }
-    .fa-analyst-bar .buy  { background: var(--green); }
-    .fa-analyst-bar .hold { background: #f59e0b; }
-    .fa-analyst-bar .sell { background: var(--red); }
-
-    .fa-target-range {
-      display: flex; align-items: center; gap: 8px; margin-top: 10px;
-    }
-    .fa-target-track {
-      flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; position: relative;
-      direction: ltr;
-    }
-    .fa-target-fill {
-      position: absolute; top: 0; left: 0; height: 100%; background: var(--blue); border-radius: 3px;
-    }
-    .fa-target-dot {
-      position: absolute; top: 50%; transform: translate(-50%,-50%);
-      width: 12px; height: 12px; background: #ff9f0a; border-radius: 50%;
-      border: 2px solid #fff; box-shadow: 0 0 0 2px #ff9f0a;
-    }
-
-    .fa-desc-box {
-      background: var(--bg2); border-radius: var(--r-lg); padding: 18px 20px;
-      margin-bottom: 14px; box-shadow: var(--shadow-sm); border: 1px solid var(--sep2);
-      font-size: 13px; line-height: 1.6; color: var(--label2);
-      max-height: 120px; overflow: hidden; position: relative;
-    }
-    .fa-desc-box.expanded { max-height: none; }
-    .fa-desc-more {
-      position: absolute; bottom: 0; right: 0; left: 0;
-      background: linear-gradient(transparent, var(--bg2));
-      text-align: center; padding-top: 30px; padding-bottom: 8px;
-      font-size: 12px; color: var(--blue); cursor: pointer; font-weight: 600;
-    }
-    .fa-desc-box.expanded .fa-desc-more { display: none; }
-
-    .fa-loading { text-align: center; padding: 60px; color: var(--label3); font-size: 14px; }
-    .fa-error { text-align: center; padding: 40px; color: var(--red); font-size: 14px; }
-
-    .fa-empty { text-align: center; padding: 80px 20px; color: var(--label3); }
-    .fa-empty-icon { font-size: 48px; margin-bottom: 12px; }
-    .fa-empty-text { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--label2); }
-    .fa-empty-sub { font-size: 13px; }
   </style>
 </head>
 <body>
@@ -1289,12 +1105,10 @@
 </header>
 
 <!-- ── Tab Bar ── -->
-<div id="_jsErrorBanner" style="display:none;background:#7f1d1d;color:#fca5a5;padding:8px 16px;font-size:13px;font-family:monospace;direction:ltr;"></div>
 <div class="app-tab-bar">
   <button class="app-tab-btn active" id="tabBtnAnalysis"     onclick="switchAppTab('analysis')">📊 ניתוח מניות</button>
   <button class="app-tab-btn"        id="tabBtnPortfolio"    onclick="switchAppTab('portfolio')">💼 תיק ההשקעות</button>
   <button class="app-tab-btn"        id="tabBtnFundamental"  onclick="switchAppTab('fundamental')">📈 ניתוח פונדמנטלי</button>
-  <button class="app-tab-btn"        id="tabBtnAichat"       onclick="switchAppTab('aichat')">🤖 יועץ AI</button>
 </div>
 
 <!-- ══ TAB: ניתוח מניות ══ -->
@@ -2221,14 +2035,8 @@
         <div id="pfCumChart" style="height:260px;"></div>
       </div>
       <div style="background:var(--bg3);border-radius:12px;overflow:hidden;">
-        <div style="padding:12px 16px;font-size:13px;font-weight:700;color:var(--label);display:flex;align-items:center;gap:8px;">
-          📊 רווח / הפסד לפי עסקה
-          <span id="pfTradeBarCount" style="font-size:11px;font-weight:500;color:var(--label3);background:var(--bg4);padding:2px 8px;border-radius:10px;"></span>
-          <span style="font-size:11px;color:var(--label3);margin-right:auto;">גרור לגלילה ↕</span>
-        </div>
-        <div style="height:270px;overflow-y:auto;overflow-x:hidden;">
-          <div id="pfTradeBarChart"></div>
-        </div>
+        <div style="padding:12px 16px;font-size:13px;font-weight:700;color:var(--label);">📊 רווח / הפסד לפי עסקה</div>
+        <div id="pfTradeBarChart" style="min-height:200px;"></div>
       </div>
 
       <!-- טבלת סטטיסטיקה לכל מניה -->
@@ -2303,62 +2111,14 @@
 </div><!-- end .pf-page -->
 </div><!-- end #tabPortfolio -->
 
-<!-- ══ TAB: יועץ AI ══ -->
-<div id="tabAichat" style="display:none;">
-
-  <div class="ai-chat-header">
-    <div class="ai-chat-avatar">🤖</div>
-    <div>
-      <div class="ai-chat-title">יועץ AI — שיטת מיכה סטוקס</div>
-      <div class="ai-chat-sub">שאל כל שאלה על מניות, אסטרטגיות, ניתוח טכני ועוד</div>
-    </div>
-    <div class="ai-chat-status"><div class="ai-status-dot"></div>מוכן לייעוץ</div>
-  </div>
-
-  <div class="ai-messages" id="aiMessages">
-    <div class="ai-msg assistant">
-      <div class="ai-msg-avatar">🤖</div>
-      <div class="ai-bubble">
-        שלום! אני יועץ ה-AI שלך בסגנון שיטת Live 20 של מיכה סטוקס.<br><br>
-        אני יכול לעזור לך עם:<br>
-        • <strong>ניתוח מניות</strong> — CCI, MA20, ווליום, נרות, גאפים<br>
-        • <strong>אסטרטגיות כניסה ויציאה</strong> — מתי להיכנס ומתי לצאת<br>
-        • <strong>ניהול סיכונים</strong> — גודל פוזיציה, סטופ לוס<br>
-        • <strong>מצב השוק</strong> — VIX, Fear & Greed, סקטורים<br><br>
-        מה תרצה לדעת היום? 📊
-      </div>
-    </div>
-  </div>
-
-  <div class="ai-quick-btns" style="padding:10px 0 0;">
-    <button class="ai-quick-btn" onclick="aiQuick('איך אני יודע מתי להיכנס לעסקה לפי שיטת Live 20?')">📋 מתי להיכנס?</button>
-    <button class="ai-quick-btn" onclick="aiQuick('מה המשמעות של CCI ואיך להשתמש בו?')">📊 מה זה CCI?</button>
-    <button class="ai-quick-btn" onclick="aiQuick('איך לקבוע סטופ לוס נכון?')">🛑 סטופ לוס</button>
-    <button class="ai-quick-btn" onclick="aiQuick('מה כלל 5 הימים של מיכה סטוקס?')">5️⃣ כלל 5 ימים</button>
-    <button class="ai-quick-btn" onclick="aiQuick('הסבר לי על ניתוח ווליום לפי שיטת מיכה')">📈 ניתוח ווליום</button>
-  </div>
-
-  <div class="ai-chat-input-row">
-    <textarea class="ai-chat-input" id="aiInput" rows="1" placeholder="שאל על מניה, אסטרטגיה, ניתוח..."
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend()}"
-      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
-    <button class="ai-send-btn" id="aiSendBtn" onclick="aiSend()">↑</button>
-  </div>
-
-</div><!-- end #tabAichat -->
-
 <!-- ══ TAB: ניתוח פונדמנטלי ══ -->
 <div id="tabFundamental" style="display:none;">
 <div id="faContent">
-
-  <!-- Search Bar -->
   <div class="fa-search-bar">
     <input id="faTickerInput" type="text" placeholder="הזן סימול מניה: AAPL, NVDA, TSLA..." maxlength="10"
            onkeydown="if(event.key==='Enter')runFundamental()" />
     <button onclick="runFundamental()">ניתח</button>
   </div>
-
-  <!-- Results Container -->
   <div id="faResults">
     <div class="fa-empty">
       <div class="fa-empty-icon">📊</div>
@@ -2366,7 +2126,6 @@
       <div class="fa-empty-sub">הזן סימול מניה כדי לראות נתוני חברה, גרפים ומדדים פיננסיים עם הסבר בעברית</div>
     </div>
   </div>
-
 </div>
 </div><!-- end #tabFundamental -->
 
@@ -2489,18 +2248,9 @@
   </div>
 </div>
 
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script>
-  // ── Global error catcher (debug) ─────────────────────────────────────────────
-  window.onerror = function(msg, src, line, col, err) {
-    console.error('JS ERROR:', msg, 'at', src, 'line', line);
-    const el = document.getElementById('_jsErrorBanner');
-    if (el) { el.style.display = 'block'; el.textContent = '⚠️ JS Error line ' + line + ': ' + msg; }
-    return false;
-  };
-
   const tickerInput = document.getElementById('tickerInput');
-  if (tickerInput) tickerInput.addEventListener('keydown', e => { if (e.key === 'Enter') runAnalysis(); });
+  tickerInput.addEventListener('keydown', e => { if (e.key === 'Enter') runAnalysis(); });
 
   // ── Market Overview ──────────────────────────────────────────────────────────
   let marketExpanded = false;
@@ -4634,10 +4384,8 @@
 
   // אתחול בטעינת דף
   (function initStockPred() {
-    try {
-      const tickers = loadSavedTickers();
-      buildStockDisplay(tickers);
-    } catch(e) { console.warn('initStockPred error:', e); }
+    const tickers = loadSavedTickers();
+    buildStockDisplay(tickers);
   })();
 
   // טעינה בפתיחה ורענון כל 5 דקות
@@ -4866,17 +4614,17 @@
   }, 60000);
 
   // הצג זמן הבא מיד בטעינה
-  try { document.getElementById('scanNextScan').textContent = nextScanLabel(); } catch(e) { console.warn('scanNextScan error:', e); }
+  document.getElementById('scanNextScan').textContent = nextScanLabel();
 
   // ═══════════════════════════════════════════════════════════════
   //  TAB SWITCHING
   // ═══════════════════════════════════════════════════════════════
   function switchAppTab(tab) {
     document.querySelectorAll('.app-tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tabAnalysis').style.display     = 'none';
-    document.getElementById('tabPortfolio').style.display    = 'none';
-    document.getElementById('tabFundamental').style.display  = 'none';
-    document.getElementById('tabAichat').style.display       = 'none';
+    ['tabAnalysis','tabPortfolio','tabFundamental'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
     const capId = `tabBtn${tab[0].toUpperCase()+tab.slice(1)}`;
     const pgId  = `tab${tab[0].toUpperCase()+tab.slice(1)}`;
     const capEl = document.getElementById(capId);
@@ -4884,9 +4632,7 @@
     if (capEl) capEl.classList.add('active');
     if (pgEl)  pgEl.style.display = '';
     if (tab === 'portfolio') {
-      refreshPFPrices();
-      startAutoRefresh();
-      pfRenderLine();
+      try { refreshPFPrices(); startAutoRefresh(); pfRenderLine(); } catch(e) {}
     }
   }
 
@@ -5299,27 +5045,26 @@
       tickers.push(p.ticker); pnls.push(Math.round(pnl*100)/100);
       barColors.push(pnl>=0?'#22c55e':'#ef4444');
     });
-
-    const maxVal = pnls.length ? Math.max(...pnls, 0) : 0;
-    const minVal = pnls.length ? Math.min(...pnls, 0) : 0;
-    const rangePad = (maxVal - minVal) * 0.18 || 15;
-
+    const pnlMax = Math.max(...pnls.map(Math.abs), 1);
     Plotly.react('pfBarChart',[{
       type:'bar', x:tickers, y:pnls,
-      marker:{color:barColors},
+      marker:{color:barColors, line:{color:'rgba(0,0,0,0.08)',width:1}},
       hovertemplate:'<b>%{x}</b><br>%{y:+$,.0f}<extra></extra>',
       text:pnls.map(v=>(v>=0?'+':'')+'$'+Math.round(Math.abs(v)).toLocaleString()),
-      textposition:'outside', textfont:{size:11}
+      textposition:'outside',
+      textfont:{size:11, color:pnls.map(v=>v>=0?'#15803d':'#dc2626'), family:'-apple-system,sans-serif'},
+      cliponaxis:false,
     }],{
-      margin:{t:30,b:40,l:45,r:15},
+      margin:{t:36,b:42,l:10,r:10},
       paper_bgcolor:'transparent', plot_bgcolor:'transparent',
       xaxis:{tickfont:{size:12,color:'#3a3a3c'},showgrid:false},
       yaxis:{
-        showgrid:true,gridcolor:'rgba(0,0,0,.05)',zeroline:true,zerolinecolor:'rgba(0,0,0,.15)',
-        tickfont:{size:10,color:'#6e6e73'},tickprefix:'$',
-        range:[minVal - rangePad, maxVal + rangePad]
+        showgrid:true, gridcolor:'rgba(0,0,0,.05)',
+        zeroline:true, zerolinecolor:'rgba(0,0,0,.2)',
+        tickfont:{size:10,color:'#6e6e73'}, tickprefix:'$',
+        range:[ -(pnlMax*1.35), pnlMax*1.35 ],
       },
-      font:{color:'#3a3a3c'}
+      font:{color:'#3a3a3c'},
     },{responsive:true,displayModeBar:false});
   }
 
@@ -5748,80 +5493,67 @@
       hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:12}},
     },{responsive:true, displayModeBar:false});
 
-    // ── גרף 2: קיבוץ לפי מניה — ממוצע % לעסקה ──────────────────────────────
-    // מקבץ את כל העסקאות לפי טיקר ומציג ממוצע אחוזים
-    const tickerMap = {};
+    // ── גרף 2: קיבוץ לפי מניה — ממוצע % רווח/הפסד ──────────────────────────
+    const tkMap = {};
     for (const h of hist) {
-      if (!tickerMap[h.ticker]) tickerMap[h.ticker] = [];
-      tickerMap[h.ticker].push(h);
+      if (!tkMap[h.ticker]) tkMap[h.ticker] = [];
+      tkMap[h.ticker].push(h);
     }
-    const tickerStats = Object.entries(tickerMap).map(([tk, trades]) => {
-      const avgPct  = trades.reduce((s, h) => s + (h.pnl_pct || 0), 0) / trades.length;
-      const totalPnl = trades.reduce((s, h) => s + h.pnl, 0);
-      const wins    = trades.filter(h => h.pnl >= 0).length;
+    const tkStats = Object.entries(tkMap).map(([tk, trades]) => {
+      const avgPct   = trades.reduce((s,h) => s + (h.pnl_pct||0), 0) / trades.length;
+      const totalPnl = trades.reduce((s,h) => s + h.pnl, 0);
+      const wins     = trades.filter(h => h.pnl >= 0).length;
       return { ticker: tk, avgPct, totalPnl, count: trades.length, wins };
-    }).sort((a, b) => b.avgPct - a.avgPct);
+    }).sort((a,b) => b.avgPct - a.avgPct);
 
-    const n = tickerStats.length;
+    const tkY      = tkStats.map(t => t.ticker);
+    const tkX      = tkStats.map(t => parseFloat(t.avgPct.toFixed(2)));
+    const tkColors = tkStats.map(t => t.avgPct >= 0 ? '#16a34a' : '#dc2626');
+    const xMaxPct  = Math.max(...tkX.map(Math.abs)) * 1.45 || 10;
 
-    const countEl = document.getElementById('pfTradeBarCount');
-    if (countEl) countEl.textContent = tickerStats.length + ' מניות · ' + hist.length + ' עסקאות';
-
-    const tY      = tickerStats.map(t => t.ticker);
-    const tX      = tickerStats.map(t => t.avgPct);
-    const tColors = tickerStats.map(t => t.avgPct >= 0 ? '#16a34a' : '#dc2626');
-    const tBg     = tickerStats.map(t => t.avgPct >= 0 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)');
-    const xMax    = Math.max(...tX.map(Math.abs)) * 1.4 || 10;
-
-    // קווי lollipop מ-0 לנקודה
-    const stems = tickerStats.map((t, i) => ({
-      type: 'line', layer: 'below',
-      x0: 0, x1: t.avgPct, y0: t.ticker, y1: t.ticker,
-      line: { color: t.avgPct >= 0 ? 'rgba(22,163,74,0.35)' : 'rgba(220,38,38,0.35)', width: 2.5 }
+    const stems = tkStats.map(t => ({
+      type:'line', layer:'below',
+      x0:0, x1:t.avgPct, y0:t.ticker, y1:t.ticker,
+      line:{ color: t.avgPct >= 0 ? 'rgba(22,163,74,0.3)' : 'rgba(220,38,38,0.3)', width:2.5 }
     }));
 
-    const lHeight = Math.max(220, n * 36);
+    const barH = Math.max(220, tkStats.length * 48);
     const barEl = document.getElementById('pfTradeBarChart');
-    if (barEl) barEl.style.height = lHeight + 'px';
+    if (barEl) barEl.style.height = barH + 'px';
 
-    Plotly.react('pfTradeBarChart', [{
-      type: 'scatter', mode: 'markers+text',
-      x: tX, y: tY,
-      marker: { color: tColors, size: 14, line: { color: '#fff', width: 2.5 },
-                symbol: 'circle' },
-      text: tickerStats.map(t =>
+    Plotly.react('pfTradeBarChart',[{
+      type:'scatter', mode:'markers+text',
+      x: tkX, y: tkY,
+      marker:{ color:tkColors, size:15, line:{color:'#fff', width:2.5} },
+      text: tkStats.map(t =>
         `${t.avgPct >= 0 ? '+' : ''}${t.avgPct.toFixed(1)}%` +
         (t.count > 1 ? ` (${t.count})` : '')),
-      textposition: tickerStats.map(t => t.avgPct >= 0 ? 'middle right' : 'middle left'),
-      textfont: { size: 11, color: tColors, family: '-apple-system,BlinkMacSystemFont,sans-serif' },
-      hovertemplate: tickerStats.map(t =>
+      textposition: tkStats.map(t => t.avgPct >= 0 ? 'middle right' : 'middle left'),
+      textfont:{ size:12, color: tkColors },
+      hovertemplate: tkStats.map(t =>
         `<b>${t.ticker}</b><br>` +
-        `ממוצע % לעסקה: <b>${t.avgPct >= 0 ? '+' : ''}${t.avgPct.toFixed(2)}%</b><br>` +
-        `סה"כ רווח/הפסד: <b>${t.totalPnl >= 0 ? '+' : ''}$${t.totalPnl.toFixed(0)}</b><br>` +
-        `${t.count} עסקאות · ${t.wins} ניצחונות (${Math.round(t.wins/t.count*100)}%)` +
-        `<extra></extra>`),
+        `ממוצע: <b>${t.avgPct >= 0?'+':''}${t.avgPct.toFixed(2)}%</b><br>` +
+        `סה"כ: <b>${t.totalPnl >= 0?'+':''}$${Math.abs(t.totalPnl).toFixed(0)}</b><br>` +
+        `${t.wins}/${t.count} הצלחות<extra></extra>`),
       cliponaxis: false,
-      showlegend: false,
-    }], {
+    }],{
       shapes: stems,
-      margin: { t: 8, b: 16, l: 60, r: 80 },
-      paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-      xaxis: {
-        range: [-xMax, xMax],
-        showgrid: true, gridcolor: 'rgba(0,0,0,.06)',
-        ticksuffix: '%', tickfont: { size: 10, color: '#6e6e73' },
-        zeroline: true, zerolinecolor: 'rgba(0,0,0,.2)', zerolinewidth: 2,
-        showline: false, fixedrange: true,
+      margin:{ t:8, b:14, l:70, r:80 },
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      xaxis:{
+        range:[-xMaxPct, xMaxPct],
+        showgrid:true, gridcolor:'rgba(0,0,0,.06)',
+        ticksuffix:'%', tickfont:{size:11,color:'#6e6e73'},
+        zeroline:true, zerolinecolor:'rgba(0,0,0,.25)', zerolinewidth:2, showline:false,
       },
-      yaxis: {
-        type: 'category', categoryorder: 'array', categoryarray: [...tY].reverse(),
-        showgrid: false, zeroline: false, showline: false,
-        tickfont: { size: 12, color: '#1d1d1f', family: '-apple-system,BlinkMacSystemFont,sans-serif' },
-        automargin: true, fixedrange: true,
+      yaxis:{
+        type:'category', categoryorder:'array', categoryarray:[...tkY].reverse(),
+        showgrid:false, zeroline:false, showline:false,
+        tickfont:{size:13,color:'#1d1d1f',family:'monospace'}, automargin:true,
       },
-      showlegend: false, dragmode: false,
-      hoverlabel: { bgcolor: '#1d1d1f', bordercolor: 'transparent', font: { color: '#fff', size: 12 } },
-    }, { responsive: true, displayModeBar: false });
+      showlegend:false, dragmode:false,
+      hoverlabel:{bgcolor:'#1d1d1f',bordercolor:'transparent',font:{color:'#fff',size:12}},
+    },{responsive:true, displayModeBar:false});
 
     // ── טבלת סטטיסטיקה לכל מניה ─────────────────────────────────────────────
     const byTicker = {};
@@ -6076,9 +5808,9 @@
     const year = _calYear, month = _calMonth;
     document.getElementById('pfCalLabel').textContent = `${_heMonths[month]} ${year}`;
 
-    // Calendar grid starts Sunday (א') — Sun=0, so offset = firstDow directly
+    // Calendar grid: first weekday of month (Sun=0 → but we start Mon so shift)
     const firstDow = new Date(year, month, 1).getDay(); // 0=Sun..6=Sat
-    const startOffset = firstDow; // Sun-based offset (matches א'ב'ג'ד'ה'ו'ש')
+    const startOffset = (firstDow + 6) % 7; // Mon-based offset
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const todayStr = new Date().toISOString().slice(0,10);
 
@@ -6315,89 +6047,8 @@
   })();
 
   // ═══════════════════════════════════════════════════════════════
-  //  AI CHAT TAB
-  // ═══════════════════════════════════════════════════════════════
-  const _aiHistory = [];
-
-  function aiQuick(text) {
-    document.getElementById('aiInput').value = text;
-    aiSend();
-  }
-
-  function aiAddMsg(role, text) {
-    const box = document.getElementById('aiMessages');
-    const isUser = role === 'user';
-    const div = document.createElement('div');
-    div.className = 'ai-msg ' + role;
-    const avatar = isUser ? '👤' : '🤖';
-    // המר markdown בסיסי לHTML
-    const html = text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/`(.*?)`/g, '<code>$1</code>')
-      .replace(/\n/g, '<br>');
-    div.innerHTML = `
-      <div class="ai-msg-avatar">${avatar}</div>
-      <div class="ai-bubble">${html}</div>`;
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
-    return div;
-  }
-
-  function aiShowTyping() {
-    const box = document.getElementById('aiMessages');
-    const div = document.createElement('div');
-    div.className = 'ai-msg assistant'; div.id = 'aiTypingIndicator';
-    div.innerHTML = `<div class="ai-msg-avatar">🤖</div>
-      <div class="ai-bubble ai-typing"><span></span><span></span><span></span></div>`;
-    box.appendChild(div); box.scrollTop = box.scrollHeight;
-  }
-
-  function aiRemoveTyping() {
-    const el = document.getElementById('aiTypingIndicator');
-    if (el) el.remove();
-  }
-
-  async function aiSend() {
-    const inp = document.getElementById('aiInput');
-    const btn = document.getElementById('aiSendBtn');
-    const text = (inp.value || '').trim();
-    if (!text) return;
-
-    inp.value = ''; inp.style.height = 'auto';
-    btn.disabled = true;
-
-    _aiHistory.push({ role: 'user', content: text });
-    aiAddMsg('user', text);
-    aiShowTyping();
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: _aiHistory }),
-      });
-      const data = await res.json();
-      aiRemoveTyping();
-
-      if (data.error) {
-        aiAddMsg('assistant', '⚠️ שגיאה: ' + data.error);
-      } else {
-        _aiHistory.push({ role: 'assistant', content: data.reply });
-        aiAddMsg('assistant', data.reply);
-      }
-    } catch (err) {
-      aiRemoveTyping();
-      aiAddMsg('assistant', '⚠️ שגיאת רשת — ' + err);
-    }
-
-    btn.disabled = false;
-    inp.focus();
-  }
-
-  // ═══════════════════════════════════════════════════════════════
   //  FUNDAMENTAL ANALYSIS TAB
   // ═══════════════════════════════════════════════════════════════
-
   function runFundamental() {
     const ticker = (document.getElementById('faTickerInput').value || '').trim().toUpperCase();
     if (!ticker) return;
@@ -6406,28 +6057,20 @@
     fetch('/api/fundamental/' + ticker)
       .then(r => r.json())
       .then(d => {
-        if (d.error) {
-          el.innerHTML = '<div class="fa-error">שגיאה: ' + d.error + '</div>';
-          return;
-        }
+        if (d.error) { el.innerHTML = '<div class="fa-error">שגיאה: ' + d.error + '</div>'; return; }
         renderFundamental(d, el);
       })
-      .catch(err => {
-        el.innerHTML = '<div class="fa-error">שגיאת רשת — ' + err + '</div>';
-      });
+      .catch(err => { el.innerHTML = '<div class="fa-error">שגיאת רשת — ' + err + '</div>'; });
   }
 
   function _fmt_num(n, decimals) {
     if (n == null || isNaN(n)) return '—';
-    decimals = decimals != null ? decimals : 2;
-    return Number(n).toFixed(decimals);
+    return Number(n).toFixed(decimals != null ? decimals : 2);
   }
-
   function _fmt_pct(n) {
     if (n == null || isNaN(n)) return '—';
     return (n * 100).toFixed(1) + '%';
   }
-
   function _fmt_large(n) {
     if (n == null || isNaN(n)) return '—';
     if (Math.abs(n) >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T';
@@ -6435,95 +6078,63 @@
     if (Math.abs(n) >= 1e6)  return '$' + (n / 1e6).toFixed(1)  + 'M';
     return '$' + n.toFixed(0);
   }
-
   function _pct_class(v, higherIsBetter) {
     if (v == null) return '';
     return (higherIsBetter ? v > 0 : v < 0) ? 'green' : 'red';
   }
-
   function _rec_badge(key) {
     if (!key) return '';
-    const map = {
-      'strong_buy':  ['buy',     'קנייה חזקה'],
-      'buy':         ['buy',     'קנייה'],
-      'hold':        ['hold',    'החזק'],
-      'underperform':['sell',    'ביצוע נמוך'],
-      'sell':        ['sell',    'מכירה'],
-    };
+    const map = { 'strong_buy':['buy','קנייה חזקה'],'buy':['buy','קנייה'],'hold':['hold','החזק'],'underperform':['sell','ביצוע נמוך'],'sell':['sell','מכירה'] };
     const [cls, label] = map[key] || ['neutral', key];
     return `<span class="fa-rec-badge ${cls}">${label}</span>`;
   }
-
   function _metric(label, value, tip, extraClass) {
-    extraClass = extraClass || '';
+    if (value === '—' || value == null) return '';
     return `<div class="fa-metric-card">
       <div class="fa-metric-label">${label}</div>
-      <div class="fa-metric-value ${extraClass}">${value}</div>
+      <div class="fa-metric-value ${extraClass||''}">${value}</div>
       <div class="fa-metric-tip">${tip}</div>
     </div>`;
   }
-
-  function _chart_opts(dark) {
-    return {
-      paper_bgcolor: 'transparent',
-      plot_bgcolor:  'transparent',
-      font: { family: '-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif',
-              size: 11, color: '#6e6e73' },
-      margin: { l: 40, r: 10, t: 10, b: 40 },
-      showlegend: true,
-      legend: { orientation: 'h', y: -0.2, x: 0, font: { size: 11 } },
-    };
-  }
-
-  function _sorted_keys(obj) {
-    return Object.keys(obj || {}).sort();
-  }
+  function _sorted_keys(obj) { return Object.keys(obj || {}).sort(); }
 
   function renderFundamental(d, container) {
     const cur = d.currency || 'USD';
     const recBadge = _rec_badge(d.rec_key);
+    const mcap = _fmt_large(d.market_cap);
+    const employees = d.employees ? Number(d.employees).toLocaleString() : '—';
+    const priceStr = d.price ? `${d.price.toFixed(2)} ${cur}` : '—';
 
-    // ── Company Header ──
-    let mcap = _fmt_large(d.market_cap);
-    let employees = d.employees ? Number(d.employees).toLocaleString() : '—';
-    let priceStr = d.price ? `${d.price.toFixed(2)} ${cur}` : '—';
-
-    let headerHtml = `
+    const headerHtml = `
     <div class="fa-company-header">
       <div>
         <div class="fa-company-name">${d.name} <span class="fa-company-ticker">${d.ticker}</span></div>
-        <div style="font-size:12px;color:var(--label3);margin-top:4px;">${d.sector || ''} ${d.industry ? '· ' + d.industry : ''}</div>
+        <div style="font-size:12px;color:var(--label3);margin-top:4px;">${d.sector||''} ${d.industry?'· '+d.industry:''}</div>
       </div>
       <div class="fa-company-meta">
         <div class="fa-meta-item">מחיר <span>${priceStr}</span></div>
         <div class="fa-meta-item">שווי שוק <span>${mcap}</span></div>
         <div class="fa-meta-item">עובדים <span>${employees}</span></div>
-        ${d.country ? `<div class="fa-meta-item">מדינה <span>${d.country}</span></div>` : ''}
-        ${d.rec_key ? `<div class="fa-meta-item">המלצה ${recBadge}</div>` : ''}
+        ${d.country?`<div class="fa-meta-item">מדינה <span>${d.country}</span></div>`:''}
+        ${d.rec_key?`<div class="fa-meta-item">המלצה ${recBadge}</div>`:''}
       </div>
     </div>`;
 
-    // ── Description ──
-    let descHtml = '';
-    if (d.description) {
-      descHtml = `<div class="fa-desc-box" id="faDescBox">
-        <div id="faDescText" style="font-size:13px;line-height:1.6;color:var(--label2);">${d.description}</div>
-        <div class="fa-desc-more" onclick="document.getElementById('faDescBox').classList.add('expanded');this.style.display='none'">קרא עוד ▼</div>
-      </div>`;
-    }
+    const descHtml = d.description ? `<div class="fa-desc-box" id="faDescBox">
+      <div style="font-size:13px;line-height:1.6;color:var(--label2);">${d.description}</div>
+      <div class="fa-desc-more" onclick="document.getElementById('faDescBox').classList.add('expanded');this.style.display='none'">קרא עוד ▼</div>
+    </div>` : '';
 
-    // ── Period toggle ──
-    let periodHtml = `<div class="fa-period-bar">
+    const periodHtml = `<div class="fa-period-bar">
       <button class="fa-period-btn active" id="faPeriodAnnual" onclick="faSetPeriod('annual')">שנתי</button>
       <button class="fa-period-btn" id="faPeriodQuarterly" onclick="faSetPeriod('quarterly')">רבעוני</button>
     </div>`;
 
-    // ── Chart section ──
-    let chartsHtml = `
+    const chartsHtml = `
     <div class="fa-grid-2" id="faChartsRow1">
       <div class="fa-chart-card">
         <div class="fa-chart-title">הכנסות ורווח נקי</div>
-        <div class="fa-chart-subtitle">בארה"ב דולר — מעביר על הגרף לפירוט</div>
+        <div class="fa-chart-subtitle">בדולר — העבר עכבר לפירוט</div>
         <div id="faRevenueChart" style="height:220px;"></div>
       </div>
       <div class="fa-chart-card">
@@ -6540,129 +6151,113 @@
       </div>
       <div class="fa-chart-card">
         <div class="fa-chart-title">EPS — רווח למניה</div>
-        <div class="fa-chart-subtitle">כמה חברה מרוויחה על כל מניה — גדל = טוב</div>
+        <div class="fa-chart-subtitle">כמה החברה מרוויחה על כל מניה — גדל = טוב</div>
         <div id="faEPSChart" style="height:220px;"></div>
       </div>
     </div>`;
 
-    // ── Metrics ──
-    const gmClass  = d.gross_margin  != null ? (d.gross_margin  > 0.3  ? 'green' : d.gross_margin  < 0.1  ? 'red' : '') : '';
-    const omClass  = d.op_margin     != null ? (d.op_margin     > 0.15 ? 'green' : d.op_margin     < 0    ? 'red' : '') : '';
-    const nmClass  = d.net_margin    != null ? (d.net_margin    > 0.1  ? 'green' : d.net_margin    < 0    ? 'red' : '') : '';
-    const roeClass = d.roe           != null ? (d.roe           > 0.15 ? 'green' : d.roe           < 0    ? 'red' : '') : '';
-    const roaClass = d.roa           != null ? (d.roa           > 0.05 ? 'green' : d.roa           < 0    ? 'red' : '') : '';
-    const deClass  = d.debt_equity   != null ? (d.debt_equity   < 1    ? 'green' : d.debt_equity   > 3    ? 'red' : '') : '';
-    const crClass  = d.current_ratio != null ? (d.current_ratio > 1.5  ? 'green' : d.current_ratio < 1    ? 'red' : '') : '';
-    const peClass  = d.pe_trailing   != null ? (d.pe_trailing   < 20   ? 'green' : d.pe_trailing   > 50   ? 'red' : '') : '';
+    const gmCls = d.gross_margin  != null ? (d.gross_margin  > 0.3  ? 'green' : d.gross_margin  < 0.1 ? 'red' : '') : '';
+    const omCls = d.op_margin     != null ? (d.op_margin     > 0.15 ? 'green' : d.op_margin     < 0   ? 'red' : '') : '';
+    const nmCls = d.net_margin    != null ? (d.net_margin    > 0.1  ? 'green' : d.net_margin    < 0   ? 'red' : '') : '';
+    const roeCls= d.roe           != null ? (d.roe           > 0.15 ? 'green' : d.roe           < 0   ? 'red' : '') : '';
+    const roaCls= d.roa           != null ? (d.roa           > 0.05 ? 'green' : d.roa           < 0   ? 'red' : '') : '';
+    const deCls = d.debt_equity   != null ? (d.debt_equity   < 1    ? 'green' : d.debt_equity   > 3   ? 'red' : '') : '';
+    const crCls = d.current_ratio != null ? (d.current_ratio > 1.5  ? 'green' : d.current_ratio < 1   ? 'red' : '') : '';
+    const peCls = d.pe_trailing   != null ? (d.pe_trailing   < 20   ? 'green' : d.pe_trailing   > 50  ? 'red' : '') : '';
 
-    let metricsHtml = `
+    const metricsHtml = `
     <div class="fa-metrics-section">
       <div class="fa-section-title">הערכת שווי (Valuation)</div>
       <div class="fa-metrics-grid">
-        ${_metric('P/E (שוטף)', _fmt_num(d.pe_trailing, 1), 'מחיר למניה חלקי רווח למניה. P/E של 20 = משלמים 20$ על כל 1$ רווח. נמוך יותר = זול יותר יחסית לרווח.', peClass)}
-        ${_metric('P/E (צפוי)', _fmt_num(d.pe_forward, 1), 'P/E לפי רווחים צפויים שנה הבאה. נמוך מהשוטף = חברה צפויה לגדול. זו ה"מחיר שמשלמים על העתיד".', '')}
-        ${_metric('P/B', _fmt_num(d.pb, 1), 'מחיר שוק לעומת שווי נכסי החברה בספרים. P/B מתחת ל-1 = המניה נסחרת מתחת לשווי הנכסים — פוטנציאל זול.', '')}
-        ${_metric('P/S', _fmt_num(d.ps, 1), 'מחיר למניה חלקי הכנסות למניה. שימושי לחברות שעוד לא רווחיות. ככל שנמוך יותר — שווי סביר יותר.', '')}
-        ${_metric('EV/EBITDA', _fmt_num(d.ev_ebitda, 1), 'שווי החברה (כולל חוב) לעומת הרווח לפני הוצאות. מתחת ל-10 = בדרך כלל זול. מעל 20 = יקר. משווים לחברות בסקטור.', '')}
-        ${_metric('EV/Revenue', _fmt_num(d.ev_revenue, 1), 'שווי החברה לעומת ההכנסות. כמה שוק ה"מוכן לשלם" על כל 1$ הכנסה. שימושי להשוואה בין חברות בסקטור.', '')}
+        ${_metric('P/E (שוטף)',   _fmt_num(d.pe_trailing,1), 'מחיר למניה חלקי רווח למניה. נמוך יותר = זול יותר יחסית לרווח.', peCls)}
+        ${_metric('P/E (צפוי)',   _fmt_num(d.pe_forward,1),  'P/E לפי רווחים צפויים. נמוך מהשוטף = צמיחה צפויה.', '')}
+        ${_metric('P/B',          _fmt_num(d.pb,1),           'מחיר שוק לעומת שווי נכסי החברה. מתחת ל-1 = נסחרת מתחת לשווי הנכסים.', '')}
+        ${_metric('P/S',          _fmt_num(d.ps,1),           'מחיר חלקי הכנסות. שימושי לחברות שעוד לא רווחיות.', '')}
+        ${_metric('EV/EBITDA',    _fmt_num(d.ev_ebitda,1),    'שווי החברה כולל חוב לעומת הרווח לפני הוצאות. מתחת ל-10 = בדרך כלל זול.', '')}
+        ${_metric('EV/Revenue',   _fmt_num(d.ev_revenue,1),   'שווי החברה לעומת ההכנסות.', '')}
       </div>
     </div>
-
     <div class="fa-metrics-section">
       <div class="fa-section-title">רווחיות (Profitability)</div>
       <div class="fa-metrics-grid">
-        ${_metric('מרווח גולמי', _fmt_pct(d.gross_margin), 'כמה נשאר מכל מכירה אחרי עלות הייצור. 60%+ = מצוין (טכנולוגיה). 20%+ = סביר (ייצור).', gmClass)}
-        ${_metric('מרווח תפעולי', _fmt_pct(d.op_margin), 'כמה נשאר אחרי הוצאות תפעוליות (שכר, שיווק וכו\'). מעל 15% = חברה יעילה. שלילי = הפסד תפעולי.', omClass)}
-        ${_metric('מרווח נקי', _fmt_pct(d.net_margin), 'כמה רווח נשאר מכל 1$ מכירות לאחר כל ההוצאות והמסים. מעל 10% = טוב. שלילי = חברה מפסידה.', nmClass)}
-        ${_metric('ROE', _fmt_pct(d.roe), 'תשואה על ההון העצמי — כמה החברה מרוויחה על כל 1$ של כסף בעלי המניות. מעל 15% = חברה מנצחת. כלי מועדף על באפט.', roeClass)}
-        ${_metric('ROA', _fmt_pct(d.roa), 'תשואה על הנכסים — כמה החברה מרוויחה על כל 1$ של נכסים. מעל 5% = יעילות גבוהה. מדד ניטרלי לחוב.', roaClass)}
-        ${_metric('EPS שוטף', d.eps_trailing != null ? '$' + _fmt_num(d.eps_trailing) : '—', 'רווח למניה בשנה האחרונה. ככל שגבוה יותר — חברה מרוויחה יותר. השוו לשנים קודמות לראות צמיחה.', '')}
-        ${_metric('EPS צפוי', d.eps_forward != null ? '$' + _fmt_num(d.eps_forward) : '—', 'רווח למניה צפוי שנה הבאה לפי אנליסטים. גבוה מ-EPS שוטף = צמיחה צפויה — חיובי.', '')}
+        ${_metric('מרווח גולמי',    _fmt_pct(d.gross_margin),     '60%+ = מצוין (טכנולוגיה). 20%+ = סביר (ייצור).', gmCls)}
+        ${_metric('מרווח תפעולי',  _fmt_pct(d.op_margin),        'מעל 15% = חברה יעילה. שלילי = הפסד תפעולי.', omCls)}
+        ${_metric('מרווח נקי',     _fmt_pct(d.net_margin),        'מעל 10% = טוב. שלילי = חברה מפסידה.', nmCls)}
+        ${_metric('ROE',            _fmt_pct(d.roe),               'תשואה על ההון. מעל 15% = חברה מנצחת. מדד מועדף על באפט.', roeCls)}
+        ${_metric('ROA',            _fmt_pct(d.roa),               'תשואה על הנכסים. מעל 5% = יעילות גבוהה.', roaCls)}
+        ${_metric('EPS שוטף',      d.eps_trailing!=null?'$'+_fmt_num(d.eps_trailing):'—', 'רווח למניה בשנה האחרונה.', '')}
+        ${_metric('EPS צפוי',      d.eps_forward!=null?'$'+_fmt_num(d.eps_forward):'—',   'רווח למניה צפוי שנה הבאה.', '')}
       </div>
     </div>
-
     <div class="fa-metrics-section">
       <div class="fa-section-title">בריאות פיננסית (Financial Health)</div>
       <div class="fa-metrics-grid">
-        ${_metric('חוב/הון', d.debt_equity != null ? _fmt_num(d.debt_equity / 100, 2) : '—', 'יחס חוב להון עצמי. מתחת ל-1 = יחסית בטוח. מעל 3 = הרבה חוב = סיכון. חשוב לבדוק לפי הסקטור.', deClass)}
-        ${_metric('יחס שוטף', _fmt_num(d.current_ratio, 2), 'נכסים שוטפים חלקי התחייבויות שוטפות. מעל 1.5 = בריאות טובה. מתחת ל-1 = קושי לשלם חובות קצרי-טווח.', crClass)}
-        ${_metric('יחס מהיר', _fmt_num(d.quick_ratio, 2), 'כמו יחס שוטף, אבל ללא מלאי. מודד כמה מהר החברה יכולה לשלם חובות. מעל 1 = בסדר. פחות מ-0.7 = אזהרה.', '')}
-        ${_metric('מזומן', _fmt_large(d.total_cash), 'סך המזומנים של החברה. הרבה מזומן = גמישות — יכולים לרכוש חברות, לחלק דיבידנד, לבצע buyback.', 'blue')}
-        ${_metric('חוב כולל', _fmt_large(d.total_debt), 'סך חובות החברה לטווח קצר וארוך. השוו למזומן — אם מזומן > חוב = חברה "נקייה מחוב".', '')}
+        ${_metric('חוב/הון',      d.debt_equity!=null?_fmt_num(d.debt_equity/100,2):'—', 'מתחת ל-1 = יחסית בטוח. מעל 3 = הרבה חוב.', deCls)}
+        ${_metric('יחס שוטף',    _fmt_num(d.current_ratio,2), 'מעל 1.5 = בריאות טובה. מתחת ל-1 = קושי לשלם חובות.', crCls)}
+        ${_metric('יחס מהיר',    _fmt_num(d.quick_ratio,2),   'כמו יחס שוטף ללא מלאי. מעל 1 = בסדר.', '')}
+        ${_metric('מזומן',        _fmt_large(d.total_cash),    'הרבה מזומן = גמישות — רכישות, דיבידנד, buyback.', 'blue')}
+        ${_metric('חוב כולל',    _fmt_large(d.total_debt),    'השוו למזומן — אם מזומן > חוב = חברה נקייה.', '')}
       </div>
     </div>
-
     <div class="fa-metrics-section">
       <div class="fa-section-title">צמיחה (Growth)</div>
       <div class="fa-metrics-grid">
-        ${_metric('צמיחת הכנסות', _fmt_pct(d.revenue_growth), 'כמה גדלו ההכנסות לעומת שנה קודמת. מעל 10% = צמיחה מהירה. מתחת ל-0 = הכנסות קטנות — אזהרה.', _pct_class(d.revenue_growth, true))}
-        ${_metric('צמיחת רווחים', _fmt_pct(d.earnings_growth), 'כמה גדלו הרווחים לעומת שנה קודמת. חשוב שצמיחת רווחים תהיה לפחות כמו צמיחת הכנסות — אחרת רווחיות יורדת.', _pct_class(d.earnings_growth, true))}
-        ${_metric('צמיחת רווח רבעוני', _fmt_pct(d.earnings_qgrowth), 'כמה גדל הרווח הרבעון האחרון לעומת אותו רבעון שנה קודמת. מדד ה"YoY" — ממוצע בין עונות שונות.', _pct_class(d.earnings_qgrowth, true))}
+        ${_metric('צמיחת הכנסות',  _fmt_pct(d.revenue_growth),   'מעל 10% = צמיחה מהירה. מתחת ל-0 = אזהרה.', _pct_class(d.revenue_growth, true))}
+        ${_metric('צמיחת רווחים', _fmt_pct(d.earnings_growth),   'חשוב שתהיה לפחות כמו צמיחת הכנסות.', _pct_class(d.earnings_growth, true))}
+        ${_metric('צמיחה רבעונית',_fmt_pct(d.earnings_qgrowth),  'YoY — שינוי לעומת אותו רבעון שנה קודמת.', _pct_class(d.earnings_qgrowth, true))}
       </div>
     </div>`;
 
-    // ── Dividend ──
     let divHtml = '';
     if (d.dividend_yield || d.dividend_rate) {
-      const dyClass = d.dividend_yield != null ? (d.dividend_yield > 0.03 ? 'green' : '') : '';
+      const dyCls = d.dividend_yield != null ? (d.dividend_yield > 0.03 ? 'green' : '') : '';
       divHtml = `<div class="fa-metrics-section">
         <div class="fa-section-title">דיבידנד</div>
         <div class="fa-metrics-grid">
-          ${_metric('תשואת דיבידנד', d.dividend_yield != null ? _fmt_pct(d.dividend_yield) : '—', 'כמה מהמחיר אתה מקבל כדיבידנד שנתי. מעל 3% = תשואה נחשבת טובה. קרנות אגרה יותר = מגן בירידות.', dyClass)}
-          ${_metric('דיבידנד למניה', d.dividend_rate != null ? '$' + _fmt_num(d.dividend_rate) : '—', 'כמה דולרים בשנה מקבלים על כל מניה. מחושב: תשואה × מחיר. חלקו ל-4 = דיבידנד רבעוני.', '')}
-          ${_metric('יחס חלוקה', d.payout_ratio != null ? _fmt_pct(d.payout_ratio) : '—', 'כמה מהרווח מחולק כדיבידנד. מתחת ל-60% = בטוח — יש מרווח. מעל 100% = משלמים יותר מהרווח = לא בר-קיימא.', d.payout_ratio != null ? (d.payout_ratio < 0.6 ? 'green' : 'red') : '')}
+          ${_metric('תשואת דיבידנד', d.dividend_yield!=null?_fmt_pct(d.dividend_yield):'—', 'מעל 3% = תשואה נחשבת טובה.', dyCls)}
+          ${_metric('דיבידנד למניה', d.dividend_rate!=null?'$'+_fmt_num(d.dividend_rate):'—', 'כמה דולרים בשנה לכל מניה.', '')}
+          ${_metric('יחס חלוקה', d.payout_ratio!=null?_fmt_pct(d.payout_ratio):'—', 'מתחת ל-60% = בטוח. מעל 100% = לא בר-קיימא.', d.payout_ratio!=null?(d.payout_ratio<0.6?'green':'red'):'')}
         </div>
       </div>`;
     }
 
-    // ── Analyst Consensus ──
     let analystHtml = '';
     if (d.target_mean || d.num_analysts) {
-      const price = d.price;
-      let upside = null;
-      if (price && d.target_mean) {
-        upside = ((d.target_mean - price) / price * 100).toFixed(1);
-      }
-      const upsideClass = upside != null ? (upside > 0 ? 'green' : 'red') : '';
-      const upsideStr = upside != null ? `${upside > 0 ? '+' : ''}${upside}%` : '';
-
+      const upside = d.price && d.target_mean ? ((d.target_mean - d.price) / d.price * 100).toFixed(1) : null;
+      const uCls = upside != null ? (upside > 0 ? 'green' : 'red') : '';
       let targetBarHtml = '';
-      if (d.target_low != null && d.target_high != null && d.target_mean != null && price != null) {
+      if (d.target_low != null && d.target_high != null && d.target_mean != null && d.price != null) {
         const range = d.target_high - d.target_low;
-        const pricePos = Math.min(100, Math.max(0, (price - d.target_low) / range * 100));
+        const pricePos = Math.min(100, Math.max(0, (d.price - d.target_low) / range * 100));
         const meanPos  = Math.min(100, Math.max(0, (d.target_mean - d.target_low) / range * 100));
-        targetBarHtml = `
-        <div style="margin-top:14px;">
+        targetBarHtml = `<div style="margin-top:14px;direction:ltr;">
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--label3);margin-bottom:6px;">
-            <span>מטרה נמוכה: $${_fmt_num(d.target_low)}</span>
-            <span>ממוצע: $${_fmt_num(d.target_mean)} <span class="${upsideClass}" style="font-weight:700;">${upsideStr}</span></span>
-            <span>מטרה גבוהה: $${_fmt_num(d.target_high)}</span>
+            <span>נמוך: $${_fmt_num(d.target_low)}</span>
+            <span style="direction:rtl;">ממוצע: $${_fmt_num(d.target_mean)} <span class="${uCls}" style="font-weight:700;">${upside!=null?(upside>0?'+':'')+upside+'%':''}</span></span>
+            <span>גבוה: $${_fmt_num(d.target_high)}</span>
           </div>
           <div class="fa-target-track">
             <div class="fa-target-fill" style="width:${meanPos}%"></div>
-            <div class="fa-target-dot" style="left:${pricePos}%"></div>
+            <div class="fa-target-dot" style="left:${pricePos}%">
+              <div class="fa-dot-tip" style="direction:rtl;">📍 מחיר נוכחי<br><b style="font-size:14px;">$${d.price.toFixed(2)}</b><br><span style="color:rgba(255,255,255,0.6);font-size:11px;">יעד אנליסטים: $${_fmt_num(d.target_mean)}</span><br><span style="color:#ff9f0a;font-size:11px;">${upside!=null?(upside>0?'▲ ':'▼ ')+Math.abs(upside)+'% מהיעד':''}</span></div>
+            </div>
           </div>
-          <div style="font-size:10px;color:var(--label3);margin-top:4px;text-align:center;">הנקודה = מחיר נוכחי (${price ? '$' + price.toFixed(2) : '—'})</div>
+          <div style="font-size:10px;color:var(--label3);margin-top:4px;text-align:center;direction:rtl;">הנקודה = מחיר נוכחי ($${d.price.toFixed(2)})</div>
         </div>`;
       }
-
       analystHtml = `<div class="fa-chart-card" style="margin-bottom:14px;">
         <div class="fa-chart-title">קונצנזוס אנליסטים</div>
-        <div style="font-size:12px;color:var(--label3);margin-bottom:10px;">${d.num_analysts ? d.num_analysts + ' אנליסטים' : ''}</div>
+        <div style="font-size:12px;color:var(--label3);margin-bottom:10px;">${d.num_analysts?d.num_analysts+' אנליסטים':''}</div>
         ${targetBarHtml}
         <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;">
-          ${_metric('יעד מחיר ממוצע', d.target_mean ? '$' + _fmt_num(d.target_mean) : '—', 'ממוצע יעדי המחיר של כל האנליסטים שעוקבים אחרי המניה. זו תחזית — לא ודאות. תמיד בדוק את הפער מהמחיר הנוכחי.', upsideClass)}
-          ${_metric('המלצת אנליסטים', _rec_badge(d.rec_key) || '—', 'ממוצע ההמלצות: קנייה חזקה / קנייה / החזק / מכירה. קנייה חזקה = רוב האנליסטים אופטימיים. זכור: אנליסטים לא תמיד צודקים.', '')}
+          ${_metric('יעד מחיר ממוצע', d.target_mean?'$'+_fmt_num(d.target_mean):'—', 'ממוצע יעדי המחיר של כל האנליסטים.', uCls)}
+          ${_metric('המלצת אנליסטים', _rec_badge(d.rec_key)||'—', 'קנייה חזקה / קנייה / החזק / מכירה.', '')}
         </div>
       </div>`;
     }
 
     container.innerHTML = headerHtml + descHtml + periodHtml + chartsHtml + metricsHtml + divHtml + analystHtml;
-
-    // Store data globally for period toggle
     window._faData = d;
-
-    // Render charts
     faRenderCharts(d, 'annual');
   }
 
@@ -6674,94 +6269,51 @@
 
   function faRenderCharts(d, period) {
     const isAnnual = period === 'annual';
-    const revData  = isAnnual ? d.revenue_annual       : d.revenue_quarterly;
-    const niData   = isAnnual ? d.net_income_annual    : d.net_income_quarterly;
+    const revData  = isAnnual ? d.revenue_annual    : d.revenue_quarterly;
+    const niData   = isAnnual ? d.net_income_annual : d.net_income_quarterly;
     const fcfData  = d.fcf_annual || {};
     const cur      = d.currency || 'USD';
-
     const layout_base = {
-      paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-      font: { family: '-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif', size: 11, color: '#6e6e73' },
-      margin: { l: 48, r: 10, t: 10, b: 48 },
-      showlegend: true,
-      legend: { orientation: 'h', y: -0.35, x: 0, font: { size: 10 } },
-      xaxis: { tickfont: { size: 10 }, gridcolor: 'rgba(0,0,0,0.05)' },
-      yaxis: { tickfont: { size: 10 }, gridcolor: 'rgba(0,0,0,0.05)', tickformat: '.2s' },
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      font:{ family:'-apple-system,sans-serif', size:11, color:'#6e6e73' },
+      margin:{l:48,r:10,t:10,b:48}, showlegend:true,
+      legend:{orientation:'h',y:-0.35,x:0,font:{size:10}},
+      xaxis:{tickfont:{size:10},gridcolor:'rgba(0,0,0,0.05)'},
+      yaxis:{tickfont:{size:10},gridcolor:'rgba(0,0,0,0.05)',tickformat:'.2s'},
     };
-    const cfg = { displayModeBar: false, responsive: true };
+    const cfg = {displayModeBar:false, responsive:true};
 
-    // ── Chart 1: Revenue + Net Income ──
     const revKeys = _sorted_keys(revData);
     const niKeys  = _sorted_keys(niData);
-    const revVals = revKeys.map(k => (revData[k] || 0) / 1e9);
-    const niVals  = niKeys.map(k  => (niData[k]  || 0) / 1e9);
-    const niColors = niVals.map(v => v >= 0 ? 'rgba(52,199,89,0.85)' : 'rgba(255,59,48,0.85)');
-
+    const revVals = revKeys.map(k => (revData[k]||0)/1e9);
+    const niVals  = niKeys.map(k  => (niData[k] ||0)/1e9);
     Plotly.newPlot('faRevenueChart', [
-      { x: revKeys, y: revVals, type: 'bar', name: 'הכנסות', marker: { color: 'rgba(0,113,227,0.7)' }, hovertemplate: '%{x}<br>%{y:.2f}B ' + cur + '<extra>הכנסות</extra>' },
-      { x: niKeys,  y: niVals,  type: 'bar', name: 'רווח נקי', marker: { color: niColors }, hovertemplate: '%{x}<br>%{y:.2f}B ' + cur + '<extra>רווח נקי</extra>' },
-    ], { ...layout_base, barmode: 'group', yaxis: { ...layout_base.yaxis, title: 'מיליארד ' + cur } }, cfg);
+      {x:revKeys,y:revVals,type:'bar',name:'הכנסות',   marker:{color:'rgba(0,113,227,0.7)'}, hovertemplate:'%{x}<br>%{y:.2f}B '+cur+'<extra>הכנסות</extra>'},
+      {x:niKeys, y:niVals, type:'bar',name:'רווח נקי', marker:{color:niVals.map(v=>v>=0?'rgba(52,199,89,0.85)':'rgba(255,59,48,0.85)')}, hovertemplate:'%{x}<br>%{y:.2f}B '+cur+'<extra>רווח נקי</extra>'},
+    ], {...layout_base, barmode:'group', yaxis:{...layout_base.yaxis,title:'מיליארד '+cur}}, cfg);
 
-    // ── Chart 2: Margins ──
-    const revA  = d.revenue_annual || {};
-    const gpA   = d.gross_profit_annual || {};
-    const opIA  = d.op_income_annual || {};
-    const niA   = d.net_income_annual || {};
-    const mKeys = _sorted_keys(revA).filter(k => revA[k] > 0);
-
-    const gmVals = mKeys.map(k => gpA[k] != null && revA[k] > 0 ? (gpA[k] / revA[k] * 100) : null);
-    const omVals = mKeys.map(k => opIA[k]!= null && revA[k] > 0 ? (opIA[k]/ revA[k] * 100) : null);
-    const nmVals = mKeys.map(k => niA[k] != null && revA[k] > 0 ? (niA[k] / revA[k] * 100) : null);
-
-    const marginLayout = { ...layout_base, yaxis: { ...layout_base.yaxis, title: '%', tickformat: '.1f', ticksuffix: '%' } };
+    const revA=d.revenue_annual||{}, gpA=d.gross_profit_annual||{}, opIA=d.op_income_annual||{}, niA=d.net_income_annual||{};
+    const mKeys=_sorted_keys(revA).filter(k=>revA[k]>0);
     Plotly.newPlot('faMarginsChart', [
-      { x: mKeys, y: gmVals, type: 'scatter', mode: 'lines+markers', name: 'גולמי',   line: { color: '#0071e3', width: 2 }, marker: { size: 6 } },
-      { x: mKeys, y: omVals, type: 'scatter', mode: 'lines+markers', name: 'תפעולי', line: { color: '#7c3aed', width: 2 }, marker: { size: 6 } },
-      { x: mKeys, y: nmVals, type: 'scatter', mode: 'lines+markers', name: 'נקי',     line: { color: '#34c759', width: 2 }, marker: { size: 6 } },
-    ], marginLayout, cfg);
+      {x:mKeys,y:mKeys.map(k=>gpA[k]!=null&&revA[k]>0?(gpA[k]/revA[k]*100):null), type:'scatter',mode:'lines+markers',name:'גולמי',  line:{color:'#0071e3',width:2},marker:{size:6}},
+      {x:mKeys,y:mKeys.map(k=>opIA[k]!=null&&revA[k]>0?(opIA[k]/revA[k]*100):null),type:'scatter',mode:'lines+markers',name:'תפעולי',line:{color:'#7c3aed',width:2},marker:{size:6}},
+      {x:mKeys,y:mKeys.map(k=>niA[k]!=null&&revA[k]>0?(niA[k]/revA[k]*100):null),  type:'scatter',mode:'lines+markers',name:'נקי',    line:{color:'#34c759',width:2},marker:{size:6}},
+    ], {...layout_base,yaxis:{...layout_base.yaxis,title:'%',tickformat:'.1f',ticksuffix:'%'}}, cfg);
 
-    // ── Chart 3: FCF ──
-    const fcfKeys = _sorted_keys(fcfData);
-    const fcfVals = fcfKeys.map(k => (fcfData[k] || 0) / 1e9);
-    const fcfColors = fcfVals.map(v => v >= 0 ? 'rgba(52,199,89,0.8)' : 'rgba(255,59,48,0.8)');
+    const fcfKeys=_sorted_keys(fcfData), fcfVals=fcfKeys.map(k=>(fcfData[k]||0)/1e9);
     Plotly.newPlot('faFCFChart', [
-      { x: fcfKeys, y: fcfVals, type: 'bar', name: 'FCF', marker: { color: fcfColors }, hovertemplate: '%{x}<br>%{y:.2f}B ' + cur + '<extra>FCF</extra>' },
-    ], { ...layout_base, showlegend: false, yaxis: { ...layout_base.yaxis, title: 'מיליארד ' + cur } }, cfg);
+      {x:fcfKeys,y:fcfVals,type:'bar',name:'FCF',marker:{color:fcfVals.map(v=>v>=0?'rgba(52,199,89,0.8)':'rgba(255,59,48,0.8)')},hovertemplate:'%{x}<br>%{y:.2f}B '+cur+'<extra>FCF</extra>'},
+    ], {...layout_base,showlegend:false,yaxis:{...layout_base.yaxis,title:'מיליארד '+cur}}, cfg);
 
-    // ── Chart 4: EPS (from annual data approximated via net income / shares) ──
-    // We'll show a simple bar with the EPS values we know (trailing + forward)
-    const epsKeys = [], epsVals = [], epsColors = [];
-    // Build from net income if we have shares outstanding
-    const shares = (window._faData || {}).shares_outstanding;
-    const niAKeys = _sorted_keys(niA);
-    if (niAKeys.length > 0) {
-      niAKeys.forEach(k => {
-        if (niA[k] != null) {
-          epsKeys.push(k);
-          epsVals.push(Number((niA[k] / 1e9).toFixed(3)));  // show net income in B if no shares
-          epsColors.push(niA[k] >= 0 ? 'rgba(0,113,227,0.75)' : 'rgba(255,59,48,0.75)');
-        }
-      });
-      // Add trailing & forward EPS as reference lines if available
-    }
     const epsTraces = [];
     if (d.eps_trailing != null || d.eps_forward != null) {
-      // Show trailing + forward as bar chart
       const epsBars = [];
-      if (d.eps_trailing != null) epsBars.push({ x: 'שוטף (TTM)', y: d.eps_trailing, color: d.eps_trailing >= 0 ? 'rgba(0,113,227,0.75)' : 'rgba(255,59,48,0.75)' });
-      if (d.eps_forward  != null) epsBars.push({ x: 'צפוי', y: d.eps_forward, color: '#7c3aed' });
-      epsTraces.push({
-        x: epsBars.map(b => b.x), y: epsBars.map(b => b.y), type: 'bar', name: 'EPS',
-        marker: { color: epsBars.map(b => b.color) },
-        hovertemplate: '%{x}<br>$%{y:.2f}<extra>EPS</extra>',
-        text: epsBars.map(b => '$' + b.y.toFixed(2)), textposition: 'outside',
-      });
+      if (d.eps_trailing!=null) epsBars.push({x:'שוטף (TTM)',y:d.eps_trailing,color:d.eps_trailing>=0?'rgba(0,113,227,0.75)':'rgba(255,59,48,0.75)'});
+      if (d.eps_forward !=null) epsBars.push({x:'צפוי',       y:d.eps_forward, color:'#7c3aed'});
+      epsTraces.push({x:epsBars.map(b=>b.x),y:epsBars.map(b=>b.y),type:'bar',name:'EPS',marker:{color:epsBars.map(b=>b.color)},hovertemplate:'%{x}<br>$%{y:.2f}<extra>EPS</extra>',text:epsBars.map(b=>'$'+b.y.toFixed(2)),textposition:'outside'});
     }
-    if (epsTraces.length === 0) {
-      epsTraces.push({ x: [], y: [], type: 'bar', name: 'EPS' });
-    }
-    Plotly.newPlot('faEPSChart', epsTraces,
-      { ...layout_base, showlegend: false, yaxis: { ...layout_base.yaxis, title: '$', tickformat: '.2f', tickprefix: '$' } }, cfg);
+    if (!epsTraces.length) epsTraces.push({x:[],y:[],type:'bar',name:'EPS'});
+    Plotly.newPlot('faEPSChart', epsTraces, {...layout_base,showlegend:false,yaxis:{...layout_base.yaxis,title:'$',tickformat:'.2f',tickprefix:'$'}}, cfg);
   }
 </script>
 </body>
