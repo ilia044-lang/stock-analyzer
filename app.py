@@ -3814,5 +3814,171 @@ def portfolio_intraday():
         return jsonify({'candles': [], 'events': [], 'error': str(e)})
 
 
+_AI_SYSTEM = """אתה יועץ השקעות ומנתח מניות מקצועי הדובר עברית. אתה מתמחה בשיטת Live 20 של מיכה סטוקס.
+
+עקרונות השיטה שאתה מיישם:
+- MA20 (ממוצע נע 20): מחיר מעל ממוצע 20 עולה = טרנד בוליש. מחיר 8%+ מתחת = "גומיה מתוחה" = הזדמנות ריקושט.
+- CCI(14): חציית -100 כלפי מעלה = איתות כניסה חזק. מעל 0 = 2-4 ימי עליות. מתחת 0 = ירידות.
+- ווליום: ווליום יורד בירידה = בוליש (מוכרים נחלשים). ווליום עולה בירידה = בריש.
+- כלל 5 ימים: 5 ימים ירוקים/אדומים רצופים = צפה להיפוך.
+- כניסה: לפחות 4 פרמטרים בוליש לפני כניסה.
+- SL: תמיד מגדיר סטופ לוס לפני כניסה.
+- גאפים: 80% מהגאפים נסגרים — גאפ פתוח = מגנט.
+- פיבונאצ'י: רמות 38.2%, 50%, 61.8% הן תמיכות/התנגדויות חזקות.
+
+אתה עונה בעברית בלבד, בצורה ברורה ופשוטה. נותן המלצות ספציפיות עם מספרים. תמיד מזכיר ניהול סיכונים. לא נותן ייעוץ פיננסי רשמי — רק ניתוח טכני וחינוכי."""
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    try:
+        import anthropic as _anth
+        data    = request.get_json() or {}
+        msgs    = data.get('messages', [])
+        api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+        if not api_key:
+            return jsonify({'error': 'ANTHROPIC_API_KEY לא מוגדר — הוסף את המפתח ב-Render → Environment'}), 400
+        if not msgs:
+            return jsonify({'error': 'אין הודעות'}), 400
+
+        client = _anth.Anthropic(api_key=api_key)
+        resp   = client.messages.create(
+            model='claude-sonnet-4-6',
+            max_tokens=1024,
+            system=_AI_SYSTEM,
+            messages=[{'role': m['role'], 'content': m['content']} for m in msgs],
+        )
+        return jsonify({'reply': resp.content[0].text})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/fundamental/<ticker>')
+def api_fundamental(ticker):
+    ticker = ticker.upper().strip()
+    cached = cache_get(f'fund_{ticker}', ttl=3600)
+    if cached:
+        return jsonify(cached)
+    try:
+        t = _ticker(ticker)
+        info = t.info or {}
+
+        def _row_to_dict(df, *keys):
+            if df is None or df.empty:
+                return {}
+            for key in keys:
+                if key in df.index:
+                    row = df.loc[key]
+                    out = {}
+                    for col in row.index:
+                        try:
+                            v = row[col]
+                            if pd.notna(v):
+                                out[str(col.date())] = float(v)
+                        except Exception:
+                            pass
+                    return out
+            return {}
+
+        try:
+            fin_a = t.financials
+        except Exception:
+            fin_a = None
+        try:
+            fin_q = t.quarterly_financials
+        except Exception:
+            fin_q = None
+        try:
+            cf_a = t.cashflow
+        except Exception:
+            cf_a = None
+        try:
+            bs_a = t.balance_sheet
+        except Exception:
+            bs_a = None
+
+        revenue_a      = _row_to_dict(fin_a, 'Total Revenue')
+        revenue_q      = _row_to_dict(fin_q, 'Total Revenue')
+        net_income_a   = _row_to_dict(fin_a, 'Net Income')
+        net_income_q   = _row_to_dict(fin_q, 'Net Income')
+        gross_profit_a = _row_to_dict(fin_a, 'Gross Profit')
+        op_income_a    = _row_to_dict(fin_a, 'Operating Income', 'EBIT')
+        fcf_a          = _row_to_dict(cf_a,  'Free Cash Flow')
+        op_cf_a        = _row_to_dict(cf_a,  'Operating Cash Flow', 'Total Cash From Operating Activities')
+
+        # תרגום תיאור החברה לעברית (בחתיכות של ~450 תווים)
+        raw_desc = info.get('longBusinessSummary', '')
+        if raw_desc:
+            sentences = raw_desc.replace('. ', '.|').split('|')
+            chunks, cur_chunk = [], ''
+            for s in sentences:
+                if len(cur_chunk) + len(s) < 450:
+                    cur_chunk += s + ' '
+                else:
+                    if cur_chunk.strip():
+                        chunks.append(cur_chunk.strip())
+                    cur_chunk = s + ' '
+            if cur_chunk.strip():
+                chunks.append(cur_chunk.strip())
+            translated_parts = [translate_he(c) for c in chunks]
+            description_he = ' '.join(translated_parts)
+        else:
+            description_he = ''
+
+        result = {
+            'ticker': ticker,
+            'name':        info.get('longName', ticker),
+            'sector':      info.get('sector', ''),
+            'industry':    info.get('industry', ''),
+            'country':     info.get('country', ''),
+            'employees':   info.get('fullTimeEmployees', None),
+            'description': description_he,
+            'website':     info.get('website', ''),
+            'price':       info.get('currentPrice', info.get('regularMarketPrice', None)),
+            'market_cap':  info.get('marketCap', None),
+            'currency':    info.get('currency', 'USD'),
+            'pe_trailing':     info.get('trailingPE', None),
+            'pe_forward':      info.get('forwardPE', None),
+            'pb':              info.get('priceToBook', None),
+            'ps':              info.get('priceToSalesTrailing12Months', None),
+            'ev_ebitda':       info.get('enterpriseToEbitda', None),
+            'ev_revenue':      info.get('enterpriseToRevenue', None),
+            'eps_trailing':    info.get('trailingEps', None),
+            'eps_forward':     info.get('forwardEps', None),
+            'revenue_growth':  info.get('revenueGrowth', None),
+            'earnings_growth': info.get('earningsGrowth', None),
+            'earnings_qgrowth':info.get('earningsQuarterlyGrowth', None),
+            'gross_margin':    info.get('grossMargins', None),
+            'op_margin':       info.get('operatingMargins', None),
+            'net_margin':      info.get('profitMargins', None),
+            'roe':             info.get('returnOnEquity', None),
+            'roa':             info.get('returnOnAssets', None),
+            'debt_equity':     info.get('debtToEquity', None),
+            'current_ratio':   info.get('currentRatio', None),
+            'quick_ratio':     info.get('quickRatio', None),
+            'total_cash':      info.get('totalCash', None),
+            'total_debt':      info.get('totalDebt', None),
+            'dividend_yield':  info.get('dividendYield', None),
+            'payout_ratio':    info.get('payoutRatio', None),
+            'dividend_rate':   info.get('dividendRate', None),
+            'target_mean':     info.get('targetMeanPrice', None),
+            'target_low':      info.get('targetLowPrice', None),
+            'target_high':     info.get('targetHighPrice', None),
+            'rec_key':         info.get('recommendationKey', None),
+            'num_analysts':    info.get('numberOfAnalystOpinions', None),
+            'revenue_annual':      revenue_a,
+            'revenue_quarterly':   revenue_q,
+            'net_income_annual':   net_income_a,
+            'net_income_quarterly':net_income_q,
+            'gross_profit_annual': gross_profit_a,
+            'op_income_annual':    op_income_a,
+            'fcf_annual':          fcf_a,
+            'op_cf_annual':        op_cf_a,
+        }
+        cache_set(f'fund_{ticker}', result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
