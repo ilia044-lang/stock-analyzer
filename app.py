@@ -8,10 +8,30 @@ import datetime
 import os, json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ── Portfolio persistent file (local disk) ─────────────────────────────────
-_PF_FILE = os.path.join(os.path.dirname(__file__), 'portfolio_data.json')
+# ── Portfolio storage — Supabase (cloud) + local file fallback ───────────────
+_PF_FILE       = os.path.join(os.path.dirname(__file__), 'portfolio_data.json')
+_SUPABASE_URL  = os.environ.get('SUPABASE_URL', '').rstrip('/')
+_SUPABASE_KEY  = os.environ.get('SUPABASE_KEY', '')
+_SB_HEADERS    = lambda: {
+    'apikey': _SUPABASE_KEY,
+    'Authorization': f'Bearer {_SUPABASE_KEY}',
+    'Content-Type': 'application/json',
+}
 
 def _pf_load():
+    # Supabase first (cloud)
+    if _SUPABASE_URL and _SUPABASE_KEY:
+        try:
+            r = requests.get(
+                f'{_SUPABASE_URL}/rest/v1/portfolio?id=eq.main&select=data',
+                headers=_SB_HEADERS(), timeout=5)
+            if r.ok:
+                rows = r.json()
+                if rows:
+                    return rows[0]['data']
+        except Exception:
+            pass
+    # Fallback — local file
     try:
         if os.path.exists(_PF_FILE):
             with open(_PF_FILE, 'r', encoding='utf-8') as f:
@@ -21,12 +41,26 @@ def _pf_load():
     return {'positions': [], 'history': [], 'snapshots': []}
 
 def _pf_save(data):
+    ok = False
+    # Save to Supabase (cloud)
+    if _SUPABASE_URL and _SUPABASE_KEY:
+        try:
+            r = requests.post(
+                f'{_SUPABASE_URL}/rest/v1/portfolio',
+                headers={**_SB_HEADERS(), 'Prefer': 'resolution=merge-duplicates'},
+                json={'id': 'main', 'data': data,
+                      'updated_at': datetime.datetime.utcnow().isoformat()},
+                timeout=5)
+            ok = r.ok
+        except Exception:
+            pass
+    # Always save locally too (backup)
     try:
         with open(_PF_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return True
     except Exception:
-        return False
+        return ok
 
 def _ticker(symbol):
     return yf.Ticker(symbol)
