@@ -3257,15 +3257,28 @@ def portfolio_prices():
                                 group_by='ticker', auto_adjust=True,
                                 prepost=True, progress=False, threads=True)
 
+        def _get_close(df, tk):
+            """מחלץ עמודת Close בין MultiIndex ל-flat — תואם כל גרסת yfinance"""
+            try:
+                if df is None or df.empty:
+                    return None
+                if isinstance(df.columns, pd.MultiIndex):
+                    lvl0 = df.columns.get_level_values(0)
+                    lvl1 = df.columns.get_level_values(1)
+                    if tk in lvl1:
+                        return df['Close'][tk] if 'Close' in lvl0 else None
+                    if tk in lvl0:
+                        return df[tk]['Close'] if 'Close' in df[tk].columns else None
+                    return None
+                else:
+                    return df['Close'] if 'Close' in df.columns else None
+            except Exception:
+                return None
+
         for ticker in ticker_list:
             try:
-                # מחיר עדכני — מהיום intraday
-                if len(ticker_list) == 1:
-                    intra_close = intra_raw['Close']
-                    daily_close = raw['Close']
-                else:
-                    intra_close = intra_raw[ticker]['Close'] if ticker in intra_raw.columns.get_level_values(0) else None
-                    daily_close = raw[ticker]['Close']       if ticker in raw.columns.get_level_values(0)       else None
+                intra_close = _get_close(intra_raw, ticker)
+                daily_close = _get_close(raw, ticker)
 
                 intra_vals = intra_close.dropna() if intra_close is not None else None
                 daily_vals = daily_close.dropna() if daily_close is not None else None
