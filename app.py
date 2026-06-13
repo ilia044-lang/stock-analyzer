@@ -8,6 +8,28 @@ import datetime
 import os, json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# מונע חסימה של Yahoo Finance על שרתי ענן
+yf.set_tz_cache_location("/tmp/yf_tz")
+_YF_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                  'AppleWebKit/537.36 (KHTML, like Gecko) '
+                  'Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+}
+try:
+    import requests as _req
+    _orig_get = _req.Session.get
+    def _patched_get(self, url, **kwargs):
+        if 'yahoo' in str(url).lower():
+            h = kwargs.get('headers', {}) or {}
+            h.setdefault('User-Agent', _YF_HEADERS['User-Agent'])
+            kwargs['headers'] = h
+        return _orig_get(self, url, **kwargs)
+    _req.Session.get = _patched_get
+except Exception:
+    pass
+
 # ── Portfolio storage — Supabase (cloud) + local file fallback ───────────────
 _PF_FILE       = os.path.join(os.path.dirname(__file__), 'portfolio_data.json')
 _SUPABASE_URL  = os.environ.get('SUPABASE_URL', '').rstrip('/')
