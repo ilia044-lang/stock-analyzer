@@ -30,6 +30,175 @@ try:
 except Exception:
     pass
 
+# ── עמידות לחסימות Yahoo: retry + backoff + cache ל-info ──────────────────────
+def _yf_retry(func, *args, **kwargs):
+    """מריץ קריאת yfinance עם 3 ניסיונות והמתנה גדלה כשYahoo חוסם (429)"""
+    last_err = None
+    for attempt in range(3):
+        try:
+            result = func(*args, **kwargs)
+            if hasattr(result, 'empty') and result.empty:
+                raise ValueError('empty dataframe')
+            return result
+        except Exception as e:
+            last_err = e
+            msg = str(e).lower()
+            if 'too many' in msg or 'rate' in msg or '429' in msg:
+                time.sleep(3 * (attempt + 1))
+            else:
+                time.sleep(1.5 * (attempt + 1))
+    if last_err:
+        raise last_err
+    return None
+
+_info_cache = {}
+def _get_info_cached(stock, ticker):
+    """info הוא הקריאה הכבדה ביותר ולא משתנה תוך כדי יום — cache ל-30 דקות"""
+    entry = _info_cache.get(ticker)
+    if entry and (time.time() - entry[0]) < 1800:
+        return entry[1]
+    try:
+        info = _yf_retry(lambda: stock.info)
+    except Exception:
+        info = {}
+    _info_cache[ticker] = (time.time(), info)
+    return infotry:
+    import requests as _req
+    _orig_get = _req.Session.get
+    def _patched_get(self, url, **kwargs):
+        if 'yahoo' in str(url).lower():
+            h = kwargs.get('headers', {}) or {}
+            h.setdefault('User-Agent', _YF_HEADERS['User-Agent'])
+            kwargs['headers'] = h
+        return _orig_get(self, url, **kwargs)
+    _req.Session.get = _patched_get
+except Exception:
+    pass
+
+# ── עמידות לחסימות Yahoo: retry + backoff + cache ל-info ──────────────────────
+def _yf_retry(func, *args, **kwargs):
+    """מריץ קריאת yfinance עם 3 ניסיונות והמתנה גדלה כשYahoo חוסם (429)"""
+    last_err = None
+    for attempt in range(3):
+        try:
+            result = func(*args, **kwargs)
+            if hasattr(result, 'empty') and result.empty:
+                raise ValueError('empty dataframe')
+            return result
+        except Exception as e:
+            last_err = e
+            msg = str(e).lower()
+            if 'too many' in msg or 'rate' in msg or '429' in msg:
+                time.sleep(3 * (attempt + 1))
+            else:
+                time.sleep(1.5 * (attempt + 1))
+    if last_err:
+        raise last_err
+    return None
+
+_info_cache = {}
+def _get_info_cached(stock, ticker):
+    """info הוא הקריאה הכבדה ביותר ולא משתנה תוך כדי יום — cache ל-30 דקות"""
+    entry = _info_cache.get(ticker)
+    if entry and (time.time() - entry[0]) < 1800:
+        return entry[1]
+    try:
+        info = _yf_retry(lambda: stock.info)
+    except Exception:
+        info = {}
+    _info_cache[ticker] = (time.time(), info)
+    return infotry:
+    import requests as _req
+    _orig_get = _req.Session.get
+    def _patched_get(self, url, **kwargs):
+        if 'yahoo' in str(url).lower():
+            h = kwargs.get('headers', {}) or {}
+            h.setdefault('User-Agent', _YF_HEADERS['User-Agent'])
+            kwargs['headers'] = h
+        return _orig_get(self, url, **kwargs)
+    _req.Session.get = _patched_get
+except Exception:
+    pass
+
+# ── עמידות לחסימות Yahoo: retry + backoff + cache ל-info ──────────────────────
+def _yf_retry(func, *args, **kwargs):
+    """מריץ קריאת yfinance עם 3 ניסיונות והמתנה גדלה כשYahoo חוסם (429)"""
+    last_err = None
+    for attempt in range(3):
+        try:
+            result = func(*args, **kwargs)
+            if hasattr(result, 'empty') and result.empty:
+                raise ValueError('empty dataframe')
+            return result
+        except Exception as e:
+            last_err = e
+            msg = str(e).lower()
+            if 'too many' in msg or 'rate' in msg or '429' in msg:
+                time.sleep(3 * (attempt + 1))
+            else:
+                time.sleep(1.5 * (attempt + 1))
+    if last_err:
+        raise last_err
+    return None
+
+_info_cache = {}
+def _get_info_cached(stock, ticker):
+    """info הוא הקריאה הכבדה ביותר ולא משתנה תוך כדי יום — cache ל-30 דקות"""
+    entry = _info_cache.get(ticker)
+    if entry and (time.time() - entry[0]) < 1800:
+        return entry[1]
+    try:
+        info = _yf_retry(lambda: stock.info)
+    except Exception:
+        info = {}
+    _info_cache[ticker] = (time.time(), info)
+    return infotry:
+    import requests as _req
+    _orig_get = _req.Session.get
+    def _patched_get(self, url, **kwargs):
+        if 'yahoo' in str(url).lower():
+            h = kwargs.get('headers', {}) or {}
+            h.setdefault('User-Agent', _YF_HEADERS['User-Agent'])
+            kwargs['headers'] = h
+        return _orig_get(self, url, **kwargs)
+    _req.Session.get = _patched_get
+except Exception:
+    pass
+
+# ── עמידות לחסימות Yahoo: retry + backoff + cache ל-info ──────────────────────
+def _yf_retry(func, *args, **kwargs):
+    """מריץ קריאת yfinance עם 3 ניסיונות והמתנה גדלה כשYahoo חוסם (429)"""
+    last_err = None
+    for attempt in range(3):
+        try:
+            result = func(*args, **kwargs)
+            if hasattr(result, 'empty') and result.empty:
+                raise ValueError('empty dataframe')
+            return result
+        except Exception as e:
+            last_err = e
+            msg = str(e).lower()
+            if 'too many' in msg or 'rate' in msg or '429' in msg:
+                time.sleep(3 * (attempt + 1))
+            else:
+                time.sleep(1.5 * (attempt + 1))
+    if last_err:
+        raise last_err
+    return None
+
+_info_cache = {}
+def _get_info_cached(stock, ticker):
+    """info הוא הקריאה הכבדה ביותר ולא משתנה תוך כדי יום — cache ל-30 דקות"""
+    entry = _info_cache.get(ticker)
+    if entry and (time.time() - entry[0]) < 1800:
+        return entry[1]
+    try:
+        info = _yf_retry(lambda: stock.info)
+    except Exception:
+        info = {}
+    _info_cache[ticker] = (time.time(), info)
+    return info
+
 # ── Portfolio storage — Supabase (cloud) + local file fallback ───────────────
 _PF_FILE       = os.path.join(os.path.dirname(__file__), 'portfolio_data.json')
 _SUPABASE_URL  = os.environ.get('SUPABASE_URL', '').rstrip('/')
