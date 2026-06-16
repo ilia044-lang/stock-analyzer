@@ -8,27 +8,13 @@ import datetime
 import os, json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# מונע חסימה של Yahoo Finance על שרתי ענן
+# מונע חסימה של Yahoo Finance על שרתי ענן — curl_cffi מחקה TLS של Chrome
 yf.set_tz_cache_location("/tmp/yf_tz")
-_YF_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                  'AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-}
 try:
-    import requests as _req
-    _orig_get = _req.Session.get
-    def _patched_get(self, url, **kwargs):
-        if 'yahoo' in str(url).lower():
-            h = kwargs.get('headers', {}) or {}
-            h.setdefault('User-Agent', _YF_HEADERS['User-Agent'])
-            kwargs['headers'] = h
-        return _orig_get(self, url, **kwargs)
-    _req.Session.get = _patched_get
+    from curl_cffi import requests as cffi_requests
+    _YF_SESSION = cffi_requests.Session(impersonate="chrome")
 except Exception:
-    pass
+    _YF_SESSION = None
 
 # ── Portfolio storage — Supabase (cloud) + local file fallback ───────────────
 _PF_FILE       = os.path.join(os.path.dirname(__file__), 'portfolio_data.json')
@@ -85,6 +71,8 @@ def _pf_save(data):
         return ok
 
 def _ticker(symbol):
+    if _YF_SESSION is not None:
+        return yf.Ticker(symbol, session=_YF_SESSION)
     return yf.Ticker(symbol)
 
 _trans_cache: dict = {}   # title → translated_title (mem-cache for server lifetime)
@@ -1899,21 +1887,21 @@ def analyze():
         return jsonify({'error': 'נא להזין טיקר'}), 400
 
     style  = request.args.get('style', 'swing')   # day / swing / position
-    cached = cache_get(f'analyze_{ticker}_{style}', ttl=300)
+    cached = cache_get(f'analyze_{ticker}_{style}', ttl=900)
     if cached:
         return jsonify(cached)
 
     try:
         stock = _ticker(ticker)
         df = None
-        for attempt in range(3):
+        for attempt in range(4):
             try:
                 df = stock.history(period='3mo')
                 if not df.empty:
                     break
             except Exception:
                 pass
-            time.sleep(2)
+            time.sleep(3 * (attempt + 1))
         if df is None or df.empty:
             return jsonify({'error': f'לא נמצאו נתונים עבור {ticker}. בדוק שהטיקר נכון.'}), 404
 
@@ -3306,12 +3294,13 @@ def portfolio_prices():
     try:
         # batch download — בקשה אחת לכל הטיקרים
         tickers_str = ' '.join(ticker_list)
+        _dl_kw = {'session': _YF_SESSION} if _YF_SESSION is not None else {}
         raw = yf.download(tickers_str, period='5d', interval='1d',
                           group_by='ticker', auto_adjust=True,
-                          progress=False, threads=True)
+                          progress=False, threads=True, **_dl_kw)
         intra_raw = yf.download(tickers_str, period='1d', interval='5m',
                                 group_by='ticker', auto_adjust=True,
-                                prepost=True, progress=False, threads=True)
+                                prepost=True, progress=False, threads=True, **_dl_kw)
 
         def _get_close(df, tk):
             """מחלץ עמודת Close בין MultiIndex ל-flat — תואם כל גרסת yfinance"""
