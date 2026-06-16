@@ -61,6 +61,8 @@ def _get_info_cached(stock, ticker):
         info = _yf_retry(lambda: stock.info)
     except Exception:
         info = {}
+    if not info:          # None או dict ריק → תמיד מחזיר dict כדי ש-.get() לא יקרוס
+        info = {}
     _info_cache[ticker] = (time.time(), info)
     return info
 
