@@ -62,141 +62,6 @@ def _get_info_cached(stock, ticker):
     except Exception:
         info = {}
     _info_cache[ticker] = (time.time(), info)
-    return infotry:
-    import requests as _req
-    _orig_get = _req.Session.get
-    def _patched_get(self, url, **kwargs):
-        if 'yahoo' in str(url).lower():
-            h = kwargs.get('headers', {}) or {}
-            h.setdefault('User-Agent', _YF_HEADERS['User-Agent'])
-            kwargs['headers'] = h
-        return _orig_get(self, url, **kwargs)
-    _req.Session.get = _patched_get
-except Exception:
-    pass
-
-# ── עמידות לחסימות Yahoo: retry + backoff + cache ל-info ──────────────────────
-def _yf_retry(func, *args, **kwargs):
-    """מריץ קריאת yfinance עם 3 ניסיונות והמתנה גדלה כשYahoo חוסם (429)"""
-    last_err = None
-    for attempt in range(3):
-        try:
-            result = func(*args, **kwargs)
-            if hasattr(result, 'empty') and result.empty:
-                raise ValueError('empty dataframe')
-            return result
-        except Exception as e:
-            last_err = e
-            msg = str(e).lower()
-            if 'too many' in msg or 'rate' in msg or '429' in msg:
-                time.sleep(3 * (attempt + 1))
-            else:
-                time.sleep(1.5 * (attempt + 1))
-    if last_err:
-        raise last_err
-    return None
-
-_info_cache = {}
-def _get_info_cached(stock, ticker):
-    """info הוא הקריאה הכבדה ביותר ולא משתנה תוך כדי יום — cache ל-30 דקות"""
-    entry = _info_cache.get(ticker)
-    if entry and (time.time() - entry[0]) < 1800:
-        return entry[1]
-    try:
-        info = _yf_retry(lambda: stock.info)
-    except Exception:
-        info = {}
-    _info_cache[ticker] = (time.time(), info)
-    return infotry:
-    import requests as _req
-    _orig_get = _req.Session.get
-    def _patched_get(self, url, **kwargs):
-        if 'yahoo' in str(url).lower():
-            h = kwargs.get('headers', {}) or {}
-            h.setdefault('User-Agent', _YF_HEADERS['User-Agent'])
-            kwargs['headers'] = h
-        return _orig_get(self, url, **kwargs)
-    _req.Session.get = _patched_get
-except Exception:
-    pass
-
-# ── עמידות לחסימות Yahoo: retry + backoff + cache ל-info ──────────────────────
-def _yf_retry(func, *args, **kwargs):
-    """מריץ קריאת yfinance עם 3 ניסיונות והמתנה גדלה כשYahoo חוסם (429)"""
-    last_err = None
-    for attempt in range(3):
-        try:
-            result = func(*args, **kwargs)
-            if hasattr(result, 'empty') and result.empty:
-                raise ValueError('empty dataframe')
-            return result
-        except Exception as e:
-            last_err = e
-            msg = str(e).lower()
-            if 'too many' in msg or 'rate' in msg or '429' in msg:
-                time.sleep(3 * (attempt + 1))
-            else:
-                time.sleep(1.5 * (attempt + 1))
-    if last_err:
-        raise last_err
-    return None
-
-_info_cache = {}
-def _get_info_cached(stock, ticker):
-    """info הוא הקריאה הכבדה ביותר ולא משתנה תוך כדי יום — cache ל-30 דקות"""
-    entry = _info_cache.get(ticker)
-    if entry and (time.time() - entry[0]) < 1800:
-        return entry[1]
-    try:
-        info = _yf_retry(lambda: stock.info)
-    except Exception:
-        info = {}
-    _info_cache[ticker] = (time.time(), info)
-    return infotry:
-    import requests as _req
-    _orig_get = _req.Session.get
-    def _patched_get(self, url, **kwargs):
-        if 'yahoo' in str(url).lower():
-            h = kwargs.get('headers', {}) or {}
-            h.setdefault('User-Agent', _YF_HEADERS['User-Agent'])
-            kwargs['headers'] = h
-        return _orig_get(self, url, **kwargs)
-    _req.Session.get = _patched_get
-except Exception:
-    pass
-
-# ── עמידות לחסימות Yahoo: retry + backoff + cache ל-info ──────────────────────
-def _yf_retry(func, *args, **kwargs):
-    """מריץ קריאת yfinance עם 3 ניסיונות והמתנה גדלה כשYahoo חוסם (429)"""
-    last_err = None
-    for attempt in range(3):
-        try:
-            result = func(*args, **kwargs)
-            if hasattr(result, 'empty') and result.empty:
-                raise ValueError('empty dataframe')
-            return result
-        except Exception as e:
-            last_err = e
-            msg = str(e).lower()
-            if 'too many' in msg or 'rate' in msg or '429' in msg:
-                time.sleep(3 * (attempt + 1))
-            else:
-                time.sleep(1.5 * (attempt + 1))
-    if last_err:
-        raise last_err
-    return None
-
-_info_cache = {}
-def _get_info_cached(stock, ticker):
-    """info הוא הקריאה הכבדה ביותר ולא משתנה תוך כדי יום — cache ל-30 דקות"""
-    entry = _info_cache.get(ticker)
-    if entry and (time.time() - entry[0]) < 1800:
-        return entry[1]
-    try:
-        info = _yf_retry(lambda: stock.info)
-    except Exception:
-        info = {}
-    _info_cache[ticker] = (time.time(), info)
     return info
 
 # ── Portfolio storage — Supabase (cloud) + local file fallback ───────────────
@@ -442,7 +307,6 @@ def detect_chart_patterns(df):
     current = close[-1]
     patterns = []
 
-    # ── עזר: מציאת שיאים ושפלים מקומיים ──
     def local_highs(window=5):
         idx = []
         for i in range(window, n - window):
@@ -460,11 +324,7 @@ def detect_chart_patterns(df):
     highs_idx = local_highs()
     lows_idx  = local_lows()
 
-    # ════════════════════════════════════════
-    # 1. ספל-וידית (Cup and Handle)
-    # ════════════════════════════════════════
     if n >= 40:
-        # מחפשים: שיא שמאלי → ירידה לשפל → עלייה חזרה לשיא → ידית (תיקון קטן) → פריצה
         cup_window = min(n - 5, 50)
         cup_high   = max(high[-cup_window:-cup_window//2])
         cup_low    = min(low[-cup_window+5:-5])
@@ -473,11 +333,11 @@ def detect_chart_patterns(df):
         depth_pct  = (cup_high - cup_low) / cup_high * 100
         symmetry   = abs(cup_high - cup_right) / cup_high
 
-        if (10 < depth_pct < 35 and                  # עומק ספל 10-35%
-                symmetry < 0.08 and                   # שני צדדים סימטריים
-                handle_low > cup_low and              # הידית מעל שפל הספל
-                (cup_high - handle_low) / cup_high < 0.15 and  # ידית לא יותר מ-15%
-                current > cup_right * 0.97):          # מחיר קרוב לשפה הימנית
+        if (10 < depth_pct < 35 and
+                symmetry < 0.08 and
+                handle_low > cup_low and
+                (cup_high - handle_low) / cup_high < 0.15 and
+                current > cup_right * 0.97):
             breakout_target = round(cup_high * (1 + depth_pct / 100), 2)
             patterns.append({
                 'name': 'ספל-וידית (Cup & Handle)',
@@ -494,21 +354,17 @@ def detect_chart_patterns(df):
                 'what_it_means': 'ירידה ועלייה בצורת U = ספל. תיקון קטן לאחר = ידית. ככל שהספל רחב יותר — הפריצה חזקה יותר.',
             })
 
-    # ════════════════════════════════════════
-    # 2. ראש-וכתפיים (Head & Shoulders) — בריש
-    # ════════════════════════════════════════
     if len(highs_idx) >= 3:
         for i in range(len(highs_idx) - 2):
             ls, hd, rs = highs_idx[i], highs_idx[i+1], highs_idx[i+2]
-            if (high[hd] > high[ls] * 1.02 and    # ראש גבוה משתי הכתפיים
+            if (high[hd] > high[ls] * 1.02 and
                     high[hd] > high[rs] * 1.02 and
-                    abs(high[ls] - high[rs]) / high[hd] < 0.06 and  # כתפיים סימטריות
-                    rs > n - 20):                  # תבנית עדכנית
-                # קו צוואר — ממוצע השפלים בין הכתפיים
+                    abs(high[ls] - high[rs]) / high[hd] < 0.06 and
+                    rs > n - 20):
                 neckline_lows = [low[j] for j in range(ls, rs+1)]
                 neckline = sum(sorted(neckline_lows)[:3]) / 3
                 target = round(neckline - (high[hd] - neckline), 2)
-                if current < high[hd] * 0.98:     # לא בשיא עצמו
+                if current < high[hd] * 0.98:
                     patterns.append({
                         'name': 'ראש-וכתפיים (H&S)',
                         'emoji': '👤',
@@ -524,9 +380,6 @@ def detect_chart_patterns(df):
                     })
                     break
 
-    # ════════════════════════════════════════
-    # 3. ראש-וכתפיים הפוך — בוליש
-    # ════════════════════════════════════════
     if len(lows_idx) >= 3:
         for i in range(len(lows_idx) - 2):
             ls, hd, rs = lows_idx[i], lows_idx[i+1], lows_idx[i+2]
@@ -553,9 +406,6 @@ def detect_chart_patterns(df):
                     })
                     break
 
-    # ════════════════════════════════════════
-    # 4. משולש עולה (Ascending Triangle) — בוליש
-    # ════════════════════════════════════════
     if n >= 15:
         recent_highs = [high[i] for i in highs_idx if i > n - 30]
         recent_lows  = [low[i]  for i in lows_idx  if i > n - 30]
@@ -578,9 +428,6 @@ def detect_chart_patterns(df):
                     'what_it_means': 'התנגדות אופקית קבועה + שפלים עולים = לחץ קנייה מצטבר. ככל שהמחיר מתכווץ — הפריצה קרובה.',
                 })
 
-    # ════════════════════════════════════════
-    # 5. משולש יורד (Descending Triangle) — בריש
-    # ════════════════════════════════════════
     if n >= 15:
         recent_highs = [high[i] for i in highs_idx if i > n - 30]
         recent_lows  = [low[i]  for i in lows_idx  if i > n - 30]
@@ -603,9 +450,6 @@ def detect_chart_patterns(df):
                     'what_it_means': 'תמיכה אופקית קבועה + שיאים יורדים = לחץ מכירה מצטבר. שבירת התמיכה = צניחה.',
                 })
 
-    # ════════════════════════════════════════
-    # 6. משולש מתכנס (Symmetrical Triangle)
-    # ════════════════════════════════════════
     if n >= 15:
         recent_highs = [high[i] for i in highs_idx if i > n - 25]
         recent_lows  = [low[i]  for i in lows_idx  if i > n - 25]
@@ -632,9 +476,6 @@ def detect_chart_patterns(df):
                     'what_it_means': 'שיאים יורדים + שפלים עולים = השוק בלחץ. הפריצה בקרוב — לא ידוע לאיזה כיוון. חכה לאישור.',
                 })
 
-    # ════════════════════════════════════════
-    # 7. דגל (Flag) — בוליש
-    # ════════════════════════════════════════
     if n >= 15:
         pole_start = max(0, n - 20)
         pole_high  = max(high[pole_start:n-5])
@@ -642,11 +483,11 @@ def detect_chart_patterns(df):
         pole_gain  = (pole_high - pole_low) / (pole_low + 0.001) * 100
         flag_range = max(high[-7:]) - min(low[-7:])
         flag_pct   = flag_range / (pole_high + 0.001) * 100
-        flag_trending_down = close[-1] < close[-5]  # דגל יורד קצת
+        flag_trending_down = close[-1] < close[-5]
 
-        if (pole_gain > 10 and          # עמוד חזק > 10%
-                flag_pct < 5 and         # דגל צר
-                flag_trending_down and   # דגל יורד
+        if (pole_gain > 10 and
+                flag_pct < 5 and
+                flag_trending_down and
                 current > pole_low * 1.05):
             target = round(current + (pole_high - pole_low) * 0.8, 2)
             patterns.append({
@@ -663,14 +504,11 @@ def detect_chart_patterns(df):
                 'what_it_means': 'עמוד עלייה חד + תיקון קטן צידי = הפסקה לפני המשך. הדגל תמיד "מוריד" — כניסה בפריצה מעל הדגל.',
             })
 
-    # ════════════════════════════════════════
-    # 8. כפל תחתית (Double Bottom) — בוליש
-    # ════════════════════════════════════════
     if len(lows_idx) >= 2:
         l1_i, l2_i = lows_idx[-2], lows_idx[-1]
-        if (l2_i > l1_i + 5 and                          # מספיק מרחק בין שפלים
-                abs(low[l1_i] - low[l2_i]) / low[l1_i] < 0.04 and  # שפלים קרובים
-                l2_i > n - 15):                           # שפל שני אחרון
+        if (l2_i > l1_i + 5 and
+                abs(low[l1_i] - low[l2_i]) / low[l1_i] < 0.04 and
+                l2_i > n - 15):
             peak_between = max(high[l1_i:l2_i])
             target = round(peak_between + (peak_between - low[l2_i]), 2)
             patterns.append({
@@ -687,9 +525,6 @@ def detect_chart_patterns(df):
                 'what_it_means': 'שני שפלים זהים = רמת תמיכה חזקה. השוק ניסה לרדת פעמיים ונכשל. פריצה כלפי מעלה = שינוי מגמה.',
             })
 
-    # ════════════════════════════════════════
-    # 9. כפל שיא (Double Top) — בריש
-    # ════════════════════════════════════════
     if len(highs_idx) >= 2:
         h1_i, h2_i = highs_idx[-2], highs_idx[-1]
         if (h2_i > h1_i + 5 and
@@ -711,14 +546,11 @@ def detect_chart_patterns(df):
                 'what_it_means': 'שני שיאים זהים = התנגדות חזקה. השוק ניסה לפרוץ פעמיים ונכשל. שבירה כלפי מטה = ירידה חזקה.',
             })
 
-    # ════════════════════════════════════════
-    # 10. תנועת V (V-Recovery) — ריקושט חד
-    # ════════════════════════════════════════
     if n >= 10:
         low_10  = min(low[-10:])
         low_idx = list(low[-10:]).index(low_10)
         gain_since_low = (current - low_10) / (low_10 + 0.001) * 100
-        if gain_since_low > 8 and low_idx < 7:   # עלייה >8% משפל האחרון
+        if gain_since_low > 8 and low_idx < 7:
             patterns.append({
                 'name': 'ריקושט V חד',
                 'emoji': '⚡',
@@ -733,9 +565,6 @@ def detect_chart_patterns(df):
                 'what_it_means': 'ירידה חדה ואז עלייה חדה = V. יכול להיות ריקושט אמיתי עם ווליום, או dead-cat bounce. חובה לבדוק ווליום.',
             })
 
-    # ════════════════════════════════════════
-    # 11. קונסולידציה (בסיס) — Wide Base
-    # ════════════════════════════════════════
     if n >= 20:
         rng_20 = (max(high[-20:]) - min(low[-20:])) / (min(low[-20:]) + 0.001) * 100
         vol_20_avg = sum(volume[-20:]) / 20
@@ -760,8 +589,6 @@ def detect_chart_patterns(df):
     return patterns
 
 
-# ─── Analysis Functions ────────────────────────────────────────────────────────
-
 def analyze_trend(close):
     if len(close) < 20:
         return {'monthly': 'neutral', 'weekly': 'neutral', 'monthly_change': 0, 'weekly_change': 0, 'signal': 'neutral', 'description': 'אין מספיק נתונים'}
@@ -769,7 +596,6 @@ def analyze_trend(close):
     monthly_change = (close.iloc[-1] - close.iloc[-20]) / close.iloc[-20] * 100
     weekly_change  = (close.iloc[-1] - close.iloc[-5])  / close.iloc[-5]  * 100
 
-    # Higher highs / higher lows over last 20 days
     highs = close.iloc[-20:]
     lows  = close.iloc[-20:]
     hh = highs.iloc[-1] > highs.iloc[:10].max()
@@ -796,7 +622,6 @@ def analyze_trend(close):
         signal = 'neutral'
         desc = f"טרנד צידי: חודש {monthly_change:+.1f}%, שבוע {weekly_change:+.1f}%"
 
-    # כלל 5 הימים — אחרי 5 ימים רצופים באותו כיוון, צפה לשינוי
     consecutive = 0
     consecutive_dir = 'none'
     for i in range(-1, -8, -1):
@@ -830,18 +655,11 @@ def analyze_trend(close):
 
 
 def analyze_candle(o, h, l, c):
-    """
-    זיהוי תבניות נרות יפניים — כולל תבניות חד-נרי, דו-נרי ותלת-נרי.
-    תבניות לפי סדר חשיבות: חזקות יותר דורסות חלשות יותר.
-    """
     if len(o) < 2:
         return {'patterns': [], 'signal': 'neutral', 'description': 'אין מספיק נתונים'}
 
-    # נר נוכחי
     o1, h1, l1, c1 = float(o.iloc[-1]), float(h.iloc[-1]), float(l.iloc[-1]), float(c.iloc[-1])
-    # נר קודם
     o2, h2, l2, c2 = float(o.iloc[-2]), float(h.iloc[-2]), float(l.iloc[-2]), float(c.iloc[-2])
-    # לפני קודם (לתבניות תלת-נרי)
     has3 = len(o) >= 3
     if has3:
         o3, h3, l3, c3 = float(o.iloc[-3]), float(h.iloc[-3]), float(l.iloc[-3]), float(c.iloc[-3])
@@ -855,42 +673,31 @@ def analyze_candle(o, h, l, c):
     range2 = h2 - l2 if h2 != l2 else 0.0001
     body2  = abs(c2 - o2)
 
-    bull1 = c1 > o1   # נר נוכחי ירוק
-    bear1 = c1 < o1   # נר נוכחי אדום
-    bull2 = c2 > o2   # נר קודם ירוק
-    bear2 = c2 < o2   # נר קודם אדום
+    bull1 = c1 > o1
+    bear1 = c1 < o1
+    bull2 = c2 > o2
+    bear2 = c2 < o2
 
     patterns = []
-    # רשימת סיגנלים לפי עוצמה (bull=+1, bear=-1, neutral=0)
     signals = []
 
-    # ══════════════════════════════════════════
-    # תבניות חד-נרי
-    # ══════════════════════════════════════════
-
-    # ── דוג'ים ──
     is_doji = body_pct1 < 0.08 and range1 > 0
 
     if is_doji:
-        # דוג'י טאבלאית (Dragonfly) — פתיל תחתון ארוך, גוף בראש
         if lower1 > range1 * 0.6 and upper1 < range1 * 0.1:
             patterns.append("דוגי טאבלאית 🐉 — דחיית שפל, רמז בוליש")
             signals.append(1)
-        # דוג'י מצבה (Gravestone) — פתיל עליון ארוך, גוף בתחתית
         elif upper1 > range1 * 0.6 and lower1 < range1 * 0.1:
             patterns.append("דוגי מצבה 🪦 — דחיית שיא, רמז בריש")
             signals.append(-1)
-        # דוג'י רגיל
         else:
             patterns.append("דוג'י ⚖️ — חוסר החלטיות, מחכים לאישור")
             signals.append(0)
 
-    # ── סביבון (Spinning Top) — גוף קטן, פתילים גדולים ──
     elif body_pct1 < 0.25 and upper1 > body1 * 0.5 and lower1 > body1 * 0.5:
         patterns.append("סביבון 🌀 — חוסר החלטיות, קונים ומוכרים מתמודדים")
         signals.append(0)
 
-    # ── מרבוזו (Marubozu) — גוף מלא, כמעט ללא פתילים ──
     elif body_pct1 > 0.92:
         if bull1:
             patterns.append("מרבוזו בוליש 💪 — כוח קנייה מלא, ללא היסוס")
@@ -900,7 +707,6 @@ def analyze_candle(o, h, l, c):
             signals.append(-2)
 
     else:
-        # ── פטיש (Hammer) — פתיל תחתון ארוך, גוף למעלה ──
         if lower1 >= 2 * body1 and upper1 <= body1 * 0.5 and range1 > 0:
             if bull1:
                 patterns.append("פטיש ירוק 🔨 — דחיית שפל עם סגירה גבוהה, בוליש חזק")
@@ -909,51 +715,38 @@ def analyze_candle(o, h, l, c):
                 patterns.append("פטיש אדום 🔨 — דחיית שפל, בוליש (גוף אדום פחות אידיאלי)")
                 signals.append(1)
 
-        # ── פטיש הפוך (Inverted Hammer) — פתיל עליון ארוך, גוף למטה ──
         elif upper1 >= 2 * body1 and lower1 <= body1 * 0.5 and bull1:
             patterns.append("פטיש הפוך 🔄 — ניסיון עלייה, צריך אישור ביום הבא")
             signals.append(1)
 
-        # ── כוכב נופל (Shooting Star) — פתיל עליון ארוך + נר אדום ──
         elif upper1 >= 2 * body1 and lower1 <= body1 * 0.5 and bear1:
             patterns.append("כוכב נופל ⭐ — דחיית שיא, בריש")
             signals.append(-2)
 
-        # ── איש תלוי (Hanging Man) — פטיש בסוף עלייה ──
         elif lower1 >= 2 * body1 and upper1 <= body1 * 0.5 and bear1:
             patterns.append("איש תלוי 🪝 — פטיש אדום בסוף עלייה, אזהרה בריש")
             signals.append(-1)
 
-    # ══════════════════════════════════════════
-    # תבניות דו-נרי
-    # ══════════════════════════════════════════
-
-    # ── בולען בוליש (Bullish Engulfing) ──
     if bull1 and bear2 and c1 >= o2 and o1 <= c2 and body1 > body2:
         patterns.append("בולען בוליש 🟢 — קונים בלעו את המוכרים לגמרי")
         signals.append(2)
 
-    # ── בולען בריש (Bearish Engulfing) ──
     elif bear1 and bull2 and c1 <= o2 and o1 >= c2 and body1 > body2:
         patterns.append("בולען בריש 🔴 — מוכרים בלעו את הקונים לגמרי")
         signals.append(-2)
 
-    # ── האראמי בוליש (Bullish Harami) — נר פנימי אחרי ירידה ──
     if bull1 and bear2 and c1 < o2 and o1 > c2 and body1 < body2 * 0.6:
         patterns.append("האראמי בוליש 🔵 — נר קטן בתוך נר גדול, עצירת ירידה")
         signals.append(1)
 
-    # ── האראמי בריש (Bearish Harami) ──
     elif bear1 and bull2 and c1 > o2 and o1 < c2 and body1 < body2 * 0.6:
         patterns.append("האראמי בריש 🟠 — נר קטן בתוך נר גדול, עצירת עלייה")
         signals.append(-1)
 
-    # ── נר פנימי (Inside Bar) — הנר נמצא בתוך הנר הקודם ──
     if h1 < h2 and l1 > l2 and not any("האראמי" in p for p in patterns):
         patterns.append("נר פנימי 📦 — התכווצות תנודתיות, לפני תנועה גדולה")
         signals.append(0)
 
-    # ── נר חיצוני (Outside Bar) — הנר בולע את הנר הקודם ──
     if h1 > h2 and l1 < l2:
         if bull1:
             patterns.append("נר חיצוני ירוק 📈 — קונים שלטו בכל הטווח")
@@ -962,50 +755,39 @@ def analyze_candle(o, h, l, c):
             patterns.append("נר חיצוני אדום 📉 — מוכרים שלטו בכל הטווח")
             signals.append(-1)
 
-    # ── פינצטה תחתית (Tweezer Bottom) — שני שפלים זהים ──
     if abs(l1 - l2) / (max(l1, l2) + 0.0001) < 0.003 and bear2 and bull1:
         patterns.append("פינצטה תחתית 🔧 — דחיית שפל כפולה, בוליש")
         signals.append(2)
 
-    # ── פינצטה עליונה (Tweezer Top) — שני שיאים זהים ──
     if abs(h1 - h2) / (max(h1, h2) + 0.0001) < 0.003 and bull2 and bear1:
         patterns.append("פינצטה עליונה 🔧 — דחיית שיא כפולה, בריש")
         signals.append(-2)
 
-    # ── קו חוצה (Piercing Line) — ירידה חדה ואחריה כיסוי >50% ──
     if bear2 and bull1 and o1 < l2 and c1 > (o2 + c2) / 2 and body2 > range2 * 0.5:
         patterns.append("קו חוצה 💉 — קונים חזרו בחוזקה, בוליש")
         signals.append(2)
 
-    # ── כיסוי עננה כהה (Dark Cloud Cover) ──
     if bull2 and bear1 and o1 > h2 and c1 < (o2 + c2) / 2 and body2 > range2 * 0.5:
         patterns.append("עננה כהה ☁️ — מוכרים חזרו בחוזקה, בריש")
         signals.append(-2)
-
-    # ══════════════════════════════════════════
-    # תבניות תלת-נרי
-    # ══════════════════════════════════════════
 
     if has3:
         bull3 = c3 > o3
         bear3 = c3 < o3
         body3 = abs(c3 - o3)
 
-        # ── כוכב בוקר (Morning Star) — ירידה, סביבון/דוגי, עלייה ──
         if (bear3 and body3 > 0 and
                 abs(c2 - o2) / (h2 - l2 + 0.0001) < 0.3 and
                 bull1 and c1 > (o3 + c3) / 2):
             patterns.append("כוכב בוקר 🌅 — תבנית היפוך בוליש קלאסית (3 נרות)")
             signals.append(3)
 
-        # ── כוכב ערב (Evening Star) — עלייה, סביבון/דוגי, ירידה ──
         elif (bull3 and body3 > 0 and
               abs(c2 - o2) / (h2 - l2 + 0.0001) < 0.3 and
               bear1 and c1 < (o3 + c3) / 2):
             patterns.append("כוכב ערב 🌆 — תבנית היפוך בריש קלאסית (3 נרות)")
             signals.append(-3)
 
-        # ── שלושה חיילים לבנים (Three White Soldiers) ──
         if (bull1 and bull2 and bull3 and
                 c1 > c2 > c3 and
                 o1 > o2 > o3 and
@@ -1013,7 +795,6 @@ def analyze_candle(o, h, l, c):
             patterns.append("3 חיילים לבנים 🪖🪖🪖 — עלייה חזקה ומסודרת, בוליש חזק")
             signals.append(3)
 
-        # ── שלושה עורבים שחורים (Three Black Crows) ──
         elif (bear1 and bear2 and bear3 and
               c1 < c2 < c3 and
               o1 < o2 < o3 and
@@ -1021,25 +802,18 @@ def analyze_candle(o, h, l, c):
             patterns.append("3 עורבים שחורים 🦅🦅🦅 — ירידה חזקה ומסודרת, בריש חזק")
             signals.append(-3)
 
-        # ── קיקר בוליש (Bullish Kicker) — גפ בין נר אדום לנר ירוק ──
         if bear2 and bull1 and o1 >= c2:
             patterns.append("קיקר בוליש ⚡ — גפ חד מנר אדום לנר ירוק, שינוי כיוון מהיר")
             signals.append(3)
 
-        # ── קיקר בריש (Bearish Kicker) ──
         elif bull2 and bear1 and o1 <= c2:
             patterns.append("קיקר בריש ⚡ — גפ חד מנר ירוק לנר אדום, שינוי כיוון מהיר")
             signals.append(-3)
-
-    # ══════════════════════════════════════════
-    # קביעת סיגנל סופי
-    # ══════════════════════════════════════════
 
     if not patterns:
         patterns.append("נר רגיל — אין תבנית מיוחדת")
         signals.append(0)
 
-    # ממוצע משוקלל לפי עוצמה
     total = sum(signals)
     if total >= 2:
         signal = 'bullish'
@@ -1057,17 +831,11 @@ def analyze_candle(o, h, l, c):
         'patterns': patterns,
         'signal': signal,
         'description': desc,
-        'signal_strength': total,   # עוצמת הסיגנל המצטבר
+        'signal_strength': total,
     }
 
 
 def analyze_volume(volume, close):
-    """
-    לפי שיטת מיכה סטוקס:
-    - ווליום יורד בירידה = בוליש (המוכרים נחלשים — ריקושט בדרך)
-    - ווליום עולה בירידה = בריש (מוכרים חזקים)
-    - ווליום עולה בעלייה + נר שינוי כיוון = בוליש (קונים נכנסו)
-    """
     if len(volume) < 5:
         return {'signal': 'neutral', 'description': 'אין מספיק נתונים', 'ratio': 1}
 
@@ -1076,7 +844,7 @@ def analyze_volume(volume, close):
     prev_vol  = volume.iloc[-2]
     ratio     = last_vol / avg if avg > 0 else 1
     up_day    = close.iloc[-1] > close.iloc[-2]
-    vol_falling = last_vol < prev_vol  # ווליום יורד ביחס לאתמול
+    vol_falling = last_vol < prev_vol
 
     if up_day:
         if ratio > 1.2:
@@ -1086,7 +854,6 @@ def analyze_volume(volume, close):
             signal = 'neutral'
             desc   = f"עלייה עם ווליום נמוך ({ratio:.1f}x) — עלייה בלי ביטחון"
     else:
-        # יום ירידה
         if vol_falling and ratio < 1.0:
             signal = 'bullish'
             desc   = f"ירידה עם ווליום יורד ({ratio:.1f}x) — המוכרים נחלשים, ריקושט מתקרב"
@@ -1109,12 +876,6 @@ def analyze_volume(volume, close):
 
 
 def analyze_ma20(close, weekly_change=0):
-    """
-    לפי שיטת לייב 20:
-    - מחיר מעל MA20 + ממוצע עולה = טרנד בוליש, כניסה עם הטרנד
-    - מחיר רחוק מאוד מתחת ל-MA20 (>5%) = הזדמנות ריקושט — מניות חוזרות לממוצע
-    - מחיר קצת מתחת ל-MA20 = בריש / ניטרלי
-    """
     if len(close) < 21:
         return {'signal': 'neutral', 'description': 'אין מספיק נתונים', 'ma20': 0, 'distance_pct': 0}
 
@@ -1137,7 +898,6 @@ def analyze_ma20(close, weekly_change=0):
         signal = 'neutral'
         desc = f"מחיר מעל ממוצע 20 אבל הממוצע מאט ({dist:+.1f}%)"
     elif dist < -8:
-        # רחוק מאוד מתחת = הזדמנות ריקושט לפי לייב 20
         signal = 'bullish'
         desc = f"מחיר {dist:.1f}% מתחת ממוצע 20 — מרחק אדיר, מניות חוזרות לממוצע (לייב 20)"
     elif dist < -4:
@@ -1178,7 +938,6 @@ def analyze_gaps(open_p, high, low, close, today_open=None):
             if not filled:
                 gaps_down.append({'level': round(prev_l, 2), 'date': date})
 
-    # בדוק גאפ של היום — open היום מול high של אתמול
     if today_open is not None:
         last_high = high.iloc[-1]
         last_low  = low.iloc[-1]
@@ -1209,14 +968,6 @@ def analyze_gaps(open_p, high, low, close, today_open=None):
 
 
 def analyze_cci(high, low, close):
-    """
-    לפי שיטת לייב 20 (סדר עדיפות אחרון לפי מיכה):
-    הסיגנל הכי חשוב: CCI חוצה את -100 כלפי מעלה = אות כניסה
-    - CCI עבר מתחת -100 ועכשיו חוצה למעלה = STRONG BULLISH
-    - CCI מתחת -100 ועולה = בוליש (ריקושט)
-    - CCI עובר 0 כלפי מטה = בריש
-    - CCI מעל +100 = מומנטום, עם טרנד = בוליש
-    """
     if len(close) < 15:
         return {'signal': 'neutral', 'description': 'אין מספיק נתונים', 'value': 0}
 
@@ -1225,11 +976,6 @@ def analyze_cci(high, low, close):
     prev   = cci.iloc[-2]
     rising = val > prev
 
-    # כללי CCI לפי מיכה סטוקס (מהסרטון w-NGbxzMcDY):
-    # - עובר מעל -100 = איתות קנייה
-    # - מעל 0 = 2-4 ימים נוספים של עליות
-    # - מעל +100 = אוברבוט (אבל יכול להמשיך)
-    # - עובר מתחת 0 = איתות מכירה, 2-4 ימים נוספים של ירידות
     crossed_minus100_up = prev < -100 <= val
     crossed_zero_down   = prev >= 0 > val
     crossed_zero_up     = prev < 0 <= val
@@ -1268,15 +1014,11 @@ def analyze_cci(high, low, close):
 def self_diagnose(df, trend, candle, volume, ma20, gaps, cci,
                   bullish, bearish, neutral, contradictory,
                   atr_val, current_price, next_earnings):
-    """
-    בודק את איכות הניתוח ומחזיר דו"ח שיפורים + ציון אמינות.
-    """
-    issues      = []  # בעיות / אזהרות
-    strengths   = []  # חוזקות של הניתוח הנוכחי
-    suggestions = []  # המלצות לשיפור
-    score       = 100  # מתחיל מ-100 ומורד נקודות
+    issues      = []
+    strengths   = []
+    suggestions = []
+    score       = 100
 
-    # ── 1. איכות נתונים ──
     days = len(df)
     if days < 30:
         issues.append({'level': 'error', 'text': f'רק {days} ימי מסחר בהיסטוריה — מינימום 30 לניתוח אמין'})
@@ -1286,7 +1028,6 @@ def self_diagnose(df, trend, candle, volume, ma20, gaps, cci,
         issues.append({'level': 'warning', 'text': f'{days} ימי מסחר — ניתוח סביר אך לא אופטימלי'})
         score -= 5
 
-    # ── 2. ווליום ──
     vol_ratio = volume.get('ratio', 1)
     avg_vol   = volume.get('avg_volume', 0)
     if avg_vol < 100_000:
@@ -1304,26 +1045,22 @@ def self_diagnose(df, trend, candle, volume, ma20, gaps, cci,
     elif vol_ratio > 2.0:
         strengths.append(f'ווליום גבוה ({vol_ratio:.1f}x ממוצע) — עניין מוסדי ברור, אמינות גבוהה')
 
-    # ── 3. נתונים סותרים ──
     if contradictory:
         issues.append({'level': 'error', 'text': 'נר ווליום סותרים — לפי מיכה: "נתונים סותרים = לא להיכנס"'})
         suggestions.append('המתן עד שהנר והווליום מסמנים אותו כיוון לפני כניסה')
         score -= 20
 
-    # ── 4. ריבוי ניטרלים ──
     if neutral >= 3:
         issues.append({'level': 'warning', 'text': f'{neutral} פרמטרים ניטרליים — תמונה מעורבת, קשה להגיד כיוון'})
         suggestions.append('חכה לירידת ניטרליים — צריך לפחות 4 בוליש ברורים')
         score -= 10
 
-    # ── 5. CCI ──
     cci_val = cci.get('value', 0)
     if -100 <= cci_val <= 100 and cci_val < 0:
         issues.append({'level': 'info', 'text': f'CCI = {cci_val:.0f} — שלילי אבל לא קיצוני. מחכים לחציית -100'})
     elif cci_val < -100:
         strengths.append(f'CCI = {cci_val:.0f} — אוסלד קיצוני, קרוב לאות כניסה (חציית -100)')
 
-    # ── 6. MA20 ──
     dist = ma20.get('distance_pct', 0)
     if -4 < dist < 0:
         issues.append({'level': 'info', 'text': f'מחיר {dist:.1f}% מתחת MA20 — "אזור אפור", קצת רחוק אבל לא מספיק'})
@@ -1332,7 +1069,6 @@ def self_diagnose(df, trend, candle, volume, ma20, gaps, cci,
     elif dist < -8:
         strengths.append(f'מחיר {dist:.1f}% מתחת MA20 — "גומיה מתוחה" — סיכוי ריקושט גבוה')
 
-    # ── 7. ATR / תנודתיות ──
     atr_pct = atr_val / current_price * 100 if current_price > 0 else 0
     if atr_pct > 8:
         issues.append({'level': 'warning', 'text': f'ATR = {atr_pct:.1f}% — תנודתיות גבוהה מאוד, SL רחוק = סיכון גדול'})
@@ -1342,7 +1078,6 @@ def self_diagnose(df, trend, candle, volume, ma20, gaps, cci,
         issues.append({'level': 'info', 'text': f'ATR = {atr_pct:.1f}% — תנודתיות נמוכה מאוד, קשה לעשות כסף'})
         score -= 5
 
-    # ── 8. דוח קרוב ──
     if next_earnings:
         import datetime
         try:
@@ -1358,7 +1093,6 @@ def self_diagnose(df, trend, candle, volume, ma20, gaps, cci,
         except Exception:
             pass
 
-    # ── 9. חוזקות נוספות ──
     if bullish >= 5:
         strengths.append('5+ פרמטרים בוליש — סטאפ חזק ביותר, לפי מיכה כניסה מלאה')
     elif bullish >= 4:
@@ -1370,7 +1104,6 @@ def self_diagnose(df, trend, candle, volume, ma20, gaps, cci,
     if trend.get('five_day_warning'):
         issues.append({'level': 'info', 'text': f'{trend["consecutive_days"]} ימים רצופים — כלל 5 הימים: צפה לשינוי כיוון'})
 
-    # ── ציון סופי ──
     score = max(0, min(100, score))
     if score >= 80:
         score_label = 'ניתוח אמין'
@@ -1398,11 +1131,6 @@ def self_diagnose(df, trend, candle, volume, ma20, gaps, cci,
 def generate_narrative(ticker, company_name, current_price, currency,
                         trend, candle, volume, ma20, gaps, cci,
                         bullish, bearish, neutral, rec_key):
-    """
-    ניתוח בסגנון מיכה סטוק — לייב 20.
-    עובר על הצ'קליסט לפי הסדר: טרנד → נר → ווליום → MA20 → גאפים → CCI
-    ואז נותן סיכום + תוכנית מסחר.
-    """
     lines = []
     consec     = trend.get('consecutive_days', 0)
     consec_dir = trend.get('consecutive_dir', 'none')
@@ -1410,7 +1138,6 @@ def generate_narrative(ticker, company_name, current_price, currency,
     cci_val    = cci['value']
     ma20_val   = ma20['ma20']
 
-    # ══ פתיח ══
     monthly_ch = trend['monthly_change']
     weekly_ch  = trend['weekly_change']
     dir_he = 'ירוקים' if consec_dir == 'up' else 'אדומים' if consec_dir == 'down' else ''
@@ -1420,7 +1147,6 @@ def generate_narrative(ticker, company_name, current_price, currency,
         f"חודש אחרון: {monthly_ch:+.1f}%, שבוע: {weekly_ch:+.1f}%."
     )
 
-    # ══ שאלה 1: ימים רצופים ══
     if consec >= 7 and consec_dir == 'up':
         lines.append(
             f"📌 ימים רצופים — בואו נספור: {consec} ימים {dir_he} רצופים. "
@@ -1444,7 +1170,6 @@ def generate_narrative(ticker, company_name, current_price, currency,
     else:
         lines.append(f"📌 ימים רצופים — {consec} יום. ניטרלי.")
 
-    # ══ שאלה 2: מרחק ממוצע 20 ══
     if dist > 12:
         lines.append(
             f"📌 ממוצע 20 — מרחק {dist:+.1f}%. "
@@ -1476,7 +1201,6 @@ def generate_narrative(ticker, company_name, current_price, currency,
             f"מתקרבת לאזור שמעניין אותנו."
         )
 
-    # ══ נר (סוג + פתיחה/סגירה) ══
     candle_sig = candle['signal']
     candle_desc = candle['description']
     if candle_sig == 'bullish':
@@ -1495,7 +1219,6 @@ def generate_narrative(ticker, company_name, current_price, currency,
             "אין החלטה ברורה — מחכים לאישור."
         )
 
-    # ══ ווליום ══
     vol_ratio = volume.get('ratio', 1)
     vol_sig   = volume['signal']
     if vol_sig == 'bullish':
@@ -1509,7 +1232,6 @@ def generate_narrative(ticker, company_name, current_price, currency,
             "מוסדיים יוצאים — לא לרוץ להיכנס."
         )
     else:
-        # בדוק עלייה עם ירידת ווליום (חולשה)
         if vol_ratio < 0.85:
             lines.append(
                 f"📌 ווליום — עלייה עם ירידת ווליום ({vol_ratio:.1f}x ממוצע). "
@@ -1520,7 +1242,6 @@ def generate_narrative(ticker, company_name, current_price, currency,
                 f"📌 ווליום — {volume['description']}. אין confirmation חזק."
             )
 
-    # ══ גאפים ══
     gaps_up  = gaps.get('gaps_up', [])
     gaps_dn  = gaps.get('gaps_down', [])
     if gaps_dn:
@@ -1538,7 +1259,6 @@ def generate_narrative(ticker, company_name, current_price, currency,
     else:
         lines.append("📌 גאפים — אין גפים פתוחים משמעותיים קרובים.")
 
-    # ══ שאלה 3: CCI ══
     if cci_val > 150:
         lines.append(
             f"📌 CCI — עומד על {cci_val:.0f}. האם מצביע לקנות? לא. "
@@ -1565,8 +1285,7 @@ def generate_narrative(ticker, company_name, current_price, currency,
             "האות שאנחנו מחכים לו — חציית -100 כלפי מעלה."
         )
 
-    # ══ סיכום בסגנון מיכה ══
-    lines.append("")  # שורה ריקה לפני הסיכום
+    lines.append("")
 
     if rec_key == 'strong-buy':
         pct = 100
@@ -1606,7 +1325,6 @@ def generate_narrative(ticker, company_name, current_price, currency,
 def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volume, ma20, cci, bullish, bearish, gaps=None):
     """ניתוח גרף לפי שיטת מיכה סטוק — לייב 20"""
 
-    # ── נר סגירה אחרון ──
     o1 = df['Open'].iloc[-1];  h1 = df['High'].iloc[-1]
     l1 = df['Low'].iloc[-1];   c1 = df['Close'].iloc[-1]
     v1 = df['Volume'].iloc[-1]
@@ -1628,7 +1346,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         'type':   candle['patterns'][0] if candle['patterns'] else 'נר רגיל',
     }
 
-    # ── ממוצעים ──
     ma50_s  = calc_ma50(df['Close'])
     ma20_v  = ma20['ma20']
     ma50_v  = round(ma50_s.iloc[-1], 2) if pd.notna(ma50_s.iloc[-1]) else None
@@ -1641,7 +1358,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
                          'above': current_price > val, 'dist_pct': dist,
                          'signal': 'bullish' if current_price > val else 'bearish'})
 
-    # ── RSI ──
     rsi_s   = calc_rsi(df['Close'])
     rsi_val = round(rsi_s.iloc[-1], 1) if pd.notna(rsi_s.iloc[-1]) else None
     if rsi_val is not None:
@@ -1651,7 +1367,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
     else:
         rsi_sig = 'neutral'; rsi_desc = 'RSI לא זמין'
 
-    # ── פריצה ──
     high_5d = df['High'].iloc[-5:].max()
     low_5d  = df['Low'].iloc[-5:].min()
     consolidation_pct = round((high_5d - low_5d) / current_price * 100, 1)
@@ -1685,7 +1400,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
     elif breakout_score >= 40: bo_label = 'פריצה אפשרית — עקוב';   bo_color = 'yellow'
     else:                      bo_label = 'אין סימני פריצה ברורים'; bo_color = 'red'
 
-    # ── פונדמנטלי ──
     sector    = info.get('sector', 'לא ידוע')
     mcap      = info.get('marketCap', None)
     pe        = info.get('trailingPE', None)
@@ -1716,27 +1430,17 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         'analyst_rating': rating,
     }
 
-    # ══════════════════════════════════════════════════════════════════
-    # ── מח מיכה סטוק — לייב 20 ──
-    # שיטת שלוש השאלות:
-    #  1. האם מספר ימי העלייה הרצופים הגיוני?
-    #  2. האם המרחק לממוצע 20 הגיוני?
-    #  3. האם ה-CCI מצביע לקנות?
-    # ══════════════════════════════════════════════════════════════════
-
-    ma20_dist   = float(ma20['distance_pct'])   # + = מעל, - = מתחת
+    ma20_dist   = float(ma20['distance_pct'])
     cci_val_raw = float(cci['value'])
     consec_days = trend.get('consecutive_days', 0)
     consec_dir  = trend.get('consecutive_dir', 'none')
 
-    # ── גפים פתוחים כמגנטים ──
-    gaps_down_levels = []   # גפים פתוחים מתחת למחיר = יעדי תיקון
-    gaps_up_levels   = []   # גפים פתוחים מעל למחיר = יעדי עלייה
+    gaps_down_levels = []
+    gaps_up_levels   = []
     if gaps:
         gaps_down_levels = [g['level'] for g in gaps.get('gaps_down', []) if g['level'] < current_price]
         gaps_up_levels   = [g['level'] for g in gaps.get('gaps_up', [])   if g['level'] > current_price]
     else:
-        # מחשב ידנית
         lookback = min(30, len(df) - 1)
         for i in range(len(df) - lookback, len(df)):
             if i <= 0: continue
@@ -1752,7 +1456,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
                     if prev_l > current_price:
                         gaps_up_levels.append(round(prev_l, 2))
 
-    # ── זיהוי: עלייה עם ירידת ווליום (סיגנל חולשה) ──
     rise_weak_vol = (
         c1 > o1 and
         len(df) >= 3 and
@@ -1760,66 +1463,52 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         float(df['Volume'].iloc[-2]) < float(df['Volume'].iloc[-3])
     )
 
-    # ── הגדרת מצב לפי שיטת מיכה ──
-
-    # מצב A: מורחק מעל ממוצע 20 + ימים ירוקים רבים = "לא נכנסים"
     is_extended_overbought = (
         (consec_days >= 7 and consec_dir == 'up') or
         (consec_days >= 5 and consec_dir == 'up' and ma20_dist > 10) or
         (cci_val_raw > 150 and rsi_val and rsi_val > 70 and ma20_dist > 8)
     )
 
-    # מצב B: ריקושט — מניה ירדה ומתייצבת (כמו CRCL בלייב)
-    # קריטריונים: RSI נמוך, CCI לא בקיצון חמור ועולה, ירידה מודרטה
     cci_series_full = calc_cci(df['High'], df['Low'], df['Close'])
     cci_prev  = float(cci_series_full.iloc[-2]) if len(df) > 2 else cci_val_raw
     cci_prev2 = float(cci_series_full.iloc[-3]) if len(df) > 3 else cci_prev
-    cci_rising = cci_val_raw > cci_prev  # CCI עולה ביום האחרון
-    cci_rising_2d = cci_val_raw > cci_prev2  # CCI עולה ב-2 ימים
+    cci_rising = cci_val_raw > cci_prev
+    cci_rising_2d = cci_val_raw > cci_prev2
     monthly_drop = trend.get('monthly_change', 0)
     is_recovery_setup = (
         not is_extended_overbought and
         rsi_val and rsi_val < 38 and
         ma20_dist < -4 and
-        # CCI לא בקיצון חמור מדי — מתחת -150 חייב לעלות כבר
         (cci_val_raw > -150 or (cci_val_raw > -220 and cci_rising_2d)) and
-        # לא ירידה חופשית עם מגמה ירדנית קיצונית (כמו PLTR -15%)
         not (monthly_drop < -12 and bearish >= 2 and not cci_rising_2d)
     )
 
-    # מצב C: חזרה לממוצע 20 מלמעלה = "הנקודה המעניינת"
     is_near_ma20 = (
         not is_extended_overbought and
         -4 <= ma20_dist <= 6 and
         trend['signal'] == 'bullish'
     )
 
-    # מצב D: פריצה אפשרית
     is_breakout_candidate = (
         not is_extended_overbought and
         not is_recovery_setup and
         breakout_score >= 50
     )
 
-    # מצב E: מגמה יורדת ברורה
     monthly_drop_abs = abs(trend.get('monthly_change', 0))
     is_downtrend = (
         not is_recovery_setup and
         trend['signal'] == 'bearish' and
         (
             bearish >= 3 or
-            (bearish >= 2 and monthly_drop_abs > 10) or   # ירידה חדה עם 2+ bearish
-            (bearish >= 2 and ma20_dist < -10)            # מרחק גדול מממוצע 20 עם מגמה יורדת
+            (bearish >= 2 and monthly_drop_abs > 10) or
+            (bearish >= 2 and ma20_dist < -10)
         )
     )
 
-    # ════════════════════════════════
-    # ── דעת מומחה בסגנון מיכה ──
-    # ════════════════════════════════
     lines = []
 
     if is_extended_overbought:
-        # מיכה: "תספרו ימים, תבדקו מרחק ממוצע 20, תשאלו האם הגיוני"
         if consec_days >= 7 and consec_dir == 'up':
             lines.append(
                 f"בואו נספור — {consec_days} ימים ירוקים רצופים ב-{ticker}. "
@@ -1842,7 +1531,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
                 f"זה לא הזמן לקנות — זה הזמן לחכות לתיקון."
             )
 
-        # יעד לתיקון: גפ פתוח מתחת או ממוצע 20
         if gaps_down_levels:
             nearest_gap = max(gaps_down_levels)
             lines.append(
@@ -1863,7 +1551,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
               f"חכה לתיקון לכיוון {ma20_target} ולנר שינוי כיוון.")
 
     elif is_recovery_setup:
-        # מיכה: "מניה יורדת ומתייצבת — הזדמנות. The wider the base the higher to space."
         lines.append(
             f"{ticker} ירדה חזק — {ma20_dist:.1f}% מתחת לממוצע 20. "
             f"RSI = {rsi_val} — קרוב לאזור אוסלד. CCI = {cci_val_raw:.0f}."
@@ -1904,7 +1591,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
               f"חכה לנר שינוי כיוון עם ווליום לפני כניסה. יעד: MA20 ב-{ma20_target}.")
 
     elif is_near_ma20 and not is_extended_overbought:
-        # מיכה: "פה זה מעניין — קרוב לממוצע 20"
         lines.append(
             f"{ticker} נמצאת {ma20_dist:+.1f}% מעל ממוצע 20. "
             f"זה האזור המעניין — מניות שחוזרות לבדוק את ממוצע 20 זה בדיוק מה שאנחנו מחפשים."
@@ -1940,7 +1626,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
             vd = f"מניה בדרך לממוצע 20. חכה לנר חיובי עם ווליום לפני כניסה."
 
     elif is_breakout_candidate:
-        # מיכה: "שימו התראה. אם פורצת עם ווליום — נכנסים. בלי ווליום — לא."
         lines.append(
             f"תסתכלו על הגרף של {ticker} — "
             f"קונסולידציה {consolidation_pct}% ב-5 ימים. "
@@ -1963,7 +1648,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         vd = f"סטאפ פריצה מתבשל. פריצה עם ווליום = כניסה. בלי ווליום = לא."
 
     elif is_downtrend:
-        # מיכה: "אין טרייד. ממתינים."
         lines.append(
             f"{ticker} במגמה יורדת — {trend['monthly_change']:+.1f}% בחודש. "
         )
@@ -1988,7 +1672,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         vd = "מגמה יורדת ברורה. המתן לשינוי כיוון מאושר לפני כל כניסה."
 
     else:
-        # מצב מעורב
         lines.append(
             f"{ticker} — תמונה לא חד-משמעית. "
             f"מרחק ממוצע 20: {ma20_dist:+.1f}%, CCI = {cci_val_raw:.0f}, RSI = {rsi_val if rsi_val else 'N/A'}."
@@ -2007,7 +1690,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
         vc = 'yellow'
         vd = "תמונה מעורבת. המתן לסיגנל ברור יותר לפי שלוש השאלות."
 
-    # ── פונדמנטלי (קצר) ──
     pe_v = pe if pe else None
     if pe_v and 0 < pe_v < 15:
         lines.append(f"פונדמנטלי: P/E={pe_v:.1f} — זול יחסית. סקטור: {sector}.")
@@ -2016,7 +1698,6 @@ def generate_chart_analysis(df, ticker, info, current_price, trend, candle, volu
     elif cap_s:
         lines.append(f"שווי שוק: {cap_s}. סקטור: {sector}.")
 
-    # ── קביעת situation label ──
     if is_extended_overbought:
         situation = 'extended_overbought'
     elif is_recovery_setup:
@@ -2074,19 +1755,19 @@ def analyze():
 
     try:
         stock = _ticker(ticker)
-        df = None
-        for attempt in range(3):
-            try:
-                df = stock.history(period='3mo')
-                if not df.empty:
-                    break
-            except Exception:
-                pass
-            time.sleep(2)
-        if df is None or df.empty:
-            return jsonify({'error': f'לא נמצאו נתונים עבור {ticker}. בדוק שהטיקר נכון.'}), 404
 
-        info         = stock.info
+        # קריאה אחת בלבד של שנה — נחתוך ממנה 3mo ו-6mo במקום 3 קריאות נפרדות
+        try:
+            df_1y_full = _yf_retry(lambda: stock.history(period='1y'))
+        except Exception:
+            df_1y_full = None
+        if df_1y_full is None or df_1y_full.empty:
+            return jsonify({'error': f'לא נמצאו נתונים עבור {ticker}. ייתכן שיש חסימה זמנית — נסה שוב בעוד דקה.'}), 404
+
+        df     = df_1y_full.tail(63)    # ~3 חודשי מסחר
+        df_6mo = df_1y_full.tail(126)   # ~6 חודשי מסחר
+
+        info         = _get_info_cached(stock, ticker)
         company_name = info.get('longName', ticker)
         currency     = info.get('currency', 'USD')
 
@@ -2165,13 +1846,8 @@ def analyze():
         atr_val    = round(atr_series.iloc[-1], 2)
         atr_pct    = round(atr_val / current_price * 100, 2)
 
-        # פיבונאצ'י — 6 חודשים, פיבוט אמיתי
-        try:
-            df_6mo = stock.history(period='6mo')
-        except Exception:
-            df_6mo = df
+        # פיבונאצ'י — משתמש ב-df_6mo שכבר חתכנו מהשנה (בלי קריאה נוספת)
         fib = calc_fibonacci(df_6mo if not df_6mo.empty else df)
-        # כמה % תיקנה המניה מהשיא (לפי מיקום בין high ל-low של הפיבו)
         if fib and fib['high'] != fib['low']:
             fib_retrace = round((fib['high'] - current_price) / (fib['high'] - fib['low']) * 100, 1)
         else:
@@ -2182,33 +1858,26 @@ def analyze():
         last_low    = round(df['Low'].iloc[-1], 2)
         ma20_val    = round(calc_ma20(df['Close']).iloc[-1], 2)
 
-        # SL = שפל נר הכניסה
         sl_price = last_low
-
-        # Target 1 = ממוצע 20 (אפקט גומיה)
         target1 = ma20_val if ma20_val > current_price else round(current_price * 1.08, 2)
-
-        # Target 2 = ההתנגדות הקרובה הבאה / גאפ / 10% מעל
         gap_targets = [g['level'] for g in (gaps.get('gaps_up') or []) if g['level'] > current_price]
         target2 = min(gap_targets) if gap_targets else round(current_price * 1.15, 2)
 
-        # R:R
         risk   = round(current_price - sl_price, 2)
         reward = round(target1 - current_price, 2)
         rr     = round(reward / risk, 2) if risk > 0 else None
 
-        # ── תוכנית מסחר לפי סגנון ──
         if style == 'day':
-            sl_price = round(current_price * 0.99, 2)       # SL 1% מתחת
-            target1  = round(current_price * 1.02, 2)       # T1: 2%
-            target2  = round(current_price * 1.04, 2)       # T2: 4%
+            sl_price = round(current_price * 0.99, 2)
+            target1  = round(current_price * 1.02, 2)
+            target2  = round(current_price * 1.04, 2)
             hold_desc = 'מסחר יומי — סגור הכל לפני סוף יום'
         elif style == 'position':
-            sl_price = round(min(last_low, current_price * 0.92), 2)  # SL 8%
-            target1  = round(current_price * 1.20, 2)       # T1: 20%
-            target2  = round(current_price * 1.40, 2)       # T2: 40%
+            sl_price = round(min(last_low, current_price * 0.92), 2)
+            target1  = round(current_price * 1.20, 2)
+            target2  = round(current_price * 1.40, 2)
             hold_desc = 'פוזיציה ארוכה — החזקה חודש עד שנה'
-        else:  # swing
+        else:
             hold_desc = 'סווינג — החזקה 3–10 ימי מסחר'
 
         risk   = round(current_price - sl_price, 2)
@@ -2230,27 +1899,20 @@ def analyze():
 
         # ── אזהרות פסיכולוגיות (לפי שיטת מיכה) ──
         psych_warnings = []
-        # FOMO — עלייה חדה לפני כניסה
         if trend['weekly_change'] > 8:
             psych_warnings.append('⚠️ FOMO — המניה עלתה {:.0f}% השבוע. אל תרדוף אחרי הרכבת, המתן לתיקון.'.format(trend['weekly_change']))
-        # כניסה מוקדמת מדי — אין אישור
         if bullish < 3 and bearish < 3:
             psych_warnings.append('⏳ מוקדם מדי — פחות מ-3 אינדיקטורים מאשרים כיוון. המתן לאישור לפני כניסה.')
-        # 5 ימים באותו כיוון — צפה לשינוי
         if trend.get('five_day_warning'):
             dir_he = 'עלייה' if trend['consecutive_dir'] == 'up' else 'ירידה'
             psych_warnings.append(f'🔄 כלל 5 הימים — {trend["consecutive_days"]} ימי {dir_he} רצופים. צפה לשינוי כיוון בקרוב.')
-        # R:R גרוע
         if rr is not None and rr < 1.5:
             psych_warnings.append(f'🚨 יחס סיכוי/סיכון נמוך ({rr}) — לפי מיכה, כניסה רק מעל 2:1. שנה את ה-SL או היעד.')
-        # פחד מהפסד — CCI שלילי עם נר בוליש
         if cci.get('signal') == 'bearish' and candle.get('signal') == 'bullish':
             psych_warnings.append('🧠 סיגנל מנוגד — נר בוליש אבל CCI שלילי. ייתכן שזה מלכודת שורט. אל תמהר.')
-        # נפח נמוך בפריצה
         if gaps.get('signal') == 'bullish' and volume.get('signal') != 'bullish':
             psych_warnings.append('📉 פריצה ללא נפח — פריצה בנפח נמוך היא לרוב מזויפת. המתן לאישור נפח.')
 
-        # אזהרת נתונים סותרים (לפי כלל מיכה)
         contradictory = (candle['signal'] == 'bullish' and volume['signal'] == 'bearish') or \
                         (candle['signal'] == 'bearish' and volume['signal'] == 'bullish')
 
@@ -2259,7 +1921,6 @@ def analyze():
         try:
             raw_news = stock.news or []
             for item in raw_news[:8]:
-                # yfinance new format: nested under 'content'
                 content = item.get('content', item)
                 title = content.get('title', '') or item.get('title', '')
                 provider = content.get('provider', {})
@@ -2276,7 +1937,6 @@ def analyze():
                 else:
                     pub_ts = item.get('providerPublishTime', 0)
                     pub_date = datetime.datetime.fromtimestamp(pub_ts).strftime('%d/%m %H:%M') if pub_ts else ''
-                # זיהוי חדשות שיכולות להזיז את המחיר
                 keywords = ['earnings', 'revenue', 'guidance', 'merger', 'acquisition',
                             'lawsuit', 'sec', 'fda', 'deal', 'contract', 'beat', 'miss',
                             'upgrade', 'downgrade', 'buyback', 'dividend', 'recall',
@@ -2304,7 +1964,6 @@ def analyze():
         rev_next_low    = None
         expected_move_pct = None
 
-        # 1. quarterly_income_stmt — הכי אמין: revenue + EPS בפועל + net income
         try:
             qe = stock.quarterly_income_stmt
             if qe is not None and not qe.empty:
@@ -2319,7 +1978,6 @@ def analyze():
                             if v is not None and pd.notna(v):
                                 eps_act = round(float(v), 2)
                                 break
-                    # דלג על שורות ריקות לחלוטין
                     if rev is None and net is None and eps_act is None:
                         continue
                     earnings_data.append({
@@ -2334,7 +1992,6 @@ def analyze():
         except Exception:
             pass
 
-        # 2. earnings_dates — EPS צפי vs בפועל + beat/miss (דורש lxml)
         try:
             ed_df = stock.earnings_dates
             if ed_df is not None and not ed_df.empty:
@@ -2349,7 +2006,6 @@ def analyze():
                             and pd.notna(eps_est) and pd.notna(eps_act)):
                         beat_eps = float(eps_act) >= float(eps_est)
                     date_key = str(idx.date())
-                    # מחפש ערך קיים ב-earnings_data ומעשיר אותו
                     matched = False
                     for item in earnings_data:
                         try:
@@ -2376,7 +2032,6 @@ def analyze():
                             'revenue':      None,
                             'net_income':   None,
                         })
-                # תאריך הדוח הבא
                 future_ed = ed_df[ed_df.index > now_utc]
                 if not future_ed.empty:
                     next_dt = future_ed.index[-1]
@@ -2388,7 +2043,6 @@ def analyze():
         except Exception:
             pass
 
-        # 3. calendar — הדוח הבא + תחזיות (Earnings Average = EPS קונסנזוס)
         try:
             cal = stock.calendar
             if cal is not None:
@@ -2400,7 +2054,6 @@ def analyze():
                             next_earnings = str(ed[0])[:10] if ed else None
                         else:
                             next_earnings = str(ed)[:10]
-                    # EPS estimate — מנסה כמה שמות אפשריים
                     for k in ('Earnings Average', 'Earnings EPS', 'EPS Estimate', 'EPS Average'):
                         v = cal.get(k)
                         if v is not None:
@@ -2446,7 +2099,6 @@ def analyze():
         except Exception:
             pass
 
-        # 4. תנועה צפויה — ממוצע הפתעות עבר + ATR
         try:
             surprises = [abs(e['surprise_pct']) for e in earnings_data
                          if e.get('surprise_pct') is not None and pd.notna(e['surprise_pct'])]
@@ -2458,50 +2110,41 @@ def analyze():
         except Exception:
             pass
 
-        # 5. beat rate
         eps_beats = sum(1 for e in earnings_data if e.get('beat') is True)
         eps_total = sum(1 for e in earnings_data if e.get('beat') is not None)
         beat_rate = round(eps_beats / eps_total * 100) if eps_total > 0 else None
 
-        # ── שורט ──
         short_pct = None
         short_shares = None
         short_ratio = None
         try:
             short_pct    = info.get('shortPercentOfFloat', None)
             short_shares = info.get('sharesShort', None)
-            short_ratio  = info.get('shortRatio', None)   # days to cover
+            short_ratio  = info.get('shortRatio', None)
             if short_pct is not None:
                 short_pct = round(short_pct * 100, 2)
         except Exception:
             pass
 
-        # ── דו"ח עצמי ──
         diagnosis = self_diagnose(
             df, trend, candle, volume, ma20, gaps, cci,
             bullish, bearish, neutral, contradictory,
             atr_val, current_price, next_earnings
         )
 
-        # Narrative + position sizing
         narrative = generate_narrative(
             ticker, company_name, current_price, currency,
             trend, candle, volume, ma20, gaps, cci,
             bullish, bearish, neutral, rec_key
         )
 
-        # Chart data — calculate on full history, display last 60 trading days
         ma20_series = calc_ma20(df['Close'])
         ma50_series = calc_ma50(df['Close'])
         cci_series  = calc_cci(df['High'], df['Low'], df['Close'], period=14)
         rsi_series  = calc_rsi(df['Close'])
 
-        # גרף + תבניות — שנה מלאה
-        try:
-            df_1y = stock.history(period='1y')
-        except Exception:
-            df_1y = df
-        chart_df = df_1y if (not df_1y.empty and len(df_1y) > len(df)) else df
+        # גרף + תבניות — משתמש בשנה המלאה שכבר משכנו (בלי קריאה נוספת)
+        chart_df = df_1y_full if (not df_1y_full.empty and len(df_1y_full) > len(df)) else df
 
         chart_ma20 = calc_ma20(chart_df['Close'])
         chart_ma50 = calc_ma50(chart_df['Close'])
@@ -2521,15 +2164,12 @@ def analyze():
             'rsi':    [round(x, 2) if pd.notna(x) else None for x in chart_rsi],
         }
 
-        # ── תבניות גרף קלאסיות ──
         chart_patterns = detect_chart_patterns(chart_df)
 
-        # ── ניתוח גרף מקצועי + פונדמנטלים ──
         chart_analysis = generate_chart_analysis(
             df, ticker, info, current_price, trend, candle, volume, ma20, cci, bullish, bearish, gaps=gaps
         )
 
-        # Support/resistance levels (simple: recent swing highs/lows)
         highs  = df['High'].tolist()
         lows   = df['Low'].tolist()
         levels = []
@@ -2611,14 +2251,14 @@ def get_price():
 
     try:
         stock = _ticker(ticker)
-        df = stock.history(period='2d')
-        if df.empty or len(df) < 2:
+        df = _yf_retry(lambda: stock.history(period='2d'))
+        if df is None or df.empty or len(df) < 2:
             return jsonify({'error': 'no data'}), 404
         current_price = round(df['Close'].iloc[-1], 2)
         prev_close    = round(df['Close'].iloc[-2], 2)
         change        = round(current_price - prev_close, 2)
         change_pct    = round(change / prev_close * 100, 2)
-        currency = stock.info.get('currency', 'USD')
+        currency = _get_info_cached(stock, ticker).get('currency', 'USD')
         result = {
             'current_price': current_price,
             'change': change,
@@ -2673,7 +2313,6 @@ def market_overview():
             mstatus  = f_mstatus.result()
             extended = f_extended.result()
 
-        # המר numpy types לפייתון רגיל
         def clean(obj):
             if obj is None: return None
             return {k: (float(v) if hasattr(v, 'item') else v) for k, v in obj.items()}
@@ -2727,21 +2366,18 @@ def macro_alerts():
         dxy_chg  = dxy['change_pct'] if dxy else 0
         t10_val  = t10['value'] if t10 else 4.0
 
-        # VIX גבוה — שוק בפחד, הזדמנויות קנייה
         if vix_val > 30:
             alerts.append({'type': 'danger', 'text': f'VIX = {vix_val:.1f} — פחד קיצוני בשוק. לפי מיכה: זה הזמן לחפש מניות חזקות שנמכרו יחד עם השוק — הזדמנות.'})
             hot_sectors.append({'sector': 'מניות ערך / דיבידנד', 'reason': 'VIX גבוה = מוכרים כל מה שיש. מניות דיבידנד יציבות נמכרות זול.', 'tickers': 'JNJ, KO, PG, VZ'})
         elif vix_val < 15:
             alerts.append({'type': 'info', 'text': f'VIX = {vix_val:.1f} — שוק רגוע, ביטחון גבוה. הזהר מהתרדמות — לא הזמן לקחת סיכונים גדולים.'})
 
-        # פחד קיצוני — F&G מתחת ל-20
         if fg_score < 20:
             alerts.append({'type': 'opportunity', 'text': f'Fear & Greed = {fg_score:.0f} (פחד קיצוני) — היסטורית, כאשר כולם מפחדים זה הזמן לקנות חזק.'})
             hot_sectors.append({'sector': 'טכנולוגיה / נאסד"ק', 'reason': 'פחד קיצוני מייצר הזדמנות ב-QQQ, NVDA, MSFT שנמכרו יתר על המידה.', 'tickers': 'QQQ, NVDA, MSFT, AAPL'})
         elif fg_score > 80:
             alerts.append({'type': 'warning', 'text': f'Fear & Greed = {fg_score:.0f} (חמדנות קיצונית) — כולם קונים. לפי מיכה: זה הזמן לממש רווחים, לא להיכנס.'})
 
-        # דולר חזק — לחץ על חומרי גלם
         if dxy_chg > 0.5:
             alerts.append({'type': 'warning', 'text': f'דולר חזק (+{dxy_chg:.1f}%) — לחץ על נפט, זהב, וחברות יצוא. סיכון למניות מולטי-נשיונל.'})
             hot_sectors.append({'sector': 'בנקים / פיננסים', 'reason': 'דולר חזק = בנקים מרוויחים יותר על ריבית. XLF מועדף.', 'tickers': 'XLF, JPM, GS, BAC'})
@@ -2749,12 +2385,10 @@ def macro_alerts():
             alerts.append({'type': 'opportunity', 'text': f'דולר חלש ({dxy_chg:.1f}%) — חיובי לנפט, זהב, וחברות עם הכנסות בינלאומיות.'})
             hot_sectors.append({'sector': 'אנרגיה / זהב', 'reason': 'דולר חלש = נפט וזהב עולים. XLE, GLD מועדפים.', 'tickers': 'XLE, GLD, XOM, CVX'})
 
-        # ריבית גבוהה
         if t10_val > 4.5:
             alerts.append({'type': 'warning', 'text': f'ריבית 10 שנה = {t10_val:.2f}% — גבוהה. לחץ על מניות צמיחה (טק). בנקים נהנים.'})
             hot_sectors.append({'sector': 'בנקים / ביטוח', 'reason': f'ריבית {t10_val:.2f}% — בנקים מרוויחים יותר על הלוואות. KRE, XLF.', 'tickers': 'KRE, XLF, JPM, BRK-B'})
 
-        # המלצות גיאופוליטיות קבועות (לפי מגמות עולמיות)
         macro_themes = [
             {
                 'theme': '🛢️ מתח במזרח התיכון / נפט',
@@ -2799,312 +2433,6 @@ def macro_alerts():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/ask')
-def ask_assistant():
-    """עוזר חכם — שאל שאלה על מניה או שוק"""
-    q = request.args.get('q', '').strip()
-    ticker = request.args.get('ticker', '').upper().strip()
-    if not q:
-        return jsonify({'answer': 'שאל אותי שאלה על מניה או שוק...'})
-
-    q_lower = q.lower()
-    answer = ''
-
-    # קבל נתוני ניתוח אם יש טיקר
-    analysis = cache_get(f'analyze_{ticker}_swing') if ticker else None
-
-    # תשובות חכמות לפי שאלה
-    if any(w in q_lower for w in ['כניסה', 'לקנות', 'לקנות', 'לקנות עכשיו', 'לכנס']):
-        if analysis:
-            bullish = analysis.get('bullish_count', 0)
-            bearish = analysis.get('bearish_count', 0)
-            rec = analysis.get('recommendation', '')
-            direction = analysis.get('direction', 'neutral')
-            if bullish >= 4 and direction == 'long':
-                answer = f'לפי הניתוח של {ticker}: {bullish}/6 אינדיקטורים בוליש — כן, זה זמן כניסה סביר. {rec}. אבל המתן לנר אישור ובדוק נפח.'
-            elif bearish >= 4:
-                answer = f'לפי הניתוח של {ticker}: {bearish}/6 אינדיקטורים בריש — לא מומלץ לקנות עכשיו. {rec}.'
-            else:
-                answer = f'לפי {ticker}: תמונה מעורבת ({bullish} בוליש, {bearish} בריש). לפי מיכה — אם אתה לא בטוח 100%, אל תיכנס. המתן לאישור.'
-        else:
-            answer = 'חפש קודם מניה ואז שאל אותי. לפי מיכה סטוק: כניסה רק כשרוב האינדיקטורים מכוונים לאותו כיוון.'
-
-    elif any(w in q_lower for w in ['שורט', 'short', 'ירידה', 'למכור']):
-        if analysis:
-            bearish = analysis.get('bearish_count', 0)
-            direction = analysis.get('direction', 'neutral')
-            if bearish >= 4 or direction == 'short':
-                answer = f'{ticker}: {bearish}/6 אינדיקטורים בריש. מתאים לשורט. SL מעל הגבוה האחרון. יעד: ממוצע 20.'
-            else:
-                answer = f'{ticker}: אין מספיק אישורים לשורט. {analysis.get("bearish_count",0)}/6 בריש — לפי מיכה, צריך לפחות 4.'
-        else:
-            answer = 'לפי מיכה: שורט טוב צריך: טרנד יורד + נר בריש + נפח עולה + CCI שלילי. ודא שיש לפחות 4/6 אינדיקטורים.'
-
-    elif any(w in q_lower for w in ['sl', 'סטופ', 'stop', 'stop loss', 'סל']):
-        if analysis:
-            tp = analysis.get('trade_plan', {})
-            answer = f'לפי הניתוח: SL מומלץ ב-{tp.get("sl")} ({analysis.get("currency","USD")}). זה שפל הנר האחרון. אל תזיז SL כלפי מטה — זו טעות קלאסית.'
-        else:
-            answer = 'לפי מיכה: SL תמיד מתחת לשפל נר הכניסה. לעולם אל תזיז SL כלפי מטה. אם ה-SL נפגע — צא, ובדוק מחדש.'
-
-    elif any(w in q_lower for w in ['יעד', 'target', 'מטרה', 'רווח']):
-        if analysis:
-            tp = analysis.get('trade_plan', {})
-            rr = tp.get('rr')
-            answer = f'יעד 1: {tp.get("target1")} | יעד 2: {tp.get("target2")} | יחס סיכוי/סיכון: {rr}. '
-            if rr and rr >= 2:
-                answer += 'יחס טוב! לפי מיכה — מכור חצי ביעד 1, תן לשאר לרוץ.'
-            else:
-                answer += 'יחס נמוך. לפי מיכה — כניסה רק כשיחס מעל 2:1. שנה את נקודת הכניסה או ה-SL.'
-        else:
-            answer = 'לפי מיכה: יעד 1 = ממוצע 20 (אפקט גומיה). יעד 2 = התנגדות קרובה. מכור חצי ביעד 1 ותן לשאר לרוץ.'
-
-    elif any(w in q_lower for w in ['fomo', 'פומו', 'פחד', 'מפחד', 'חרדה']):
-        answer = 'לפי מיכה: FOMO הורג חשבונות. אם אתה נכנס כי אתה "מפחד להפסיד" — כבר טעית. הרכבת תמיד יוצאת שוב. המתן לסטיפ-אפ הבא.'
-
-    elif any(w in q_lower for w in ['vix', 'ויקס', 'פחד שוק']):
-        try:
-            vix = get_vix()
-            val = vix['value'] if vix else 'N/A'
-            level = vix['level'] if vix else ''
-            if val != 'N/A':
-                if val > 30:
-                    answer = f'VIX עכשיו: {val:.1f} ({level}). פחד קיצוני! לפי מיכה — זה הזמן לחפש הזדמנויות, לא לברוח. המשקיע הטוב קונה כשאחרים מפחדים.'
-                elif val > 20:
-                    answer = f'VIX עכשיו: {val:.1f} ({level}). אי-ודאות בינונית. סחר בזהירות, קח פוזיציות קטנות יותר.'
-                else:
-                    answer = f'VIX עכשיו: {val:.1f} ({level}). שוק רגוע. זהר מהתרדמות — לפעמים השקט הכי מסוכן.'
-        except Exception:
-            answer = 'לא הצלחתי לטעון VIX כרגע.'
-
-    elif any(w in q_lower for w in ['שיטה', 'מיכה', 'ליב 20', 'כלל']):
-        answer = ('שיטת מיכה סטוקס (ליב 20):\n'
-                  '1. זהה טרנד — בוליש או בריש\n'
-                  '2. אשר עם נר יפני + נפח\n'
-                  '3. בדוק MA20 — הגומייה\n'
-                  '4. כניסה רק כש-4/6 אינדיקטורים באותו כיוון\n'
-                  '5. SL תמיד מתחת לשפל הנר\n'
-                  '6. יחס סיכוי/סיכון לפחות 2:1\n'
-                  '7. 5 ימים רצופים = צפה לשינוי')
-
-    else:
-        answer = ('אני עוזר המסחר שלך לפי שיטת מיכה סטוקס. תוכל לשאול:\n'
-                  '• "האם לקנות את [מניה]?"\n'
-                  '• "מה ה-SL המומלץ?"\n'
-                  '• "מה היעדים?"\n'
-                  '• "מה ה-VIX עכשיו?"\n'
-                  '• "מה שיטת מיכה?"\n'
-                  '• "יש לי FOMO, מה לעשות?"')
-
-    return jsonify({'answer': answer, 'ticker': ticker})
-
-
-@app.route('/world-news')
-def world_news():
-    """חדשות מאקרו עולמיות + מי מרוויח מכל אירוע"""
-    cached = cache_get('world_news', ttl=900)
-    if cached:
-        return jsonify(cached)
-    try:
-        # אירועים מאקרו עם מנצחים ומפסידים
-        MACRO_EVENTS = [
-            {
-                'topic': 'מלחמת סחר / מכסים',
-                'keywords': ['tariff','trade war','trade deal','customs','import duty','export ban','sanctions','מכס','סנקציות'],
-                'winners': [
-                    {'ticker': 'LMT', 'name': 'Lockheed Martin', 'reason': 'ביטחון + תעשייה מקומית'},
-                    {'ticker': 'RTX',  'name': 'Raytheon',        'reason': 'תעשיית הגנה אמריקאית'},
-                    {'ticker': 'CAT',  'name': 'Caterpillar',      'reason': 'ייצור מקומי מוגן ממכסים'},
-                    {'ticker': 'DE',   'name': 'John Deere',       'reason': 'מכונות חקלאות אמריקאיות'},
-                    {'ticker': 'NEM',  'name': 'Newmont Mining',   'reason': 'זהב עולה בעת אי-ודאות'},
-                ],
-                'losers': [
-                    {'ticker': 'AAPL', 'name': 'Apple',    'reason': 'שרשרת אספקה בסין'},
-                    {'ticker': 'NVDA', 'name': 'NVIDIA',   'reason': 'הגבלות יצוא שבבים'},
-                    {'ticker': 'WMT',  'name': 'Walmart',  'reason': 'מוצרים מיובאים מסין'},
-                    {'ticker': 'NKE',  'name': 'Nike',     'reason': 'ייצור בדרום-מזרח אסיה'},
-                ],
-                'tip': 'כשיש מכסים — קנה תעשייה מקומית, מכור יצואניות גלובליות',
-            },
-            {
-                'topic': 'עלייה בריבית / פד אגרסיבי',
-                'keywords': ['interest rate','fed hike','hawkish','rate rise','fomc','jerome powell','ריבית','פד','העלאת ריבית'],
-                'winners': [
-                    {'ticker': 'JPM',  'name': 'JP Morgan',       'reason': 'בנקים מרוויחים מריבית גבוהה'},
-                    {'ticker': 'BAC',  'name': 'Bank of America',  'reason': 'מרווח ריבית גדל'},
-                    {'ticker': 'GS',   'name': 'Goldman Sachs',    'reason': 'בנק השקעות, הכנסות ריבית'},
-                    {'ticker': 'BRK-B','name': 'Berkshire',        'reason': 'מזומן עצום מניב ריבית'},
-                    {'ticker': 'UNH',  'name': 'UnitedHealth',     'reason': 'שירותי בריאות — לא תלויים בריבית'},
-                ],
-                'losers': [
-                    {'ticker': 'TSLA', 'name': 'Tesla',        'reason': 'מכירות מימון רכב מתייקרות'},
-                    {'ticker': 'AMZN', 'name': 'Amazon',       'reason': 'צמיחה נחתכת — מכפילים יורדים'},
-                    {'ticker': 'ARKK', 'name': 'ARK Innovation','reason': 'טכנולוגיה ספקולטיבית נפגעת'},
-                    {'ticker': 'IYR',  'name': 'Real Estate ETF','reason': 'נדל"ן תלוי ריבית'},
-                ],
-                'tip': 'ריבית עולה = הטה לבנקים ובריאות, הימנע מצמיחה ונדל"ן',
-            },
-            {
-                'topic': 'מלחמה / קונפליקט גיאופוליטי',
-                'keywords': ['war','conflict','military','attack','invasion','geopolitical','nato','מלחמה','קונפליקט','התקפה','צבאי'],
-                'winners': [
-                    {'ticker': 'LMT', 'name': 'Lockheed Martin', 'reason': 'נשק וביטחון'},
-                    {'ticker': 'NOC', 'name': 'Northrop Grumman','reason': 'מערכות הגנה'},
-                    {'ticker': 'GD',  'name': 'General Dynamics', 'reason': 'ספינות וכלי רכב צבאיים'},
-                    {'ticker': 'XOM', 'name': 'Exxon Mobil',      'reason': 'נפט עולה בקונפליקטים'},
-                    {'ticker': 'GLD', 'name': 'Gold ETF',          'reason': 'זהב — מקלט בטוח'},
-                ],
-                'losers': [
-                    {'ticker': 'DAL', 'name': 'Delta Air Lines', 'reason': 'תעופה נפגעת מקונפליקטים'},
-                    {'ticker': 'CCL', 'name': 'Carnival Cruise',  'reason': 'תיירות יורדת'},
-                    {'ticker': 'BABA','name': 'Alibaba',          'reason': 'ריסק סין עולה'},
-                ],
-                'tip': 'קונפליקט = קנה ביטחון ואנרגיה, מכור תיירות ותחבורה',
-            },
-            {
-                'topic': 'ירידת ריבית / פד יוני',
-                'keywords': ['rate cut','dovish','pivot','fed cut','lower rates','הורדת ריבית','פיבוט','יוני'],
-                'winners': [
-                    {'ticker': 'TSLA', 'name': 'Tesla',     'reason': 'ריבית נמוכה = מימון זול לרכב חשמלי'},
-                    {'ticker': 'AMZN', 'name': 'Amazon',    'reason': 'מכפילים עולים בריבית נמוכה'},
-                    {'ticker': 'NVDA', 'name': 'NVIDIA',    'reason': 'טכנולוגיה צומחת נהנית'},
-                    {'ticker': 'IYR',  'name': 'Real Estate ETF','reason': 'נדל"ן עולה'},
-                    {'ticker': 'ARKK', 'name': 'ARK Innovation','reason': 'ספקולציה חוזרת'},
-                ],
-                'losers': [
-                    {'ticker': 'JPM', 'name': 'JP Morgan',  'reason': 'מרווח ריבית נצמצם'},
-                    {'ticker': 'BAC', 'name': 'Bank of America','reason': 'הכנסות ריבית יורדות'},
-                ],
-                'tip': 'ריבית יורדת = קנה טכנולוגיה ונדל"ן, הקטן בנקים',
-            },
-            {
-                'topic': 'משבר בנקאי / פשיטת רגל',
-                'keywords': ['bank crisis','bank failure','bankruptcy','credit crunch','collapse','contagion','משבר','פשיטת רגל','קריסה'],
-                'winners': [
-                    {'ticker': 'GLD', 'name': 'Gold ETF',    'reason': 'מקלט בטוח קלאסי'},
-                    {'ticker': 'TLT', 'name': 'Bonds ETF',   'reason': 'אג"ח ארוך עולה בפחד'},
-                    {'ticker': 'V',   'name': 'Visa',         'reason': 'תשלומים — לא נפגע ממשבר בנקאי'},
-                    {'ticker': 'UNH', 'name': 'UnitedHealth', 'reason': 'דפנסיבי — אנשים עדיין צריכים ביטוח'},
-                ],
-                'losers': [
-                    {'ticker': 'SIVB','name': 'SVB type',    'reason': 'בנקים קטנים/אזוריים נפגעים'},
-                    {'ticker': 'KRE', 'name': 'Regional Banks ETF','reason': 'חשיפה לבנקים אזוריים'},
-                ],
-                'tip': 'משבר בנקאי = ברח לזהב ואג"ח, הימנע מבנקים אזוריים',
-            },
-            {
-                'topic': 'מחיר נפט גבוה',
-                'keywords': ['oil price','crude oil','opec','brent','wti','energy crisis','נפט','אנרגיה','אופ"ק'],
-                'winners': [
-                    {'ticker': 'XOM',  'name': 'Exxon',      'reason': 'חברת נפט — מרוויחה ישירות'},
-                    {'ticker': 'CVX',  'name': 'Chevron',     'reason': 'חברת נפט גדולה'},
-                    {'ticker': 'OXY',  'name': 'Occidental',  'reason': 'ייצור נפט אמריקאי'},
-                    {'ticker': 'HAL',  'name': 'Halliburton', 'reason': 'שירותי קידוח'},
-                    {'ticker': 'XLE',  'name': 'Energy ETF',  'reason': 'אנרגיה כולה'},
-                ],
-                'losers': [
-                    {'ticker': 'DAL', 'name': 'Delta',   'reason': 'עלויות דלק עולות'},
-                    {'ticker': 'UPS', 'name': 'UPS',     'reason': 'לוגיסטיקה תלויה בדלק'},
-                    {'ticker': 'AMZN','name': 'Amazon',  'reason': 'משלוחים מתייקרים'},
-                ],
-                'tip': 'נפט עולה = קנה XLE, מכור תעופה ולוגיסטיקה',
-            },
-            {
-                'topic': 'בינה מלאכותית / AI boom',
-                'keywords': ['artificial intelligence','ai','machine learning','chatgpt','generative ai','large language','gpu','ai chip','בינה מלאכותית','AI'],
-                'winners': [
-                    {'ticker': 'NVDA', 'name': 'NVIDIA',   'reason': 'GPU לאימון AI — מלך השוק'},
-                    {'ticker': 'MSFT', 'name': 'Microsoft','reason': 'Copilot + Azure AI'},
-                    {'ticker': 'GOOG', 'name': 'Google',   'reason': 'Gemini + אינפרה ענן'},
-                    {'ticker': 'AMD',  'name': 'AMD',      'reason': 'תחרות עם NVIDIA בשבבי AI'},
-                    {'ticker': 'SMCI', 'name': 'Super Micro','reason': 'שרתי AI'},
-                ],
-                'losers': [
-                    {'ticker': 'IBM',  'name': 'IBM',      'reason': 'מחשוב ישן נדחק'},
-                    {'ticker': 'ACN',  'name': 'Accenture','reason': 'ייעוץ IT מוחלף ע"י AI'},
-                ],
-                'tip': 'AI boom = NVDA + MSFT + ענן, הימנע מ-IT ישן',
-            },
-            {
-                'topic': 'אינפלציה גבוהה',
-                'keywords': ['inflation','cpi','pce','price index','cost of living','אינפלציה','יוקר מחיה','מדד מחירים'],
-                'winners': [
-                    {'ticker': 'GLD',  'name': 'Gold ETF',       'reason': 'גידור קלאסי מול אינפלציה'},
-                    {'ticker': 'XOM',  'name': 'Exxon',           'reason': 'אנרגיה עולה עם אינפלציה'},
-                    {'ticker': 'PG',   'name': 'Procter & Gamble','reason': 'מעביר עליות מחיר לצרכנים'},
-                    {'ticker': 'COST', 'name': 'Costco',          'reason': 'מוצרי יסוד בסיטונאות'},
-                ],
-                'losers': [
-                    {'ticker': 'TSLA', 'name': 'Tesla',  'reason': 'מוצר לא הכרחי — ביקוש יורד'},
-                    {'ticker': 'AMZN', 'name': 'Amazon', 'reason': 'עלויות לוגיסטיקה ועבודה עולות'},
-                    {'ticker': 'DIS',  'name': 'Disney', 'reason': 'בידור — ביקוש יורד ביוקר מחיה'},
-                ],
-                'tip': 'אינפלציה = זהב + אנרגיה + יסודות, הימנע מבידור ו-discretionary',
-            },
-        ]
-
-        # שלוף חדשות עולם אמיתיות מ-RSS
-        import xml.etree.ElementTree as ET
-        rss_feeds = [
-            ('https://feeds.bbci.co.uk/news/business/rss.xml', 'BBC Business'),
-            ('https://rss.cnn.com/rss/money_news_international.rss', 'CNN Money'),
-        ]
-        live_news = []
-        for feed_url, source in rss_feeds:
-            try:
-                req = requests.get(feed_url, timeout=5,
-                    headers={'User-Agent': 'Mozilla/5.0'})
-                root = ET.fromstring(req.content)
-                for item in root.findall('.//item')[:5]:
-                    title_en = item.findtext('title', '')
-                    desc_en  = item.findtext('description', '')
-                    link     = item.findtext('link', '')
-                    # תרגם כותרת לעברית
-                    title_he = translate_he(title_en) if title_en else title_en
-                    live_news.append({
-                        'title': title_he,
-                        'title_en': title_en,
-                        'desc': desc_en[:200],
-                        'link': link,
-                        'source': source,
-                    })
-            except Exception:
-                pass
-
-        # התאם חדשות לאירועי מאקרו (השוואה לפי אנגלית, הצגה בעברית)
-        matched = []
-        for event in MACRO_EVENTS:
-            score = 0
-            matched_titles = []
-            for news in live_news:
-                text = (news['title_en'] + ' ' + news['desc']).lower()
-                hits = sum(1 for kw in event['keywords'] if kw.lower() in text)
-                if hits > 0:
-                    score += hits
-                    matched_titles.append(news['title'])   # כבר עברית
-            if matched_titles:
-                matched.append({
-                    'topic': event['topic'],
-                    'relevance': score,
-                    'news': matched_titles[:3],
-                    'winners': event['winners'],
-                    'losers': event['losers'],
-                    'tip': event['tip'],
-                })
-
-        matched.sort(key=lambda x: x['relevance'], reverse=True)
-
-        result = {
-            'events': matched[:4],
-            'all_events': [{'topic': e['topic'], 'tip': e['tip'], 'winners': e['winners'], 'losers': e['losers']} for e in MACRO_EVENTS],
-            'live_news': live_news[:8],
-        }
-        cache_set('world_news', result)
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 @app.route('/scan')
 def scan_watchlist():
     """סריקת מניות לפי שיטת לייב 20 — מחזיר רק buy/strong-buy"""
@@ -3124,424 +2452,6 @@ def scan_watchlist():
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e), 'stocks': []}), 500
-
-
-@app.route('/day-prediction')
-def day_prediction():
-    """תחזית יום — ירוק או אדום? לפי 10 גורמים מאקרו"""
-    import datetime as dt, xml.etree.ElementTree as ET, urllib.parse as ulp
-
-    cached = cache_get('day_prediction', ttl=300)
-    if cached:
-        return jsonify(cached)
-
-    score = 50
-    factors = []
-
-    def add(icon, label, delta, bull):
-        nonlocal score
-        score += delta
-        factors.append({'icon': icon, 'label': label, 'delta': delta, 'bull': bull})
-
-    # ── 1. חוזים עתידיים + פרה-מרקט (הגורם החזק ביותר) ─────────────────────
-    try:
-        futures_scores = []
-        futures_labels = []
-        for sym, name in [('ES=F','S&P'), ('NQ=F','נאסדק'), ('YM=F','דאו')]:
-            try:
-                h = yf.Ticker(sym).history(period='2d', prepost=True)
-                if len(h) >= 2:
-                    chg = (h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2] * 100
-                    futures_scores.append(chg)
-                    futures_labels.append(f'{name} {chg:+.1f}%')
-            except Exception:
-                pass
-        if futures_scores:
-            avg_chg = sum(futures_scores) / len(futures_scores)
-            label = 'חוזים: ' + ' · '.join(futures_labels)
-            if avg_chg > 1:     add('🚀', label, +14, True)
-            elif avg_chg > 0.5: add('📈', label, +9,  True)
-            elif avg_chg > 0.1: add('📈', label, +5,  True)
-            elif avg_chg > -0.1:add('➡️', label,  0,  None)
-            elif avg_chg > -0.5:add('📉', label, -5,  False)
-            elif avg_chg > -1:  add('📉', label, -9,  False)
-            else:               add('🔴', label, -14, False)
-    except Exception: pass
-
-    # ── 1b. פרה-מרקט SPY/QQQ (נתון מדויק לפני פתיחה) ────────────────────────
-    try:
-        import datetime as _dt
-        now_et = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(hours=4)
-        is_premarket = 4 <= now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
-        if is_premarket:
-            pm_scores = []
-            for sym, name in [('SPY','SPY'), ('QQQ','QQQ')]:
-                try:
-                    h = yf.Ticker(sym).history(period='1d', interval='1m', prepost=True)
-                    if not h.empty:
-                        last_pm  = float(h['Close'].iloc[-1])
-                        prev_close = float(yf.Ticker(sym).history(period='2d')['Close'].iloc[-2])
-                        pm_chg = (last_pm - prev_close) / prev_close * 100
-                        pm_scores.append((name, pm_chg))
-                except Exception:
-                    pass
-            if pm_scores:
-                parts = ' · '.join(f'{n} {c:+.1f}%' for n, c in pm_scores)
-                avg = sum(c for _, c in pm_scores) / len(pm_scores)
-                delta = int(avg * 8)
-                delta = max(-12, min(12, delta))
-                add('⏰', f'פרה-מרקט: {parts}', delta, avg > 0 if abs(avg) > 0.1 else None)
-    except Exception: pass
-
-    # ── 2. VIX ──────────────────────────────────────────────────────────────
-    try:
-        vix_data = get_vix()
-        if vix_data:
-            v = vix_data['value']
-            if v < 15:    add('😌', f'VIX נמוך ({v}) — שוק רגוע', +10, True)
-            elif v < 20:  add('🟡', f'VIX בינוני ({v})', +4, True)
-            elif v < 25:  add('⚠️', f'VIX מוגבר ({v})', -4, False)
-            elif v < 30:  add('😨', f'VIX גבוה ({v}) — חשש', -8, False)
-            else:         add('🆘', f'VIX מעל 30 ({v}) — פאניקה!', -14, False)
-    except Exception: pass
-
-    # ── 3. Fear & Greed (contrarian) ────────────────────────────────────────
-    try:
-        fg = get_fear_greed()
-        if fg:
-            s = float(fg['score'])
-            if s <= 15:   add('🛒', f'פחד קיצוני (F&G={s:.0f}) — הזדמנות קנייה', +6, True)
-            elif s <= 30: add('😰', f'פחד בשוק (F&G={s:.0f})', +2, True)
-            elif s <= 55: add('😐', f'F&G ניטרלי ({s:.0f})', 0, None)
-            elif s <= 75: add('😏', f'חמדנות (F&G={s:.0f}) — מומנטום', +3, True)
-            else:         add('🤑', f'חמדנות קיצונית (F&G={s:.0f}) — סיכון', -4, False)
-    except Exception: pass
-
-    # ── 4. SPY — אתמול + שבוע ───────────────────────────────────────────────
-    try:
-        spy_h = yf.Ticker('SPY').history(period='10d')
-        if len(spy_h) >= 6:
-            d1 = (spy_h['Close'].iloc[-1] - spy_h['Close'].iloc[-2]) / spy_h['Close'].iloc[-2] * 100
-            d5 = (spy_h['Close'].iloc[-1] - spy_h['Close'].iloc[-6]) / spy_h['Close'].iloc[-6] * 100
-            # mean reversion — 3+ ימים אדומים
-            reds = sum(1 for i in range(1, min(4, len(spy_h)))
-                       if spy_h['Close'].iloc[-i] < spy_h['Close'].iloc[-i-1])
-            if d1 > 1:    add('📗', f'S&P500 עלה {d1:.1f}% אתמול', +5, True)
-            elif d1 > 0:  add('📗', f'S&P500 עלה {d1:.1f}% אתמול', +2, True)
-            elif d1 > -1: add('📕', f'S&P500 ירד {d1:.1f}% אתמול', -2, False)
-            else:         add('📕', f'S&P500 ירד חזק {d1:.1f}% אתמול', -5, False)
-            if d5 > 3:    add('📈', f'מגמה שבועית חיובית ({d5:.1f}%)', +5, True)
-            elif d5 > 0:  add('📈', f'מגמה שבועית קלה ({d5:.1f}%)', +2, True)
-            elif d5 > -3: add('📉', f'מגמה שבועית שלילית ({d5:.1f}%)', -2, False)
-            else:         add('📉', f'מגמה שבועית חלשה ({d5:.1f}%)', -5, False)
-            if reds >= 3:
-                add('🔄', f'{reds} ימים אדומים רצופים — ריקושט סטטיסטי', +4, True)
-    except Exception: pass
-
-    # ── 5. תשואת אגח 10Y ────────────────────────────────────────────────────
-    try:
-        us10y = get_us10y()
-        if us10y:
-            yld = float(us10y['value'])
-            chg = float(us10y.get('change', 0))
-            if yld > 4.5 and chg > 0.05:  add('📛', f'אגח 10Y עולה ({yld:.2f}%) — לחץ על מניות', -8, False)
-            elif yld > 4.5:               add('⚠️', f'אגח 10Y גבוה ({yld:.2f}%)', -4, False)
-            elif yld < 4.0:               add('✅', f'אגח 10Y נמוך ({yld:.2f}%) — תומך', +5, True)
-            elif chg < -0.05:             add('💚', f'אגח 10Y יורד ({chg:+.2f}%) — חיובי', +4, True)
-            else:                         add('🟡', f'אגח 10Y ניטרלי ({yld:.2f}%)', 0, None)
-    except Exception: pass
-
-    # ── 6. דולר DXY ──────────────────────────────────────────────────────────
-    try:
-        dxy = get_dxy()
-        if dxy:
-            dc = float(dxy.get('change', 0))
-            if dc > 0.5:    add('💵', f'דולר מתחזק ({dc:+.1f}%) — לחץ', -5, False)
-            elif dc > 0.2:  add('💵', f'דולר עולה קלות ({dc:+.1f}%)', -2, False)
-            elif dc < -0.5: add('💚', f'דולר נחלש ({dc:+.1f}%) — תומך', +5, True)
-            elif dc < -0.2: add('💚', f'דולר יורד קלות ({dc:+.1f}%)', +2, True)
-            else:           add('💵', f'דולר יציב ({dc:+.1f}%)', 0, None)
-    except Exception: pass
-
-    # ── 7. נפט גולמי WTI ────────────────────────────────────────────────────
-    try:
-        oil_h = yf.Ticker('CL=F').history(period='3d')
-        if len(oil_h) >= 2:
-            oc = (oil_h['Close'].iloc[-1] - oil_h['Close'].iloc[-2]) / oil_h['Close'].iloc[-2] * 100
-            if oc > 3:    add('🛢️', f'נפט עולה חזק {oc:.1f}% — לחץ אינפלציה', -5, False)
-            elif oc > 1:  add('🛢️', f'נפט עולה {oc:.1f}%', -2, False)
-            elif oc < -3: add('✅', f'נפט יורד {oc:.1f}% — הקלה', +4, True)
-            elif oc < -1: add('✅', f'נפט יורד {oc:.1f}%', +2, True)
-            else:         add('🛢️', f'נפט יציב ({oc:+.1f}%)', 0, None)
-    except Exception: pass
-
-    # ── 8. זהב — risk-off ────────────────────────────────────────────────────
-    try:
-        gold_h = yf.Ticker('GC=F').history(period='3d')
-        if len(gold_h) >= 2:
-            gc = (gold_h['Close'].iloc[-1] - gold_h['Close'].iloc[-2]) / gold_h['Close'].iloc[-2] * 100
-            if gc > 1:    add('🥇', f'זהב עולה {gc:.1f}% — בריחה לבטוח', -4, False)
-            elif gc < -1: add('🥇', f'זהב יורד {gc:.1f}% — risk-on', +3, True)
-            else:         add('🥇', f'זהב יציב ({gc:+.1f}%)', 0, None)
-    except Exception: pass
-
-    # ── 9. אסיה ואירופה ──────────────────────────────────────────────────────
-    try:
-        asia_sum = 0
-        for sym, name in [('^N225','ניקיי'), ('^HSI','הנג-סנג'), ('^GDAXI','DAX')]:
-            try:
-                h = yf.Ticker(sym).history(period='3d')
-                if len(h) >= 2:
-                    c = (h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2] * 100
-                    asia_sum += c
-            except Exception: pass
-        if asia_sum > 2:    add('🌏', f'שוקי אסיה/אירופה חיוביים', +5, True)
-        elif asia_sum > 0.5: add('🌏', f'שוקי אסיה/אירופה קלות חיוביים', +2, True)
-        elif asia_sum < -2: add('🌏', f'שוקי אסיה/אירופה שליליים', -5, False)
-        elif asia_sum < -0.5: add('🌏', f'שוקי אסיה/אירופה קלות שליליים', -2, False)
-        else:               add('🌏', f'שוקי אסיה/אירופה יציבים', 0, None)
-    except Exception: pass
-
-    # ── 10. אירועים היום/מחר ────────────────────────────────────────────────
-    try:
-        for ev in get_upcoming_events(2):
-            if ev['days_until'] <= 1:
-                t = ev.get('type', '')
-                if t == 'fomc':          add('🏛️', f'ישיבת FOMC היום/מחר — תנודתיות', -10, False)
-                elif t in ('cpi','ppi'): add('📊', f'{ev["event"][:35]}', -7, False)
-                elif t == 'nfp':        add('💼', f'NFP היום/מחר', -6, False)
-                elif t in ('gdp','pce'): add('📈', f'{ev["event"][:35]}', -5, False)
-                elif t == 'retail':     add('🛒', f'מכירות קמעונאות היום/מחר', -3, False)
-                elif t == 'holiday':    add('🏛️', f'שוק סגור — {ev["event"][:25]}', 0, None)
-    except Exception: pass
-
-    # ── 11. חדשות שוק + Trump/פוליטיקה + חדשות מתפרצות ─────────────────────
-    import email.utils as _eu
-    import datetime as _dt2
-
-    bull_kw    = ['rally','surges','gains','rises','beats','higher','record','recovery',
-                  'optimism','bullish','breakout','soars','ceasefire','stimulus',
-                  'rate cut','trade deal','boom','surge','lifted','jumped','climbed',
-                  'strong jobs','beat estimates','buyback','approved','signed']
-    bear_kw    = ['crash','plunges','falls','drops','recession','fear','warning','crisis',
-                  'sell-off','bearish','slump','tumbles','tariff','default','sanction',
-                  'bank failure','layoffs','miss','downgrade','collapse','suspend','ban',
-                  'investigation','shutdown','debt ceiling','war','attack','escalate',
-                  'threatens','inflation','spike','hike']
-    trump_bear = ['tariff','tariffs','trade war','sanction','ban','threatens','escalate',
-                  'executive order','china tariff','nato','withdraw','fired','indicted']
-    trump_bull = ['deal','trade deal','ceasefire','cut tax','deregulate','approve',
-                  'reduce tariff','agreement','invest','friendly','sign']
-
-    total_b, total_s = 0, 0
-    market_news  = []   # כל החדשות שנקראו עם קישור
-
-    rss_queries = [
-        ('📈 שוק', 'stock market today wall street open'),
-        ('🏛️ פד/ריבית', 'federal reserve interest rate economy'),
-        ('🇺🇸 Trump', 'Trump economy tariff market trade'),
-        ('🔔 חדשות חמות', 'breaking news market economy today'),
-        ('🌍 גיאו-פוליטי', 'geopolitics war sanctions economy market'),
-    ]
-    for cat, raw_q in rss_queries:
-        try:
-            q = ulp.quote(raw_q)
-            rss_url = f'https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en'
-            r = requests.get(rss_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
-            root = ET.fromstring(r.content)
-            for item in root.findall('.//item')[:6]:
-                raw_title = (item.findtext('title') or '').strip()
-                link      = item.findtext('link') or ''
-                pub_str   = item.findtext('pubDate') or ''
-                title_lo  = raw_title.lower()
-                # גיל הכתבה
-                age_h = 999
-                pub_fmt = ''
-                try:
-                    pub_dt  = _dt2.datetime(*_eu.parsedate(pub_str)[:6],
-                                            tzinfo=_dt2.timezone.utc)
-                    age_h   = (_dt2.datetime.now(_dt2.timezone.utc) - pub_dt).total_seconds() / 3600
-                    pub_fmt = pub_dt.strftime('%d/%m %H:%M')
-                except Exception:
-                    pass
-                b_hit = sum(1 for w in bull_kw if w in title_lo)
-                s_hit = sum(1 for w in bear_kw if w in title_lo)
-                is_trump = 'trump' in title_lo
-                if is_trump:
-                    b_hit += sum(1 for w in trump_bull if w in title_lo) * 2
-                    s_hit += sum(1 for w in trump_bear if w in title_lo) * 2
-                total_b += b_hit
-                total_s += s_hit
-                impact = b_hit - s_hit
-                if abs(impact) >= 1 or age_h < 6:   # חדשה עם השפעה או עדכנית
-                    market_news.append({
-                        'title':   raw_title[:80],
-                        'link':    link,
-                        'cat':     cat,
-                        'pub':     pub_fmt,
-                        'age_h':   round(age_h, 1),
-                        'bull':    impact > 0,
-                        'impact':  impact,
-                        'is_trump': is_trump,
-                        'fresh':   age_h < 3,
-                    })
-        except Exception:
-            pass
-
-    # מיין: חדשות מתפרצות קודם, אחר כך לפי השפעה
-    market_news.sort(key=lambda x: (-x['fresh'], -abs(x['impact']), x['age_h']))
-    market_news = market_news[:20]
-
-    # תרגם כותרות לעברית במקביל
-    market_news = translate_news_batch(market_news)
-
-    if total_b > total_s + 3:
-        add('📰', f'חדשות חיוביות ({total_b} סיגנלים)', +8, True)
-    elif total_s > total_b + 3:
-        add('📰', f'חדשות שליליות ({total_s} סיגנלים)', -8, False)
-    else:
-        add('📰', f'חדשות מעורבות (חיובי:{total_b} שלילי:{total_s})', 0, None)
-
-    # חדשות מתפרצות (< 3 שע') עם השפעה חזקה
-    for n in [x for x in market_news if x['fresh'] and abs(x['impact']) >= 2][:3]:
-        delta = min(7, max(-9, n['impact'] * 3))
-        icon  = '🟢' if n['bull'] else '🔴'
-        add(icon, f'🔔 {n["title"][:55]}', delta, n['bull'])
-
-    score = max(0, min(100, score))
-    if score >= 65:   verdict, color = 'יום ירוק 🟢', '#22c55e'
-    elif score >= 55: verdict, color = 'נטיית עלייה 🟡', '#86efac'
-    elif score >= 45: verdict, color = 'ניטרלי ⚪', '#f59e0b'
-    elif score >= 35: verdict, color = 'נטיית ירידה 🟠', '#fca5a5'
-    else:             verdict, color = 'יום אדום 🔴', '#ef4444'
-
-    breaking_count = sum(1 for n in market_news if n['fresh'] and abs(n['impact']) >= 2)
-    result = {
-        'score': score, 'verdict': verdict, 'color': color,
-        'factors': factors,
-        'breaking_count': breaking_count,
-        'market_news': market_news,
-        'sources': 'ES/NQ/YM חוזים · SPY/QQQ פרה-מרקט · VIX · F&G · אגח 10Y · DXY · נפט · זהב · אסיה/אירופה · לוח אירועים · Google News שוק/Trump/פוליטיקה',
-        'checked_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
-    }
-    cache_set('day_prediction', result)
-    return jsonify(result)
-
-
-@app.route('/check-outcome')
-def check_outcome():
-    """בדיקת תוצאת יום מסחר — האם SPY עלה או ירד ב-date מסוים"""
-    date_str = request.args.get('date', '')
-    if not date_str:
-        return jsonify({'status': 'error', 'msg': 'missing date'})
-    cache_key = f'outcome_{date_str}'
-    cached = cache_get(cache_key, ttl=86400)
-    if cached:
-        return jsonify(cached)
-    try:
-        import datetime as _dt2
-        start = _dt2.datetime.strptime(date_str, '%Y-%m-%d')
-        end   = start + _dt2.timedelta(days=1)
-        spy   = yf.Ticker('SPY')
-        hist  = spy.history(start=date_str, end=end.strftime('%Y-%m-%d'))
-        if hist.empty:
-            result = {'status': 'no_data'}
-            cache_set(cache_key, result)
-            return jsonify(result)
-        day = hist.iloc[0]
-        pct = round(float((day['Close'] - day['Open']) / day['Open'] * 100), 2)
-        direction = 'bull' if pct > 0.3 else ('bear' if pct < -0.3 else 'neutral')
-        result = {'status': 'ok', 'pct': pct, 'direction': direction, 'date': date_str}
-        cache_set(cache_key, result)
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({'status': 'error', 'msg': str(e)})
-
-
-@app.route('/portfolio-prices')
-def portfolio_prices():
-    """מחירים חיים לרשימת טיקרים — עבור דשבורד תיק ההשקעות"""
-    tickers_raw = request.args.get('tickers', '')
-    ticker_list = [t.strip().upper() for t in tickers_raw.split(',') if t.strip()][:30]
-    if not ticker_list:
-        return jsonify({})
-    force     = request.args.get('force', '0') == '1'
-    cache_key = 'pfprices_' + '_'.join(sorted(ticker_list))
-    if not force:
-        cached = cache_get(cache_key, ttl=120)
-        if cached:
-            return jsonify(cached)
-    result = {}
-    try:
-        # batch download — בקשה אחת לכל הטיקרים
-        tickers_str = ' '.join(ticker_list)
-        raw = yf.download(tickers_str, period='5d', interval='1d',
-                          group_by='ticker', auto_adjust=True,
-                          progress=False, threads=True)
-        intra_raw = yf.download(tickers_str, period='1d', interval='5m',
-                                group_by='ticker', auto_adjust=True,
-                                prepost=True, progress=False, threads=True)
-
-        def _get_close(df, tk):
-            """מחלץ עמודת Close בין MultiIndex ל-flat — תואם כל גרסת yfinance"""
-            try:
-                if df is None or df.empty:
-                    return None
-                if isinstance(df.columns, pd.MultiIndex):
-                    lvl0 = df.columns.get_level_values(0)
-                    lvl1 = df.columns.get_level_values(1)
-                    if tk in lvl1:
-                        return df['Close'][tk] if 'Close' in lvl0 else None
-                    if tk in lvl0:
-                        return df[tk]['Close'] if 'Close' in df[tk].columns else None
-                    return None
-                else:
-                    return df['Close'] if 'Close' in df.columns else None
-            except Exception:
-                return None
-
-        for ticker in ticker_list:
-            try:
-                intra_close = _get_close(intra_raw, ticker)
-                daily_close = _get_close(raw, ticker)
-
-                intra_vals = intra_close.dropna() if intra_close is not None else None
-                daily_vals = daily_close.dropna() if daily_close is not None else None
-
-                price = None
-                if intra_vals is not None and len(intra_vals) > 0:
-                    price = float(intra_vals.iloc[-1])
-                elif daily_vals is not None and len(daily_vals) > 0:
-                    price = float(daily_vals.iloc[-1])
-
-                if not price:
-                    fi    = yf.Ticker(ticker).fast_info
-                    price = float(getattr(fi, 'last_price', None) or
-                                  getattr(fi, 'regular_market_price', None) or 0)
-
-                prev = float(daily_vals.iloc[-2]) if (daily_vals is not None and len(daily_vals) >= 2) \
-                       else price
-
-                chg = round((price - prev) / prev * 100, 2) if prev else 0
-                result[ticker] = {'price': round(price, 2), 'prev_close': round(prev, 2), 'change_pct': chg}
-            except Exception as e:
-                result[ticker] = {'price': None, 'error': str(e)}
-    except Exception as e:
-        # fallback — שליפה אחת-אחת
-        for ticker in ticker_list:
-            try:
-                t     = yf.Ticker(ticker)
-                fi    = t.fast_info
-                price = float(getattr(fi, 'last_price', None) or
-                              getattr(fi, 'regular_market_price', None) or 0)
-                prev  = float(getattr(fi, 'previous_close', None) or price)
-                chg   = round((price - prev) / prev * 100, 2) if prev else 0
-                result[ticker] = {'price': round(price, 2), 'prev_close': round(prev, 2), 'change_pct': chg}
-            except Exception as e2:
-                result[ticker] = {'price': None, 'error': str(e2)}
-
-    cache_set(cache_key, result)
-    return jsonify(result)
 
 
 @app.route('/quick-predict/<ticker>')
@@ -3588,225 +2498,9 @@ def quick_predict(ticker):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/dip-check')
-def dip_check():
-    """בדיקת 4 כללים לתפיסת הדיפ לפי שיטת מיכה סטוק"""
-    cached = cache_get('dip_check', ttl=300)
-    if cached:
-        return jsonify(cached)
-    import datetime as dt
-
-    result = {
-        'fg': {'value': None, 'pass': False, 'label': ''},
-        'vix': {'value': None, 'pass': False, 'label': ''},
-        's5fi': {'value': None, 'pass': False, 'label': ''},
-        'spy_red': {'value': 0, 'pass': False, 'label': ''},
-        'all_pass': False,
-        'checked_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
-    }
-
-    # ── 1. Fear & Greed < 10 ──────────────────────────────────────────────────
-    try:
-        fg_data = get_fear_greed()
-        fg_score = fg_data.get('score') if fg_data else None
-        if fg_score is not None:
-            result['fg']['value'] = round(float(fg_score), 1)
-            result['fg']['pass'] = float(fg_score) < 10
-            result['fg']['label'] = f'F&G = {result["fg"]["value"]}'
-    except Exception:
-        pass
-
-    # ── 2. VIX > 30 ────────────────────────────────────────────────────────────
-    try:
-        vix_data = get_vix()
-        if vix_data is not None:
-            vix_val = float(vix_data['value'])
-            result['vix']['value'] = vix_val
-            result['vix']['pass'] = vix_val > 30
-            result['vix']['label'] = f'VIX = {vix_val}'
-    except Exception:
-        pass
-
-    # ── 3. S5FI < 20% — proxy: מספר סקטורים מתחת ל-MA50 ─────────────────────
-    # ^S5FI לא זמין ב-Yahoo Finance; משתמשים ב-11 ETF סקטוריאליים כ-proxy
-    try:
-        sectors = ['XLK','XLF','XLE','XLC','XLI','XLV','XLY','XLP','XLB','XLRE','XLU']
-        below_ma = 0
-        checked  = 0
-        for s in sectors:
-            try:
-                df_s = yf.Ticker(s).history(period='3mo')
-                if len(df_s) >= 50:
-                    ma50 = float(df_s['Close'].rolling(50).mean().iloc[-1])
-                    price = float(df_s['Close'].iloc[-1])
-                    checked += 1
-                    if price < ma50:
-                        below_ma += 1
-            except Exception:
-                pass
-        if checked > 0:
-            pct_below = round(below_ma / checked * 100, 1)
-            result['s5fi']['value'] = pct_below
-            result['s5fi']['pass'] = pct_below >= 80   # 80%+ סקטורים מתחת ל-MA50 ≈ S5FI < 20%
-            result['s5fi']['label'] = f'{below_ma}/{checked} סקטורים מתחת MA50'
-    except Exception:
-        pass
-
-    # ── 4. 3 ימים אדומים רצופים ב-SPY ──────────────────────────────────────
-    try:
-        spy = yf.Ticker('SPY')
-        spy_hist = spy.history(period='10d')
-        if len(spy_hist) >= 3:
-            closes = spy_hist['Close'].values
-            red_streak = 0
-            for i in range(len(closes) - 1, 0, -1):
-                if closes[i] < closes[i - 1]:
-                    red_streak += 1
-                else:
-                    break
-            result['spy_red']['value'] = red_streak
-            result['spy_red']['pass'] = red_streak >= 3
-            result['spy_red']['label'] = f'{red_streak} ימים אדומים רצופים'
-    except Exception:
-        pass
-
-    result['all_pass'] = all([
-        result['fg']['pass'],
-        result['vix']['pass'],
-        result['s5fi']['pass'],
-        result['spy_red']['pass'],
-    ])
-
-    cache_set('dip_check', result)
-    return jsonify(result)
-
-
 @app.route('/portfolio')
 def portfolio():
     return render_template('portfolio.html')
-
-
-@app.route('/stock-news/<ticker>')
-def stock_news(ticker):
-    """חדשות עדכניות על מניה — Yahoo Finance + Google News, מתורגמות לעברית"""
-    ticker = ticker.upper().strip()
-    cache_key = f'stock_news_{ticker}'
-    cached = cache_get(cache_key, ttl=300)  # cache 5 דקות
-    if cached:
-        return jsonify(cached)
-
-    import xml.etree.ElementTree as ET
-    import datetime as dt
-    import urllib.parse
-
-    news_items = []
-    seen_titles = set()
-
-    # ── 1. Google News RSS ─────────────────────────────────────────────────────
-    try:
-        q = urllib.parse.quote(f'{ticker} stock')
-        rss_url = f'https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en'
-        resp = requests.get(rss_url, timeout=8, headers={'User-Agent': 'Mozilla/5.0'})
-        root = ET.fromstring(resp.content)
-        for item in root.findall('.//item')[:12]:
-            title_en = (item.findtext('title') or '').split(' - ')[0].strip()
-            link     = item.findtext('link') or ''
-            pub_str  = item.findtext('pubDate') or ''
-            source_el = item.find('{https://news.google.com/rss}source')
-            source   = source_el.text if source_el is not None else 'Google News'
-            # parse date
-            try:
-                pub_dt = dt.datetime.strptime(pub_str[:25], '%a, %d %b %Y %H:%M:%S')
-                pub_date = pub_dt.strftime('%d/%m %H:%M')
-                sort_ts  = pub_dt.timestamp()
-            except Exception:
-                pub_date = ''
-                sort_ts  = 0
-            if title_en and title_en not in seen_titles:
-                seen_titles.add(title_en)
-                news_items.append({
-                    'title_en': title_en,
-                    'source': source,
-                    'link': link,
-                    'date': pub_date,
-                    'sort_ts': sort_ts,
-                    'origin': 'google',
-                })
-    except Exception:
-        pass
-
-    # ── 2. Yahoo Finance (yfinance) ────────────────────────────────────────────
-    try:
-        stock    = yf.Ticker(ticker)
-        raw_news = stock.news or []
-        for item in raw_news[:10]:
-            content  = item.get('content', item)
-            title_en = (content.get('title', '') or item.get('title', '')).strip()
-            provider = content.get('provider', {})
-            source   = provider.get('displayName', '') if isinstance(provider, dict) else item.get('publisher', '')
-            canonical = content.get('canonicalUrl', {}) or content.get('clickThroughUrl', {})
-            link     = canonical.get('url', '') if isinstance(canonical, dict) else item.get('link', '')
-            pub_str  = content.get('pubDate', '') or content.get('displayTime', '')
-            try:
-                pub_dt   = dt.datetime.strptime(pub_str[:16], '%Y-%m-%dT%H:%M')
-                pub_date = pub_dt.strftime('%d/%m %H:%M')
-                sort_ts  = pub_dt.timestamp()
-            except Exception:
-                pub_ts   = item.get('providerPublishTime', 0)
-                if pub_ts:
-                    pub_dt   = dt.datetime.fromtimestamp(pub_ts)
-                    pub_date = pub_dt.strftime('%d/%m %H:%M')
-                    sort_ts  = pub_ts
-                else:
-                    pub_date = ''
-                    sort_ts  = 0
-            if title_en and title_en not in seen_titles:
-                seen_titles.add(title_en)
-                news_items.append({
-                    'title_en': title_en,
-                    'source': source or 'Yahoo Finance',
-                    'link': link,
-                    'date': pub_date,
-                    'sort_ts': sort_ts,
-                    'origin': 'yahoo',
-                })
-    except Exception:
-        pass
-
-    # ── מיון לפי זמן (הכי חדש ראשון) ──────────────────────────────────────────
-    news_items.sort(key=lambda x: x['sort_ts'], reverse=True)
-    news_items = news_items[:15]
-
-    # ── תרגום לעברית ──────────────────────────────────────────────────────────
-    keywords_mover = [
-        'earnings', 'revenue', 'guidance', 'merger', 'acquisition', 'lawsuit',
-        'sec', 'fda', 'deal', 'contract', 'beat', 'miss', 'upgrade', 'downgrade',
-        'buyback', 'dividend', 'recall', 'investigation', 'bankruptcy', 'layoff',
-        'partnership', 'ipo', 'split', 'rally', 'crash', 'surge', 'plunge',
-    ]
-    result_items = []
-    for n in news_items:
-        title_he = translate_he(n['title_en'])
-        is_mover = any(kw in n['title_en'].lower() for kw in keywords_mover)
-        result_items.append({
-            'title':    title_he,
-            'title_en': n['title_en'],
-            'source':   n['source'],
-            'link':     n['link'],
-            'date':     n['date'],
-            'is_mover': is_mover,
-            'origin':   n['origin'],
-        })
-
-    x_query = urllib.parse.quote(f'${ticker}')
-    result = {
-        'ticker': ticker,
-        'items':  result_items,
-        'fetched_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
-        'x_search_url': f'https://x.com/search?q=%24{ticker}&src=typed_query&f=live',
-    }
-    cache_set(cache_key, result)
-    return jsonify(result)
 
 
 @app.route('/sparkline/<ticker>')
@@ -3818,7 +2512,9 @@ def sparkline(ticker):
     if cached:
         return jsonify(cached)
     try:
-        hist = yf.Ticker(ticker).history(period='1d', interval='5m')
+        hist = _yf_retry(lambda: yf.Ticker(ticker).history(period='1d', interval='5m'))
+        if hist is None:
+            return jsonify({'prices': [], 'is_up': None})
         prices = [round(float(p), 2) for p in hist['Close'].dropna().tolist()]
         if not prices:
             return jsonify({'prices': [], 'is_up': None})
@@ -3829,101 +2525,6 @@ def sparkline(ticker):
         return jsonify(result)
     except Exception as e:
         return jsonify({'prices': [], 'is_up': None, 'error': str(e)})
-
-
-@app.route('/social-posts/<ticker>')
-def social_posts(ticker):
-    """פוסטים חברתיים על מניה — StockTwits (מתורגם) + X.com קישור"""
-    ticker = ticker.upper().strip()
-    cache_key = f'social_{ticker}'
-    cached = cache_get(cache_key, ttl=180)
-    if cached:
-        return jsonify(cached)
-
-    import datetime as _sdt
-    import xml.etree.ElementTree as _ET
-    import urllib.parse as _ulp
-
-    posts = []
-
-    # ── 1. StockTwits — פוסטים של טריידרים בזמן אמת ──────────────────────────
-    try:
-        st_url = f'https://api.stocktwits.com/api/2/streams/symbol/{ticker}.json'
-        st_resp = requests.get(st_url, timeout=7, headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'application/json',
-        })
-        st_data = st_resp.json()
-        for msg in (st_data.get('messages') or [])[:10]:
-            body = (msg.get('body') or '').strip()
-            if not body:
-                continue
-            user      = msg.get('user', {}).get('username', '')
-            created   = msg.get('created_at', '')
-            sentiment = (msg.get('entities') or {}).get('sentiment') or {}
-            bull      = True if sentiment.get('basic') == 'Bullish' else \
-                        (False if sentiment.get('basic') == 'Bearish' else None)
-            try:
-                dt_obj  = _sdt.datetime.strptime(created, '%Y-%m-%dT%H:%M:%SZ')
-                age_h   = (_sdt.datetime.utcnow() - dt_obj).total_seconds() / 3600
-                time_str = dt_obj.strftime('%d/%m %H:%M')
-            except Exception:
-                age_h, time_str = 999, ''
-
-            body_he = translate_he(body[:280]) if body else body
-            posts.append({
-                'text':    body_he,
-                'text_en': body[:200],
-                'user':    '@' + user if user else '',
-                'time':    time_str,
-                'age_h':   round(age_h, 1),
-                'bull':    bull,
-                'source':  'StockTwits',
-                'link':    f'https://stocktwits.com/{user}' if user else f'https://stocktwits.com/symbol/{ticker}',
-            })
-    except Exception:
-        pass
-
-    # ── 2. גיבוי — Google News עם שאילתה חברתית אם StockTwits נכשל ──────────
-    if not posts:
-        try:
-            q = _ulp.quote(f'${ticker} stock social media twitter')
-            rss_url = f'https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en'
-            resp = requests.get(rss_url, timeout=6, headers={'User-Agent': 'Mozilla/5.0'})
-            root = _ET.fromstring(resp.content)
-            for item in root.findall('.//item')[:6]:
-                title_en = (item.findtext('title') or '').split(' - ')[0].strip()
-                link     = item.findtext('link') or ''
-                pub_str  = item.findtext('pubDate') or ''
-                try:
-                    from email import utils as _eu2
-                    pub_dt   = _sdt.datetime(*_eu2.parsedate(pub_str)[:6], tzinfo=_sdt.timezone.utc)
-                    age_h    = (_sdt.datetime.now(_sdt.timezone.utc) - pub_dt).total_seconds() / 3600
-                    time_str = pub_dt.strftime('%d/%m %H:%M')
-                except Exception:
-                    age_h, time_str = 999, ''
-                if title_en:
-                    posts.append({
-                        'text':    translate_he(title_en),
-                        'text_en': title_en,
-                        'user':    '',
-                        'time':    time_str,
-                        'age_h':   round(age_h, 1),
-                        'bull':    None,
-                        'source':  'Google News',
-                        'link':    link,
-                    })
-        except Exception:
-            pass
-
-    result = {
-        'ticker':         ticker,
-        'posts':          posts,
-        'x_url':          f'https://x.com/search?q=%24{ticker}&src=typed_query&f=live',
-        'stocktwits_url': f'https://stocktwits.com/symbol/{ticker}',
-    }
-    cache_set(cache_key, result)
-    return jsonify(result)
 
 
 @app.route('/api/portfolio/load')
@@ -3942,125 +2543,96 @@ def api_portfolio_save():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-@app.route('/portfolio-intraday')
-def portfolio_intraday():
-    """נרות 5 דקות לשווי תיק + חדשות לאורך היום"""
+@app.route('/portfolio-prices')
+def portfolio_prices():
+    """מחירים חיים לרשימת טיקרים — עבור דשבורד תיק ההשקעות"""
     tickers_raw = request.args.get('tickers', '')
-    shares_raw  = request.args.get('shares', '')
-    ticker_list = [t.strip().upper() for t in tickers_raw.split(',') if t.strip()]
+    ticker_list = [t.strip().upper() for t in tickers_raw.split(',') if t.strip()][:30]
+    if not ticker_list:
+        return jsonify({})
+    force     = request.args.get('force', '0') == '1'
+    cache_key = 'pfprices_' + '_'.join(sorted(ticker_list))
+    if not force:
+        cached = cache_get(cache_key, ttl=120)
+        if cached:
+            return jsonify(cached)
+    result = {}
     try:
-        shares_list = [float(s) for s in shares_raw.split(',') if s.strip()]
-    except Exception:
-        return jsonify({'candles': [], 'events': []})
-    if not ticker_list or len(ticker_list) != len(shares_list):
-        return jsonify({'candles': [], 'events': []})
+        tickers_str = ' '.join(ticker_list)
+        raw = yf.download(tickers_str, period='5d', interval='1d',
+                          group_by='ticker', auto_adjust=True,
+                          progress=False, threads=True)
+        intra_raw = yf.download(tickers_str, period='1d', interval='5m',
+                                group_by='ticker', auto_adjust=True,
+                                prepost=True, progress=False, threads=True)
 
-    cache_key = f'intraday_{"_".join(ticker_list)}'
-    cached = cache_get(cache_key, ttl=120)
-    if cached:
-        return jsonify(cached)
-
-    try:
-        import pandas as pd
-        import datetime as _idt
-        import xml.etree.ElementTree as _ET
-        import urllib.parse as _ulp
-        from email import utils as _eu
-
-        def _fetch_intra(args):
-            ticker, num_shares = args
+        def _get_close(df, tk):
             try:
-                hist = yf.Ticker(ticker).history(period='1d', interval='5m', prepost=False)
-                if hist.empty:
+                if df is None or df.empty:
                     return None
-                return hist['Close'] * num_shares
+                if isinstance(df.columns, pd.MultiIndex):
+                    lvl0 = df.columns.get_level_values(0)
+                    lvl1 = df.columns.get_level_values(1)
+                    if tk in lvl1:
+                        return df['Close'][tk] if 'Close' in lvl0 else None
+                    if tk in lvl0:
+                        return df[tk]['Close'] if 'Close' in df[tk].columns else None
+                    return None
+                else:
+                    return df['Close'] if 'Close' in df.columns else None
             except Exception:
                 return None
 
-        with ThreadPoolExecutor(max_workers=8) as ex:
-            results = list(ex.map(_fetch_intra, zip(ticker_list, shares_list)))
-
-        series_list = [r for r in results if r is not None]
-        if not series_list:
-            return jsonify({'candles': [], 'events': []})
-
-        import pandas as pd
-        combined = pd.concat(series_list, axis=1).sum(axis=1).dropna()
-        ohlc = combined.resample('5min').ohlc().dropna()
-
-        candles = []
-        for ts, row in ohlc.iterrows():
-            # המרה לשעון ישראל (UTC+3)
+        for ticker in ticker_list:
             try:
-                ts_utc = ts.tz_convert('UTC') if ts.tzinfo else ts.tz_localize('UTC')
-                ts_il  = ts_utc + _idt.timedelta(hours=3)
-            except Exception:
-                ts_il = ts
-            candles.append({
-                'time':  ts_il.strftime('%H:%M'),
-                'open':  round(float(row['open']),  2),
-                'high':  round(float(row['high']),  2),
-                'low':   round(float(row['low']),   2),
-                'close': round(float(row['close']), 2),
-            })
+                intra_close = _get_close(intra_raw, ticker)
+                daily_close = _get_close(raw, ticker)
 
-        # חדשות היום עם חתימת שעה
-        now_utc   = _idt.datetime.now(_idt.timezone.utc)
-        today_str = now_utc.strftime('%Y-%m-%d')
-        events = []
-        news_queries = [
-            ('🇺🇸 Trump', 'Trump economy tariff market'),
-            ('🏛️ Fed',    'Federal Reserve rate decision'),
-            ('🌍 גיאו',   'geopolitics war sanctions market'),
-            ('⚡ חמות',   'breaking news market economy today'),
-        ]
-        for cat, q in news_queries:
-            try:
-                rss = f'https://news.google.com/rss/search?q={_ulp.quote(q)}&hl=en-US&gl=US&ceid=US:en'
-                r   = requests.get(rss, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
-                root = _ET.fromstring(r.content)
-                for item in root.findall('.//item')[:4]:
-                    title   = (item.findtext('title') or '').split(' - ')[0]
-                    pub_str = item.findtext('pubDate') or ''
-                    try:
-                        pub_dt = _idt.datetime(*_eu.parsedate(pub_str)[:6],
-                                               tzinfo=_idt.timezone.utc)
-                        if pub_dt.strftime('%Y-%m-%d') != today_str:
-                            continue
-                        pub_il    = pub_dt + _idt.timedelta(hours=3)
-                        time_str  = pub_il.strftime('%H:%M')
-                        # רק בשעות מסחר ישראל 16:30–23:15
-                        h, m = pub_il.hour, pub_il.minute
-                        if not (16 <= h <= 23):
-                            continue
-                        link = item.findtext('link') or ''
-                        events.append({
-                            'time':  time_str,
-                            'title': translate_he(title[:90]),
-                            'cat':   cat,
-                            'link':  link,
-                        })
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+                intra_vals = intra_close.dropna() if intra_close is not None else None
+                daily_vals = daily_close.dropna() if daily_close is not None else None
 
-        result = {'candles': candles, 'events': events}
-        cache_set(cache_key, result)
-        return jsonify(result)
+                price = None
+                if intra_vals is not None and len(intra_vals) > 0:
+                    price = float(intra_vals.iloc[-1])
+                elif daily_vals is not None and len(daily_vals) > 0:
+                    price = float(daily_vals.iloc[-1])
+
+                if not price:
+                    fi    = yf.Ticker(ticker).fast_info
+                    price = float(getattr(fi, 'last_price', None) or
+                                  getattr(fi, 'regular_market_price', None) or 0)
+
+                prev = float(daily_vals.iloc[-2]) if (daily_vals is not None and len(daily_vals) >= 2) \
+                       else price
+
+                chg = round((price - prev) / prev * 100, 2) if prev else 0
+                result[ticker] = {'price': round(price, 2), 'prev_close': round(prev, 2), 'change_pct': chg}
+            except Exception as e:
+                result[ticker] = {'price': None, 'error': str(e)}
     except Exception as e:
-        return jsonify({'candles': [], 'events': [], 'error': str(e)})
+        for ticker in ticker_list:
+            try:
+                t     = yf.Ticker(ticker)
+                fi    = t.fast_info
+                price = float(getattr(fi, 'last_price', None) or
+                              getattr(fi, 'regular_market_price', None) or 0)
+                prev  = float(getattr(fi, 'previous_close', None) or price)
+                chg   = round((price - prev) / prev * 100, 2) if prev else 0
+                result[ticker] = {'price': round(price, 2), 'prev_close': round(prev, 2), 'change_pct': chg}
+            except Exception as e2:
+                result[ticker] = {'price': None, 'error': str(e2)}
+
+    cache_set(cache_key, result)
+    return jsonify(result)
 
 
 @app.route('/api/fundamental/<ticker>')
 def api_fundamental(ticker):
     try:
-        import yfinance as yf
         ticker = ticker.upper().strip()
         tk   = yf.Ticker(ticker)
-        info = tk.info or {}
+        info = _get_info_cached(tk, ticker) or {}
 
-        # ── description translation
         raw_desc = info.get('longBusinessSummary', '')
         desc_he = ''
         if raw_desc:
@@ -4078,7 +2650,6 @@ def api_fundamental(ticker):
             except Exception:
                 desc_he = raw_desc
 
-        # ── helper: convert DataFrame row to {year_str: value} dict
         def _df_row(df, row_key):
             result = {}
             if df is None or df.empty:
@@ -4096,9 +2667,8 @@ def api_fundamental(ticker):
                     break
             return result
 
-        # ── fetch financials
         try:
-            fin_a = tk.financials          # annual income statement (rows=metrics, cols=dates)
+            fin_a = tk.financials
         except Exception:
             fin_a = None
         try:
@@ -4119,7 +2689,6 @@ def api_fundamental(ticker):
         ni_quarterly  = _df_row(fin_q, ['Net Income', 'Net Income Common Stockholders', 'netIncome'])
 
         return jsonify({
-            # identity
             'ticker':            ticker,
             'name':              info.get('longName') or info.get('shortName', ticker),
             'sector':            info.get('sector', ''),
@@ -4127,54 +2696,43 @@ def api_fundamental(ticker):
             'country':           info.get('country', ''),
             'employees':         info.get('fullTimeEmployees'),
             'currency':          info.get('currency', 'USD'),
-            # price
             'price':             info.get('currentPrice') or info.get('regularMarketPrice'),
             'change_pct':        info.get('regularMarketChangePercent'),
             '52w_high':          info.get('fiftyTwoWeekHigh'),
             '52w_low':           info.get('fiftyTwoWeekLow'),
             'market_cap':        info.get('marketCap'),
             'shares_outstanding':info.get('sharesOutstanding'),
-            # valuation multiples
             'pe_trailing':       info.get('trailingPE'),
             'pe_forward':        info.get('forwardPE'),
             'pb':                info.get('priceToBook'),
             'ps':                info.get('priceToSalesTrailing12Months'),
             'ev_ebitda':         info.get('enterpriseToEbitda'),
             'ev_revenue':        info.get('enterpriseToRevenue'),
-            # EPS
             'eps_trailing':      info.get('trailingEps'),
             'eps_forward':       info.get('forwardEps'),
-            # margins (ratios 0–1)
             'gross_margin':      info.get('grossMargins'),
             'op_margin':         info.get('operatingMargins'),
             'net_margin':        info.get('profitMargins'),
-            # returns & growth
             'roe':               info.get('returnOnEquity'),
             'roa':               info.get('returnOnAssets'),
             'revenue_growth':    info.get('revenueGrowth'),
             'earnings_growth':   info.get('earningsGrowth'),
             'earnings_qgrowth':  info.get('earningsQuarterlyGrowth'),
-            # financial health
             'debt_equity':       info.get('debtToEquity'),
             'current_ratio':     info.get('currentRatio'),
             'quick_ratio':       info.get('quickRatio'),
             'total_cash':        info.get('totalCash'),
             'total_debt':        info.get('totalDebt'),
-            # dividend
             'dividend_yield':    info.get('dividendYield'),
             'dividend_rate':     info.get('dividendRate'),
             'payout_ratio':      info.get('payoutRatio'),
-            # beta
             'beta':              info.get('beta'),
-            # analyst consensus
             'rec_key':           (info.get('recommendationKey') or '').lower() or None,
             'num_analysts':      info.get('numberOfAnalystOpinions'),
             'target_mean':       info.get('targetMeanPrice'),
             'target_low':        info.get('targetLowPrice'),
             'target_high':       info.get('targetHighPrice'),
-            # description
             'description':       desc_he,
-            # historical data for charts
             'revenue_annual':        rev_annual,
             'net_income_annual':     ni_annual,
             'gross_profit_annual':   gp_annual,
