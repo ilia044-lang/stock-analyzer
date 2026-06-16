@@ -1766,6 +1766,11 @@ def analyze():
         if df_1y_full is None or df_1y_full.empty:
             return jsonify({'error': f'לא נמצאו נתונים עבור {ticker}. ייתכן שיש חסימה זמנית — נסה שוב בעוד דקה.'}), 404
 
+        # נקה שורות עם מחיר חסר (NaN) — מונע קריסות בהמשך
+        df_1y_full = df_1y_full[df_1y_full['Close'].notna()]
+        if df_1y_full.empty or len(df_1y_full) < 2:
+            return jsonify({'error': f'נתונים חסרים עבור {ticker}. נסה שוב בעוד דקה או בדוק שהטיקר נכון.'}), 404
+
         df     = df_1y_full.tail(63)    # ~3 חודשי מסחר
         df_6mo = df_1y_full.tail(126)   # ~6 חודשי מסחר
 
@@ -2253,11 +2258,21 @@ def get_price():
 
     try:
         stock = _ticker(ticker)
+        # נסה 2d, ואם ריק/NaN — נסה 5d כגיבוי
         df = _yf_retry(lambda: stock.history(period='2d'))
-        if df is None or df.empty or len(df) < 2:
+        close = df['Close'].dropna() if (df is not None and not df.empty) else None
+        if close is None or len(close) < 2:
+            df = _yf_retry(lambda: stock.history(period='5d'))
+            close = df['Close'].dropna() if (df is not None and not df.empty) else None
+        if close is None or len(close) < 2:
             return jsonify({'error': 'no data'}), 404
-        current_price = round(df['Close'].iloc[-1], 2)
-        prev_close    = round(df['Close'].iloc[-2], 2)
+
+        current_price = round(float(close.iloc[-1]), 2)
+        prev_close    = round(float(close.iloc[-2]), 2)
+        # אם איכשהו עדיין NaN — אל תשמור ב-cache, החזר שגיאה
+        if pd.isna(current_price) or pd.isna(prev_close) or prev_close == 0:
+            return jsonify({'error': 'no valid price data'}), 404
+
         change        = round(current_price - prev_close, 2)
         change_pct    = round(change / prev_close * 100, 2)
         currency = _get_info_cached(stock, ticker).get('currency', 'USD')
