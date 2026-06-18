@@ -73,7 +73,7 @@ def _pf_save(data):
 def _ticker(symbol):
     if _YF_SESSION is not None:
         return yf.Ticker(symbol, session=_YF_SESSION)
-    return yf.Ticker(symbol)
+    return _ticker(symbol)
 
 _trans_cache: dict = {}   # title → translated_title (mem-cache for server lifetime)
 
@@ -2968,7 +2968,7 @@ def day_prediction():
         futures_labels = []
         for sym, name in [('ES=F','S&P'), ('NQ=F','נאסדק'), ('YM=F','דאו')]:
             try:
-                h = yf.Ticker(sym).history(period='2d', prepost=True)
+                h = _ticker(sym).history(period='2d', prepost=True)
                 if len(h) >= 2:
                     chg = (h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2] * 100
                     futures_scores.append(chg)
@@ -2996,10 +2996,10 @@ def day_prediction():
             pm_scores = []
             for sym, name in [('SPY','SPY'), ('QQQ','QQQ')]:
                 try:
-                    h = yf.Ticker(sym).history(period='1d', interval='1m', prepost=True)
+                    h = _ticker(sym).history(period='1d', interval='1m', prepost=True)
                     if not h.empty:
                         last_pm  = float(h['Close'].iloc[-1])
-                        prev_close = float(yf.Ticker(sym).history(period='2d')['Close'].iloc[-2])
+                        prev_close = float(_ticker(sym).history(period='2d')['Close'].iloc[-2])
                         pm_chg = (last_pm - prev_close) / prev_close * 100
                         pm_scores.append((name, pm_chg))
                 except Exception:
@@ -3038,7 +3038,7 @@ def day_prediction():
 
     # ── 4. SPY — אתמול + שבוע ───────────────────────────────────────────────
     try:
-        spy_h = yf.Ticker('SPY').history(period='10d')
+        spy_h = _ticker('SPY').history(period='10d')
         if len(spy_h) >= 6:
             d1 = (spy_h['Close'].iloc[-1] - spy_h['Close'].iloc[-2]) / spy_h['Close'].iloc[-2] * 100
             d5 = (spy_h['Close'].iloc[-1] - spy_h['Close'].iloc[-6]) / spy_h['Close'].iloc[-6] * 100
@@ -3084,7 +3084,7 @@ def day_prediction():
 
     # ── 7. נפט גולמי WTI ────────────────────────────────────────────────────
     try:
-        oil_h = yf.Ticker('CL=F').history(period='3d')
+        oil_h = _ticker('CL=F').history(period='3d')
         if len(oil_h) >= 2:
             oc = (oil_h['Close'].iloc[-1] - oil_h['Close'].iloc[-2]) / oil_h['Close'].iloc[-2] * 100
             if oc > 3:    add('🛢️', f'נפט עולה חזק {oc:.1f}% — לחץ אינפלציה', -5, False)
@@ -3096,7 +3096,7 @@ def day_prediction():
 
     # ── 8. זהב — risk-off ────────────────────────────────────────────────────
     try:
-        gold_h = yf.Ticker('GC=F').history(period='3d')
+        gold_h = _ticker('GC=F').history(period='3d')
         if len(gold_h) >= 2:
             gc = (gold_h['Close'].iloc[-1] - gold_h['Close'].iloc[-2]) / gold_h['Close'].iloc[-2] * 100
             if gc > 1:    add('🥇', f'זהב עולה {gc:.1f}% — בריחה לבטוח', -4, False)
@@ -3109,7 +3109,7 @@ def day_prediction():
         asia_sum = 0
         for sym, name in [('^N225','ניקיי'), ('^HSI','הנג-סנג'), ('^GDAXI','DAX')]:
             try:
-                h = yf.Ticker(sym).history(period='3d')
+                h = _ticker(sym).history(period='3d')
                 if len(h) >= 2:
                     c = (h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2] * 100
                     asia_sum += c
@@ -3261,7 +3261,7 @@ def check_outcome():
         import datetime as _dt2
         start = _dt2.datetime.strptime(date_str, '%Y-%m-%d')
         end   = start + _dt2.timedelta(days=1)
-        spy   = yf.Ticker('SPY')
+        spy   = _ticker('SPY')
         hist  = spy.history(start=date_str, end=end.strftime('%Y-%m-%d'))
         if hist.empty:
             result = {'status': 'no_data'}
@@ -3335,7 +3335,7 @@ def portfolio_prices():
                     price = float(daily_vals.iloc[-1])
 
                 if not price:
-                    fi    = yf.Ticker(ticker).fast_info
+                    fi    = _ticker(ticker).fast_info
                     price = float(getattr(fi, 'last_price', None) or
                                   getattr(fi, 'regular_market_price', None) or 0)
 
@@ -3350,7 +3350,7 @@ def portfolio_prices():
         # fallback — שליפה אחת-אחת
         for ticker in ticker_list:
             try:
-                t     = yf.Ticker(ticker)
+                t     = _ticker(ticker)
                 fi    = t.fast_info
                 price = float(getattr(fi, 'last_price', None) or
                               getattr(fi, 'regular_market_price', None) or 0)
@@ -3455,7 +3455,7 @@ def dip_check():
         checked  = 0
         for s in sectors:
             try:
-                df_s = yf.Ticker(s).history(period='3mo')
+                df_s = _ticker(s).history(period='3mo')
                 if len(df_s) >= 50:
                     ma50 = float(df_s['Close'].rolling(50).mean().iloc[-1])
                     price = float(df_s['Close'].iloc[-1])
@@ -3474,7 +3474,7 @@ def dip_check():
 
     # ── 4. 3 ימים אדומים רצופים ב-SPY ──────────────────────────────────────
     try:
-        spy = yf.Ticker('SPY')
+        spy = _ticker('SPY')
         spy_hist = spy.history(period='10d')
         if len(spy_hist) >= 3:
             closes = spy_hist['Close'].values
@@ -3557,7 +3557,7 @@ def stock_news(ticker):
 
     # ── 2. Yahoo Finance (yfinance) ────────────────────────────────────────────
     try:
-        stock    = yf.Ticker(ticker)
+        stock    = _ticker(ticker)
         raw_news = stock.news or []
         for item in raw_news[:10]:
             content  = item.get('content', item)
@@ -3638,7 +3638,7 @@ def sparkline(ticker):
     if cached:
         return jsonify(cached)
     try:
-        hist = yf.Ticker(ticker).history(period='1d', interval='5m')
+        hist = _ticker(ticker).history(period='1d', interval='5m')
         prices = [round(float(p), 2) for p in hist['Close'].dropna().tolist()]
         if not prices:
             return jsonify({'prices': [], 'is_up': None})
@@ -3790,7 +3790,7 @@ def portfolio_intraday():
         def _fetch_intra(args):
             ticker, num_shares = args
             try:
-                hist = yf.Ticker(ticker).history(period='1d', interval='5m', prepost=False)
+                hist = _ticker(ticker).history(period='1d', interval='5m', prepost=False)
                 if hist.empty:
                     return None
                 return hist['Close'] * num_shares
@@ -3877,7 +3877,7 @@ def api_fundamental(ticker):
     try:
         import yfinance as yf
         ticker = ticker.upper().strip()
-        tk   = yf.Ticker(ticker)
+        tk   = _ticker(ticker)
         info = tk.info or {}
 
         # ── description translation
