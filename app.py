@@ -3953,17 +3953,32 @@ def portfolio_intraday():
         return jsonify({'candles': [], 'events': [], 'error': str(e)})
 
 
+_YF_CRUMB_CACHE = {'crumb': None, 'ts': 0}
+
 def _yahoo_financials(ticker):
-    """Income statement + cash flow from Yahoo quoteSummary with iPhone UA — works even when yfinance is blocked"""
+    """Income statement + cash flow — uses curl_cffi Chrome session to get crumb then quoteSummary"""
     try:
+        sess = _YF_SESSION  # curl_cffi with Chrome TLS fingerprinting
+        if sess is None:
+            return {}
+
+        now = time.time()
+        if not (_YF_CRUMB_CACHE['crumb'] and (now - _YF_CRUMB_CACHE['ts']) < 3600):
+            sess.get('https://finance.yahoo.com', timeout=10)
+            rc = sess.get('https://query2.finance.yahoo.com/v1/test/getcrumb', timeout=8)
+            crumb = rc.text.strip()
+            if crumb and len(crumb) < 60 and '{' not in crumb:
+                _YF_CRUMB_CACHE.update({'crumb': crumb, 'ts': now})
+            else:
+                return {}
+
+        crumb = _YF_CRUMB_CACHE.get('crumb')
+        if not crumb:
+            return {}
+
         url = (f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
-               f"?modules=incomeStatementHistory,cashflowStatementHistory")
-        hdrs = {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
-            'Accept': 'application/json',
-            'Referer': 'https://finance.yahoo.com/',
-        }
-        r = requests.get(url, headers=hdrs, timeout=12)
+               f"?modules=incomeStatementHistory,cashflowStatementHistory&crumb={crumb}")
+        r = sess.get(url, timeout=12)
         if r.status_code != 200:
             return {}
         res = r.json().get('quoteSummary', {}).get('result', [None])[0]
