@@ -16,6 +16,53 @@ try:
 except Exception:
     _YF_SESSION = None
 
+# ── Finnhub — fallback כשYahoo חוסם ────────────────────────────────────────
+_FINNHUB_KEY = os.environ.get('FINNHUB_KEY', '')
+
+def _fh_candles(ticker, days=100):
+    """היסטוריית OHLCV מ-Finnhub — מחזיר DataFrame תואם yfinance"""
+    if not _FINNHUB_KEY:
+        return None
+    try:
+        end   = int(time.time())
+        start = end - days * 86400
+        url   = (f"https://finnhub.io/api/v1/stock/candle"
+                 f"?symbol={ticker}&resolution=D&from={start}&to={end}&token={_FINNHUB_KEY}")
+        r = requests.get(url, timeout=10)
+        d = r.json()
+        if d.get('s') != 'ok' or not d.get('c'):
+            return None
+        import datetime as _dt
+        idx = pd.DatetimeIndex([_dt.datetime.utcfromtimestamp(t) for t in d['t']])
+        return pd.DataFrame({'Open': d['o'], 'High': d['h'], 'Low': d['l'],
+                             'Close': d['c'], 'Volume': d['v']}, index=idx)
+    except Exception:
+        return None
+
+def _fh_quote(ticker):
+    """מחיר חי מ-Finnhub"""
+    if not _FINNHUB_KEY:
+        return {}
+    try:
+        r = requests.get(
+            f"https://finnhub.io/api/v1/quote?symbol={ticker}&token={_FINNHUB_KEY}",
+            timeout=8)
+        return r.json()
+    except Exception:
+        return {}
+
+def _fh_profile(ticker):
+    """פרופיל חברה מ-Finnhub"""
+    if not _FINNHUB_KEY:
+        return {}
+    try:
+        r = requests.get(
+            f"https://finnhub.io/api/v1/stock/profile2?symbol={ticker}&token={_FINNHUB_KEY}",
+            timeout=8)
+        return r.json()
+    except Exception:
+        return {}
+
 # ── Portfolio storage — Supabase (cloud) + local file fallback ───────────────
 _PF_FILE       = os.path.join(os.path.dirname(__file__), 'portfolio_data.json')
 _SUPABASE_URL  = os.environ.get('SUPABASE_URL', '').rstrip('/')
@@ -1894,20 +1941,36 @@ def analyze():
     try:
         stock = _ticker(ticker)
         df = None
-        for attempt in range(4):
-            try:
-                df = stock.history(period='3mo')
-                if not df.empty:
-                    break
-            except Exception:
-                pass
-            time.sleep(3 * (attempt + 1))
+        # נסה yfinance — פעם אחת
+        try:
+            df = stock.history(period='3mo')
+            if df is not None and df.empty:
+                df = None
+        except Exception:
+            df = None
+
+        # Fallback: Finnhub — כשYahoo חוסם
+        using_finnhub = False
+        if df is None:
+            df = _fh_candles(ticker, days=100)
+            using_finnhub = df is not None and not df.empty
+
         if df is None or df.empty:
             return jsonify({'error': f'לא נמצאו נתונים עבור {ticker}. בדוק שהטיקר נכון.'}), 404
 
-        info         = stock.info
-        company_name = info.get('longName', ticker)
+        # נתוני חברה
+        info = {}
+        if not using_finnhub:
+            try:
+                info = stock.info or {}
+            except Exception:
+                pass
+        company_name = info.get('longName') or info.get('shortName', '')
         currency     = info.get('currency', 'USD')
+        if not company_name:
+            fh_p = _fh_profile(ticker)
+            company_name = fh_p.get('name', ticker)
+            currency     = fh_p.get('currency', 'USD')
 
         # Run all 6 analyses
         trend   = analyze_trend(df['Close'])
@@ -1915,10 +1978,14 @@ def analyze():
         volume  = analyze_volume(df['Volume'], df['Close'])
         ma20    = analyze_ma20(df['Close'], weekly_change=trend['weekly_change'])
 
-        # גאפ היום: נסה לקבל מחיר פתיחה עדכני
+        # גאפ היום: נסה מחיר פתיחה עדכני
         try:
-            fi = stock.fast_info
-            today_open = fi['open'] if fi and 'open' in fi else None
+            if using_finnhub:
+                fh_q = _fh_quote(ticker)
+                today_open = fh_q.get('o') or None
+            else:
+                fi = stock.fast_info
+                today_open = fi['open'] if fi and 'open' in fi else None
         except Exception:
             today_open = None
         gaps    = analyze_gaps(df['Open'], df['High'], df['Low'], df['Close'], today_open=today_open)
@@ -1986,7 +2053,9 @@ def analyze():
 
         # פיבונאצ'י — 6 חודשים, פיבוט אמיתי
         try:
-            df_6mo = stock.history(period='6mo')
+            df_6mo = df if using_finnhub else stock.history(period='6mo')
+            if df_6mo is None or df_6mo.empty:
+                df_6mo = _fh_candles(ticker, days=180) or df
         except Exception:
             df_6mo = df
         fib = calc_fibonacci(df_6mo if not df_6mo.empty else df)
