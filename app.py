@@ -20,22 +20,34 @@ except Exception:
 _FINNHUB_KEY = os.environ.get('FINNHUB_KEY', '')
 
 def _fh_candles(ticker, days=100):
-    """היסטוריית OHLCV מ-Finnhub — מחזיר DataFrame תואם yfinance"""
-    if not _FINNHUB_KEY:
-        return None
+    """היסטוריית OHLCV — query2.yahoo endpoint עם iPhone UA (עוקף IP block)"""
     try:
         end   = int(time.time())
         start = end - days * 86400
-        url   = (f"https://finnhub.io/api/v1/stock/candle"
-                 f"?symbol={ticker}&resolution=D&from={start}&to={end}&token={_FINNHUB_KEY}")
-        r = requests.get(url, timeout=10)
-        d = r.json()
-        if d.get('s') != 'ok' or not d.get('c'):
+        url   = (f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}"
+                 f"?interval=1d&period1={start}&period2={end}")
+        hdrs  = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+            'Accept': 'application/json',
+            'Referer': 'https://finance.yahoo.com/',
+        }
+        r = requests.get(url, headers=hdrs, timeout=12)
+        if r.status_code != 200:
+            return None
+        result = r.json().get('chart', {}).get('result', [None])[0]
+        if not result:
+            return None
+        ts  = result.get('timestamp', [])
+        q   = result.get('indicators', {}).get('quote', [{}])[0]
+        adj = result.get('indicators', {}).get('adjclose', [{}])[0]
+        if not ts or not q.get('close'):
             return None
         import datetime as _dt
-        idx = pd.DatetimeIndex([_dt.datetime.utcfromtimestamp(t) for t in d['t']])
-        return pd.DataFrame({'Open': d['o'], 'High': d['h'], 'Low': d['l'],
-                             'Close': d['c'], 'Volume': d['v']}, index=idx)
+        idx = pd.DatetimeIndex([_dt.datetime.utcfromtimestamp(t) for t in ts])
+        closes = adj.get('adjclose') or q.get('close')
+        df = pd.DataFrame({'Open': q['open'], 'High': q['high'], 'Low': q['low'],
+                           'Close': closes, 'Volume': q['volume']}, index=idx)
+        return df.dropna(subset=['Close'])
     except Exception:
         return None
 
