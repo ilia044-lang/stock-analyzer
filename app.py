@@ -3995,6 +3995,11 @@ def _parse_yf_income_cashflow(income_df, cashflow_df):
     return rev_a, ni_a, gp_a, op_a, fcf_a
 
 
+def _clean_fin(d):
+    """Remove None and NaN entries from a financial dict"""
+    return {k: v for k, v in d.items() if v is not None and v == v}
+
+
 def _yahoo_financials(ticker):
     """Income statement + cash flow — tries yfinance first, then crumb-based quoteSummary"""
     rev_a = {}; ni_a = {}; gp_a = {}; op_a = {}; fcf_a = {}
@@ -4006,8 +4011,9 @@ def _yahoo_financials(ticker):
         cashflow = tk.cashflow
         rev_a, ni_a, gp_a, op_a, fcf_a = _parse_yf_income_cashflow(income, cashflow)
         if rev_a:
-            return {'revenue_annual': rev_a, 'net_income_annual': ni_a,
-                    'gross_profit_annual': gp_a, 'op_income_annual': op_a, 'fcf_annual': fcf_a}
+            return {'revenue_annual': _clean_fin(rev_a), 'net_income_annual': _clean_fin(ni_a),
+                    'gross_profit_annual': _clean_fin(gp_a), 'op_income_annual': _clean_fin(op_a),
+                    'fcf_annual': _clean_fin(fcf_a)}
     except Exception:
         pass
 
@@ -4052,11 +4058,9 @@ def _yahoo_financials(ticker):
     except Exception:
         pass
 
-    def _clean(d):
-        return {k: v for k, v in d.items() if v is not None and v == v}  # drop None and NaN
-    return {'revenue_annual': _clean(rev_a), 'net_income_annual': _clean(ni_a),
-            'gross_profit_annual': _clean(gp_a), 'op_income_annual': _clean(op_a),
-            'fcf_annual': _clean(fcf_a)}
+    return {'revenue_annual': _clean_fin(rev_a), 'net_income_annual': _clean_fin(ni_a),
+            'gross_profit_annual': _clean_fin(gp_a), 'op_income_annual': _clean_fin(op_a),
+            'fcf_annual': _clean_fin(fcf_a)}
 
 
 def _finnhub_fundamental(ticker):
