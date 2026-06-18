@@ -3955,12 +3955,63 @@ def portfolio_intraday():
 
 _YF_CRUMB_CACHE = {'crumb': None, 'ts': 0}
 
-def _yahoo_financials(ticker):
-    """Income statement + cash flow — uses curl_cffi Chrome session to get crumb then quoteSummary"""
+_EMPTY_FINANCIALS = {
+    'revenue_annual': {}, 'net_income_annual': {}, 'gross_profit_annual': {},
+    'op_income_annual': {}, 'fcf_annual': {},
+}
+
+def _parse_yf_income_cashflow(income_df, cashflow_df):
+    """Convert yfinance DataFrame financials to year-keyed dicts"""
+    rev_a = {}; ni_a = {}; gp_a = {}; op_a = {}; fcf_a = {}
     try:
-        sess = _YF_SESSION  # curl_cffi with Chrome TLS fingerprinting
+        if income_df is not None and not income_df.empty:
+            for col in income_df.columns:
+                yr = str(col)[:4]
+                def _v(row):
+                    try: return float(income_df.loc[row, col]) if row in income_df.index else None
+                    except: return None
+                rev_a[yr] = _v('Total Revenue')
+                ni_a[yr]  = _v('Net Income')
+                gp_a[yr]  = _v('Gross Profit')
+                op_a[yr]  = _v('Operating Income')
+        if cashflow_df is not None and not cashflow_df.empty:
+            for col in cashflow_df.columns:
+                yr = str(col)[:4]
+                def _cv(row):
+                    try: return float(cashflow_df.loc[row, col]) if row in cashflow_df.index else None
+                    except: return None
+                op_cf = _cv('Operating Cash Flow')
+                capex = _cv('Capital Expenditure')
+                if op_cf is not None and capex is not None:
+                    fcf_a[yr] = op_cf + capex
+                elif op_cf is not None:
+                    fcf_a[yr] = op_cf
+    except Exception:
+        pass
+    return rev_a, ni_a, gp_a, op_a, fcf_a
+
+
+def _yahoo_financials(ticker):
+    """Income statement + cash flow — tries yfinance first, then crumb-based quoteSummary"""
+    rev_a = {}; ni_a = {}; gp_a = {}; op_a = {}; fcf_a = {}
+
+    # Attempt 1: yfinance income_stmt / cashflow (uses curl_cffi session)
+    try:
+        tk = _ticker(ticker)
+        income   = tk.income_stmt
+        cashflow = tk.cashflow
+        rev_a, ni_a, gp_a, op_a, fcf_a = _parse_yf_income_cashflow(income, cashflow)
+        if rev_a:
+            return {'revenue_annual': rev_a, 'net_income_annual': ni_a,
+                    'gross_profit_annual': gp_a, 'op_income_annual': op_a, 'fcf_annual': fcf_a}
+    except Exception:
+        pass
+
+    # Attempt 2: direct quoteSummary with crumb via curl_cffi
+    try:
+        sess = _YF_SESSION
         if sess is None:
-            return {}
+            return dict(_EMPTY_FINANCIALS)
 
         now = time.time()
         if not (_YF_CRUMB_CACHE['crumb'] and (now - _YF_CRUMB_CACHE['ts']) < 3600):
@@ -3969,48 +4020,36 @@ def _yahoo_financials(ticker):
             crumb = rc.text.strip()
             if crumb and len(crumb) < 60 and '{' not in crumb:
                 _YF_CRUMB_CACHE.update({'crumb': crumb, 'ts': now})
-            else:
-                return {}
 
         crumb = _YF_CRUMB_CACHE.get('crumb')
-        if not crumb:
-            return {}
-
-        url = (f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
-               f"?modules=incomeStatementHistory,cashflowStatementHistory&crumb={crumb}")
-        r = sess.get(url, timeout=12)
-        if r.status_code != 200:
-            return {}
-        res = r.json().get('quoteSummary', {}).get('result', [None])[0]
-        if not res:
-            return {}
-
-        rev_a = {}; ni_a = {}; gp_a = {}; op_a = {}; fcf_a = {}
-
-        for stmt in (res.get('incomeStatementHistory', {}).get('incomeStatementHistory') or []):
-            yr = stmt.get('endDate', {}).get('fmt', '')[:4]
-            if not yr:
-                continue
-            rev_a[yr] = (stmt.get('totalRevenue') or {}).get('raw')
-            ni_a[yr]  = (stmt.get('netIncome') or {}).get('raw')
-            gp_a[yr]  = (stmt.get('grossProfit') or {}).get('raw')
-            op_a[yr]  = (stmt.get('ebit') or {}).get('raw')
-
-        for stmt in (res.get('cashflowStatementHistory', {}).get('cashflowStatements') or []):
-            yr = stmt.get('endDate', {}).get('fmt', '')[:4]
-            if not yr:
-                continue
-            op_cf = (stmt.get('operatingCashflow') or {}).get('raw')
-            capex = (stmt.get('capitalExpenditures') or {}).get('raw')
-            if op_cf is not None and capex is not None:
-                fcf_a[yr] = op_cf + capex  # capex is negative in Yahoo data
-            elif op_cf is not None:
-                fcf_a[yr] = op_cf
-
-        return {'revenue_annual': rev_a, 'net_income_annual': ni_a,
-                'gross_profit_annual': gp_a, 'op_income_annual': op_a, 'fcf_annual': fcf_a}
+        if crumb:
+            url = (f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
+                   f"?modules=incomeStatementHistory,cashflowStatementHistory&crumb={crumb}")
+            r = sess.get(url, timeout=12)
+            if r.status_code == 200:
+                res = r.json().get('quoteSummary', {}).get('result', [None])[0]
+                if res:
+                    for stmt in (res.get('incomeStatementHistory', {}).get('incomeStatementHistory') or []):
+                        yr = stmt.get('endDate', {}).get('fmt', '')[:4]
+                        if not yr: continue
+                        rev_a[yr] = (stmt.get('totalRevenue') or {}).get('raw')
+                        ni_a[yr]  = (stmt.get('netIncome') or {}).get('raw')
+                        gp_a[yr]  = (stmt.get('grossProfit') or {}).get('raw')
+                        op_a[yr]  = (stmt.get('ebit') or {}).get('raw')
+                    for stmt in (res.get('cashflowStatementHistory', {}).get('cashflowStatements') or []):
+                        yr = stmt.get('endDate', {}).get('fmt', '')[:4]
+                        if not yr: continue
+                        op_cf = (stmt.get('operatingCashflow') or {}).get('raw')
+                        capex = (stmt.get('capitalExpenditures') or {}).get('raw')
+                        if op_cf is not None and capex is not None:
+                            fcf_a[yr] = op_cf + capex
+                        elif op_cf is not None:
+                            fcf_a[yr] = op_cf
     except Exception:
-        return {}
+        pass
+
+    return {'revenue_annual': rev_a, 'net_income_annual': ni_a,
+            'gross_profit_annual': gp_a, 'op_income_annual': op_a, 'fcf_annual': fcf_a}
 
 
 def _finnhub_fundamental(ticker):
@@ -4089,7 +4128,7 @@ def _finnhub_fundamental(ticker):
             'target_low':     tp.get('targetLow'),
             'target_high':    tp.get('targetHigh'),
             'description':    profile.get('description', ''),
-            **_yahoo_financials(ticker),
+            **{**_EMPTY_FINANCIALS, **_yahoo_financials(ticker)},
             'revenue_quarterly': {}, 'net_income_quarterly': {},
         }
     except Exception:
