@@ -3953,13 +3953,106 @@ def portfolio_intraday():
         return jsonify({'candles': [], 'events': [], 'error': str(e)})
 
 
+def _finnhub_fundamental(ticker):
+    """נתונים פונדמנטליים מ-Finnhub כשYahoo חוסם"""
+    if not _FINNHUB_KEY:
+        return None
+    try:
+        profile = _fh_profile(ticker)
+        quote   = _fh_quote(ticker)
+        if not profile or not profile.get('name'):
+            return None
+        # metrics
+        mr = requests.get(
+            f"https://finnhub.io/api/v1/stock/metric?symbol={ticker}&metric=all&token={_FINNHUB_KEY}",
+            timeout=8).json().get('metric', {})
+        # analyst
+        rec_list = requests.get(
+            f"https://finnhub.io/api/v1/stock/recommendation?symbol={ticker}&token={_FINNHUB_KEY}",
+            timeout=8).json()
+        rec_key = None
+        if rec_list:
+            latest = rec_list[0]
+            buys  = (latest.get('buy', 0) or 0) + (latest.get('strongBuy', 0) or 0)
+            holds = latest.get('hold', 0) or 0
+            sells = (latest.get('sell', 0) or 0) + (latest.get('strongSell', 0) or 0)
+            total = buys + holds + sells
+            if total:
+                if buys / total > 0.6:   rec_key = 'buy'
+                elif sells / total > 0.5: rec_key = 'sell'
+                else:                     rec_key = 'hold'
+        tp = requests.get(
+            f"https://finnhub.io/api/v1/stock/price-target?symbol={ticker}&token={_FINNHUB_KEY}",
+            timeout=8).json()
+        return {
+            'ticker': ticker,
+            'name': profile.get('name', ticker),
+            'sector': profile.get('finnhubIndustry', ''),
+            'industry': profile.get('finnhubIndustry', ''),
+            'country': profile.get('country', ''),
+            'employees': profile.get('employeeTotal'),
+            'currency': profile.get('currency', 'USD'),
+            'price':         quote.get('c'),
+            'change_pct':    quote.get('dp'),
+            '52w_high':      mr.get('52WeekHigh'),
+            '52w_low':       mr.get('52WeekLow'),
+            'market_cap':    profile.get('marketCapitalization', 0) * 1e6,
+            'shares_outstanding': None,
+            'pe_trailing':   mr.get('peNormalizedAnnual') or mr.get('peTTM'),
+            'pe_forward':    mr.get('peForward'),
+            'pb':            mr.get('pb') or mr.get('pbAnnual'),
+            'ps':            mr.get('psAnnual') or mr.get('psTTM'),
+            'ev_ebitda':     mr.get('evToEbitda'),
+            'ev_revenue':    mr.get('evToRevenue') or mr.get('evToSales'),
+            'eps_trailing':  mr.get('epsTTM') or mr.get('epsAnnual'),
+            'eps_forward':   mr.get('epsForward'),
+            'gross_margin':  (mr.get('grossMarginAnnual') or 0) / 100,
+            'op_margin':     mr.get('operatingMarginAnnual') or mr.get('operatingMarginTTM'),
+            'net_margin':    (mr.get('netProfitMarginAnnual') or 0) / 100,
+            'roe':           (mr.get('roeRfy') or mr.get('roeTTM') or 0) / 100,
+            'roa':           (mr.get('roaRfy') or mr.get('roaTTM') or 0) / 100,
+            'revenue_growth': mr.get('revenueGrowthQuarterlyYoy') or mr.get('revenueGrowthTTMYoy'),
+            'earnings_growth': None,
+            'earnings_qgrowth': None,
+            'debt_equity':   mr.get('totalDebt/totalEquityAnnual') or mr.get('longTermDebt/equityAnnual'),
+            'current_ratio': mr.get('currentRatioAnnual'),
+            'quick_ratio':   mr.get('quickRatioAnnual'),
+            'total_cash':    None,
+            'total_debt':    None,
+            'dividend_yield': mr.get('dividendYieldIndicatedAnnual'),
+            'dividend_rate':  None,
+            'payout_ratio':   mr.get('payoutRatioAnnual'),
+            'beta':           mr.get('beta') or profile.get('beta'),
+            'rec_key':        rec_key,
+            'num_analysts':   sum([rec_list[0].get(k,0) or 0 for k in ['buy','strongBuy','hold','sell','strongSell']]) if rec_list else None,
+            'target_mean':    tp.get('targetMean'),
+            'target_low':     tp.get('targetLow'),
+            'target_high':    tp.get('targetHigh'),
+            'description':    profile.get('description', ''),
+            'revenue_annual': {}, 'net_income_annual': {}, 'gross_profit_annual': {},
+            'op_income_annual': {}, 'fcf_annual': {},
+            'revenue_quarterly': {}, 'net_income_quarterly': {},
+        }
+    except Exception:
+        return None
+
 @app.route('/api/fundamental/<ticker>')
 def api_fundamental(ticker):
     try:
         import yfinance as yf
         ticker = ticker.upper().strip()
         tk   = _ticker(ticker)
-        info = tk.info or {}
+        # Try Yahoo Finance
+        info = {}
+        try:
+            info = tk.info or {}
+        except Exception:
+            pass
+        # If Yahoo blocked — use Finnhub
+        if not info or not info.get('longName'):
+            fh = _finnhub_fundamental(ticker)
+            if fh:
+                return jsonify(fh)
 
         # ── description translation
         raw_desc = info.get('longBusinessSummary', '')
