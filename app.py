@@ -3953,6 +3953,51 @@ def portfolio_intraday():
         return jsonify({'candles': [], 'events': [], 'error': str(e)})
 
 
+def _yahoo_financials(ticker):
+    """Income statement + cash flow from Yahoo quoteSummary with iPhone UA — works even when yfinance is blocked"""
+    try:
+        url = (f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
+               f"?modules=incomeStatementHistory,cashflowStatementHistory")
+        hdrs = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+            'Accept': 'application/json',
+            'Referer': 'https://finance.yahoo.com/',
+        }
+        r = requests.get(url, headers=hdrs, timeout=12)
+        if r.status_code != 200:
+            return {}
+        res = r.json().get('quoteSummary', {}).get('result', [None])[0]
+        if not res:
+            return {}
+
+        rev_a = {}; ni_a = {}; gp_a = {}; op_a = {}; fcf_a = {}
+
+        for stmt in (res.get('incomeStatementHistory', {}).get('incomeStatementHistory') or []):
+            yr = stmt.get('endDate', {}).get('fmt', '')[:4]
+            if not yr:
+                continue
+            rev_a[yr] = (stmt.get('totalRevenue') or {}).get('raw')
+            ni_a[yr]  = (stmt.get('netIncome') or {}).get('raw')
+            gp_a[yr]  = (stmt.get('grossProfit') or {}).get('raw')
+            op_a[yr]  = (stmt.get('ebit') or {}).get('raw')
+
+        for stmt in (res.get('cashflowStatementHistory', {}).get('cashflowStatements') or []):
+            yr = stmt.get('endDate', {}).get('fmt', '')[:4]
+            if not yr:
+                continue
+            op_cf = (stmt.get('operatingCashflow') or {}).get('raw')
+            capex = (stmt.get('capitalExpenditures') or {}).get('raw')
+            if op_cf is not None and capex is not None:
+                fcf_a[yr] = op_cf + capex  # capex is negative in Yahoo data
+            elif op_cf is not None:
+                fcf_a[yr] = op_cf
+
+        return {'revenue_annual': rev_a, 'net_income_annual': ni_a,
+                'gross_profit_annual': gp_a, 'op_income_annual': op_a, 'fcf_annual': fcf_a}
+    except Exception:
+        return {}
+
+
 def _finnhub_fundamental(ticker):
     """נתונים פונדמנטליים מ-Finnhub כשYahoo חוסם"""
     if not _FINNHUB_KEY:
@@ -4007,11 +4052,11 @@ def _finnhub_fundamental(ticker):
             'eps_trailing':  mr.get('epsTTM') or mr.get('epsAnnual'),
             'eps_forward':   mr.get('epsForward'),
             'gross_margin':  (mr.get('grossMarginAnnual') or 0) / 100,
-            'op_margin':     mr.get('operatingMarginAnnual') or mr.get('operatingMarginTTM'),
+            'op_margin':     (mr.get('operatingMarginAnnual') or mr.get('operatingMarginTTM') or 0) / 100,
             'net_margin':    (mr.get('netProfitMarginAnnual') or 0) / 100,
             'roe':           (mr.get('roeRfy') or mr.get('roeTTM') or 0) / 100,
             'roa':           (mr.get('roaRfy') or mr.get('roaTTM') or 0) / 100,
-            'revenue_growth': mr.get('revenueGrowthQuarterlyYoy') or mr.get('revenueGrowthTTMYoy'),
+            'revenue_growth': (mr.get('revenueGrowthQuarterlyYoy') or mr.get('revenueGrowthTTMYoy') or 0) / 100,
             'earnings_growth': None,
             'earnings_qgrowth': None,
             'debt_equity':   mr.get('totalDebt/totalEquityAnnual') or mr.get('longTermDebt/equityAnnual'),
@@ -4029,8 +4074,7 @@ def _finnhub_fundamental(ticker):
             'target_low':     tp.get('targetLow'),
             'target_high':    tp.get('targetHigh'),
             'description':    profile.get('description', ''),
-            'revenue_annual': {}, 'net_income_annual': {}, 'gross_profit_annual': {},
-            'op_income_annual': {}, 'fcf_annual': {},
+            **_yahoo_financials(ticker),
             'revenue_quarterly': {}, 'net_income_quarterly': {},
         }
     except Exception:
