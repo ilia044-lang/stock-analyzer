@@ -3968,7 +3968,9 @@ def _parse_yf_income_cashflow(income_df, cashflow_df):
             for col in income_df.columns:
                 yr = str(col)[:4]
                 def _v(row):
-                    try: return float(income_df.loc[row, col]) if row in income_df.index else None
+                    try:
+                        v = float(income_df.loc[row, col]) if row in income_df.index else None
+                        return None if (v is None or v != v) else v  # drop NaN
                     except: return None
                 rev_a[yr] = _v('Total Revenue')
                 ni_a[yr]  = _v('Net Income')
@@ -3978,7 +3980,9 @@ def _parse_yf_income_cashflow(income_df, cashflow_df):
             for col in cashflow_df.columns:
                 yr = str(col)[:4]
                 def _cv(row):
-                    try: return float(cashflow_df.loc[row, col]) if row in cashflow_df.index else None
+                    try:
+                        v = float(cashflow_df.loc[row, col]) if row in cashflow_df.index else None
+                        return None if (v is None or v != v) else v  # drop NaN
                     except: return None
                 op_cf = _cv('Operating Cash Flow')
                 capex = _cv('Capital Expenditure')
@@ -4048,8 +4052,11 @@ def _yahoo_financials(ticker):
     except Exception:
         pass
 
-    return {'revenue_annual': rev_a, 'net_income_annual': ni_a,
-            'gross_profit_annual': gp_a, 'op_income_annual': op_a, 'fcf_annual': fcf_a}
+    def _clean(d):
+        return {k: v for k, v in d.items() if v is not None and v == v}  # drop None and NaN
+    return {'revenue_annual': _clean(rev_a), 'net_income_annual': _clean(ni_a),
+            'gross_profit_annual': _clean(gp_a), 'op_income_annual': _clean(op_a),
+            'fcf_annual': _clean(fcf_a)}
 
 
 def _finnhub_fundamental(ticker):
