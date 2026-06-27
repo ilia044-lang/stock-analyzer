@@ -2267,10 +2267,11 @@
       const res  = await fetch('/market');
       const data = await res.json();
       if (data.error) return;
-      renderMarketBar(data);
-      renderMarketPanels(data);
-      if (data.futures && data.futures.length) renderFutures(data.futures);
-      if (data.extended) renderExtended(data.extended, data.market_status);
+      // כל רינדור עצמאי — כשל באחד (למשל VIX null) לא יתקע את הסקטורים
+      try { renderMarketBar(data); } catch(e) { console.error('marketBar:', e); }
+      try { renderMarketPanels(data); } catch(e) { console.error('marketPanels:', e); }
+      try { if (data.futures && data.futures.length) renderFutures(data.futures); } catch(e) { console.error('futures:', e); }
+      try { if (data.extended) renderExtended(data.extended, data.market_status); } catch(e) { console.error('extended:', e); }
       // הצג שעת עדכון אחרון
       const now = new Date();
       const ts = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
@@ -2430,28 +2431,28 @@
       </div>`);
     }
 
-    if (d.vix) {
+    if (d.vix && d.vix.value != null) {
       pills.push(`<div class="mbar-pill" onclick="toggleMarket()" title="לחץ לפרטים">
         <span class="mbar-label">😱 VIX — מדד הפחד</span>
         <span class="mbar-val" style="color:${d.vix.color}">${d.vix.value.toFixed(1)}</span>
         <span class="mbar-sub" style="color:${d.vix.color}">${d.vix.level}</span>
       </div>`);
     }
-    if (d.fg) {
+    if (d.fg && d.fg.score != null) {
       pills.push(`<div class="mbar-pill" onclick="toggleMarket()" title="לחץ לפרטים">
         <span class="mbar-label">🎭 Fear & Greed</span>
         <span class="mbar-val" style="color:${d.fg.color}">${d.fg.score.toFixed(0)}/100</span>
         <span class="mbar-sub" style="color:${d.fg.color}">${d.fg.label}</span>
       </div>`);
     }
-    if (d.dxy) {
+    if (d.dxy && d.dxy.value != null) {
       pills.push(`<div class="mbar-pill" onclick="toggleMarket()" title="לחץ לפרטים">
         <span class="mbar-label">💵 DXY — מדד הדולר</span>
         <span class="mbar-val" style="color:${d.dxy.color}">${d.dxy.value.toFixed(2)}</span>
-        <span class="mbar-sub" style="color:${d.dxy.color}">${sign(d.dxy.change_pct)}${d.dxy.change_pct.toFixed(2)}% | ${d.dxy.level}</span>
+        <span class="mbar-sub" style="color:${d.dxy.color}">${sign(d.dxy.change_pct)}${(d.dxy.change_pct ?? 0).toFixed(2)}% | ${d.dxy.level}</span>
       </div>`);
     }
-    if (d.us10y) {
+    if (d.us10y && d.us10y.value != null) {
       pills.push(`<div class="mbar-pill" onclick="toggleMarket()" title="לחץ לפרטים">
         <span class="mbar-label">📈 ריבית 10Y</span>
         <span class="mbar-val" style="color:${d.us10y.color}">${d.us10y.value.toFixed(3)}%</span>
@@ -2509,34 +2510,34 @@
     const sign = v => v >= 0 ? '+' : '';
     const cards = [];
 
-    if (d.vix) cards.push(`<div class="mcard">
+    if (d.vix && d.vix.value != null) cards.push(`<div class="mcard">
       <div class="mcard-title">😱 VIX — מדד הפחד של וול סטריט</div>
       <div class="mcard-val" style="color:${d.vix.color}">${d.vix.value.toFixed(1)}</div>
-      <div class="mcard-sub" style="color:${d.vix.color}">${sign(d.vix.change)}${d.vix.change.toFixed(1)} | ${d.vix.level}</div>
+      <div class="mcard-sub" style="color:${d.vix.color}">${sign(d.vix.change ?? 0)}${(d.vix.change ?? 0).toFixed(1)} | ${d.vix.level}</div>
       <div class="mcard-explain">${explainMap.vix}</div>
     </div>`);
 
-    if (d.fg) cards.push(`<div class="mcard">
+    if (d.fg && d.fg.score != null) cards.push(`<div class="mcard">
       <div class="mcard-title">🎭 Fear & Greed Index (CNN)</div>
       <div class="mcard-val" style="color:${d.fg.color}">${d.fg.score.toFixed(0)}<span style="font-size:14px;">/100</span></div>
-      <div class="mcard-sub" style="color:${d.fg.color}">${sign(d.fg.change)}${d.fg.change.toFixed(1)} שבועי | ${d.fg.label}</div>
+      <div class="mcard-sub" style="color:${d.fg.color}">${sign(d.fg.change ?? 0)}${(d.fg.change ?? 0).toFixed(1)} שבועי | ${d.fg.label}</div>
       <div style="margin:8px 0;background:var(--bg3);border-radius:4px;height:8px;overflow:hidden;">
         <div style="background:${d.fg.color};width:${d.fg.score}%;height:8px;border-radius:4px;transition:width .6s;"></div>
       </div>
       <div class="mcard-explain">${explainMap.fg}</div>
     </div>`);
 
-    if (d.dxy) cards.push(`<div class="mcard">
+    if (d.dxy && d.dxy.value != null) cards.push(`<div class="mcard">
       <div class="mcard-title">💵 DXY — מדד כוח הדולר</div>
       <div class="mcard-val" style="color:${d.dxy.color}">${d.dxy.value.toFixed(2)}</div>
-      <div class="mcard-sub" style="color:${d.dxy.color}">${sign(d.dxy.change_pct)}${d.dxy.change_pct.toFixed(2)}% | ${d.dxy.level}</div>
+      <div class="mcard-sub" style="color:${d.dxy.color}">${sign(d.dxy.change_pct ?? 0)}${(d.dxy.change_pct ?? 0).toFixed(2)}% | ${d.dxy.level}</div>
       <div class="mcard-explain">${explainMap.dxy}</div>
     </div>`);
 
-    if (d.us10y) cards.push(`<div class="mcard">
+    if (d.us10y && d.us10y.value != null) cards.push(`<div class="mcard">
       <div class="mcard-title">📈 ריבית אגח 10 שנים (US10Y)</div>
       <div class="mcard-val" style="color:${d.us10y.color}">${d.us10y.value.toFixed(3)}<span style="font-size:14px;">%</span></div>
-      <div class="mcard-sub" style="color:${d.us10y.color}">${sign(d.us10y.change)}${d.us10y.change.toFixed(3)}% | ${d.us10y.level}</div>
+      <div class="mcard-sub" style="color:${d.us10y.color}">${sign(d.us10y.change ?? 0)}${(d.us10y.change ?? 0).toFixed(3)}% | ${d.us10y.level}</div>
       <div class="mcard-explain">${explainMap.us10y}</div>
     </div>`);
 
@@ -2806,56 +2807,44 @@
     show('loading');
     document.getElementById('analyzeBtn').disabled = true;
 
+    // שלב 1: רשת + פענוח JSON (כאן ורק כאן "שגיאת רשת")
+    let data;
     try {
       const res  = await fetch(`/analyze?ticker=${encodeURIComponent(ticker)}&style=${currentStyle}`);
-      const data = await res.json();
-
-      hide('loading');
-      document.getElementById('analyzeBtn').disabled = false;
-
-      if (data.error) {
-        document.getElementById('errorBox').textContent = data.error;
-        show('errorBox');
-        return;
-      }
-
-      renderStockHeader(data);
-      renderPsychWarnings(data);
-      renderRecommendation(data);
-      renderTradePlan(data);
-      renderDiagnosis(data);
-      renderChecklistSidebar(data);
-      renderNarrative(data);
-      renderPosition(data);
-      renderContradictory(data);
-      renderFiveDayRule(data);
-      renderChecklist(data);
-      renderControl(data);
-      renderAtrFib(data);
-      renderShort(data);
-      renderEarnings(data);
-      renderNews(data);
-      renderSL(data);
-      renderCharts(data);
-      renderChartPatterns(data);
-      renderChartAnalysis(data);
-
-      // הצג כרטיס דיפ וטען נתונים
-      show('dipCard');
-      loadDipCheck();
-
-      // הצג כרטיס אובר-טריידינג
-      document.getElementById('otCard').style.display = 'block';
-
-      // שמור להיסטוריה
-      saveToHistory(data);
-
+      data = await res.json();
     } catch (err) {
       hide('loading');
       document.getElementById('analyzeBtn').disabled = false;
       document.getElementById('errorBox').textContent = 'שגיאת רשת - נסה שוב';
       show('errorBox');
+      return;
     }
+
+    hide('loading');
+    document.getElementById('analyzeBtn').disabled = false;
+
+    if (data.error) {
+      document.getElementById('errorBox').textContent = data.error;
+      show('errorBox');
+      return;
+    }
+
+    // שלב 2: רינדור — כל פונקציה עטופה כך שכשל בודד לא מפיל את כל הניתוח
+    [renderStockHeader, renderPsychWarnings, renderRecommendation, renderTradePlan,
+     renderDiagnosis, renderChecklistSidebar, renderNarrative, renderPosition,
+     renderContradictory, renderFiveDayRule, renderChecklist, renderControl,
+     renderAtrFib, renderShort, renderEarnings, renderNews, renderSL,
+     renderCharts, renderChartPatterns, renderChartAnalysis].forEach(fn => {
+      try { fn(data); } catch (e) { console.error('render error in ' + fn.name + ':', e); }
+    });
+
+    // הצג כרטיס דיפ וטען נתונים
+    try {
+      show('dipCard');
+      loadDipCheck();
+      document.getElementById('otCard').style.display = 'block';
+      saveToHistory(data);
+    } catch (e) { console.error('post-render error:', e); }
   }
 
   function renderChecklistSidebar(d) {

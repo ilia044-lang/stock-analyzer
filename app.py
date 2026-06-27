@@ -51,6 +51,39 @@ def _fh_candles(ticker, days=100):
     except Exception:
         return None
 
+def _clean_ohlc(df):
+    """הסר שורות עם Close חסר (NaN), ומלא OHLC/Volume חסרים — מונע מחיר/גרף null"""
+    if df is None:
+        return None
+    try:
+        df = df.dropna(subset=['Close']).copy()
+        for col in ('Open', 'High', 'Low'):
+            if col in df.columns:
+                df[col] = df[col].fillna(df['Close'])
+        if 'Volume' in df.columns:
+            df['Volume'] = df['Volume'].fillna(0)
+    except Exception:
+        return df
+    return df
+
+def _price_history(ticker, stock, period='3mo', days=100):
+    """היסטוריית מחירים אמינה: yfinance → ניקוי NaN → fallback ל-iPhone UA.
+    מחזיר (df_נקי_או_None, used_fallback)."""
+    df = None
+    try:
+        df = _clean_ohlc(stock.history(period=period))
+        if df is not None and (df.empty or len(df) < 2):
+            df = None
+    except Exception:
+        df = None
+    used_fallback = False
+    if df is None:
+        df = _clean_ohlc(_fh_candles(ticker, days=days))
+        if df is not None and (df.empty or len(df) < 2):
+            df = None
+        used_fallback = df is not None
+    return df, used_fallback
+
 def _fh_quote(ticker):
     """מחיר חי מ-Finnhub"""
     if not _FINNHUB_KEY:
@@ -1968,22 +2001,10 @@ def analyze():
 
     try:
         stock = _ticker(ticker)
-        df = None
-        # נסה yfinance — פעם אחת
-        try:
-            df = stock.history(period='3mo')
-            if df is not None and df.empty:
-                df = None
-        except Exception:
-            df = None
+        # היסטוריית מחירים אמינה: yfinance → ניקוי NaN → fallback iPhone UA
+        df, using_finnhub = _price_history(ticker, stock, period='3mo', days=100)
 
-        # Fallback: Finnhub — כשYahoo חוסם
-        using_finnhub = False
-        if df is None:
-            df = _fh_candles(ticker, days=100)
-            using_finnhub = df is not None and not df.empty
-
-        if df is None or df.empty:
+        if df is None or df.empty or len(df) < 2:
             return jsonify({'error': f'לא נמצאו נתונים עבור {ticker}. בדוק שהטיקר נכון.'}), 404
 
         # נתוני חברה
@@ -2069,10 +2090,16 @@ def analyze():
             direction_label = 'ניטרלי — המתן'
             direction_reason = 'אין כיוון ברור, לא מומלץ ללונג ולא לשורט כרגע'
 
-        current_price = round(df['Close'].iloc[-1], 2)
-        prev_close    = round(df['Close'].iloc[-2], 2)
+        current_price = round(float(df['Close'].iloc[-1]), 2)
+        prev_close    = round(float(df['Close'].iloc[-2]), 2)
+        # הגנה: אם המחיר NaN/0 — נסה מחיר חי מ-Finnhub
+        if not (current_price == current_price) or current_price <= 0:
+            q = _fh_quote(ticker)
+            if q.get('c'):
+                current_price = round(float(q['c']), 2)
+                prev_close    = round(float(q.get('pc') or current_price), 2)
         change        = round(current_price - prev_close, 2)
-        change_pct    = round(change / prev_close * 100, 2)
+        change_pct    = round(change / prev_close * 100, 2) if prev_close else 0
 
         # ATR (14)
         atr_series = calc_atr(df['High'], df['Low'], df['Close'])
@@ -2412,12 +2439,16 @@ def analyze():
         cci_series  = calc_cci(df['High'], df['Low'], df['Close'], period=14)
         rsi_series  = calc_rsi(df['Close'])
 
-        # גרף + תבניות — שנה מלאה
-        try:
-            df_1y = stock.history(period='1y')
-        except Exception:
-            df_1y = df
-        chart_df = df_1y if (not df_1y.empty and len(df_1y) > len(df)) else df
+        # גרף + תבניות — שנה מלאה (ניקוי NaN + fallback iPhone UA)
+        df_1y = None
+        if not using_finnhub:
+            try:
+                df_1y = _clean_ohlc(stock.history(period='1y'))
+            except Exception:
+                df_1y = None
+        if df_1y is None or df_1y.empty or len(df_1y) <= len(df):
+            df_1y = _clean_ohlc(_fh_candles(ticker, days=365))
+        chart_df = df_1y if (df_1y is not None and not df_1y.empty and len(df_1y) > len(df)) else df
 
         chart_ma20 = calc_ma20(chart_df['Close'])
         chart_ma50 = calc_ma50(chart_df['Close'])
@@ -2527,19 +2558,28 @@ def get_price():
 
     try:
         stock = _ticker(ticker)
-        df = stock.history(period='2d')
-        if df.empty or len(df) < 2:
+        # מחיר אמין: yfinance → ניקוי NaN → fallback iPhone UA
+        df, _used = _price_history(ticker, stock, period='5d', days=7)
+        if df is not None and not df.empty and len(df) >= 2:
+            current_price = round(float(df['Close'].iloc[-1]), 2)
+            prev_close    = round(float(df['Close'].iloc[-2]), 2)
+        else:
+            # מוצא אחרון — מחיר חי מ-Finnhub
+            q = _fh_quote(ticker)
+            if not q.get('c'):
+                return jsonify({'error': 'no data'}), 404
+            current_price = round(float(q['c']), 2)
+            prev_close    = round(float(q.get('pc') or current_price), 2)
+        # הגנה אחרונה מפני NaN
+        if not (current_price == current_price) or current_price <= 0:
             return jsonify({'error': 'no data'}), 404
-        current_price = round(df['Close'].iloc[-1], 2)
-        prev_close    = round(df['Close'].iloc[-2], 2)
-        change        = round(current_price - prev_close, 2)
-        change_pct    = round(change / prev_close * 100, 2)
-        currency = stock.info.get('currency', 'USD')
+        change     = round(current_price - prev_close, 2)
+        change_pct = round(change / prev_close * 100, 2) if prev_close else 0
         result = {
             'current_price': current_price,
             'change': change,
             'change_pct': change_pct,
-            'currency': currency,
+            'currency': 'USD',
         }
         cache_set(f'price_{ticker}', result)
         return jsonify(result)
