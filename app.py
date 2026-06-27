@@ -4251,8 +4251,11 @@ def _yahoo_info_via_crumb(ticker):
         return v.get('raw') if isinstance(v, dict) else v
 
     name = pr.get('longName') or pr.get('shortName')
-    if not name and not fd and not sd:
-        return {}
+    if not name:
+        # יש נתוני יחסים אך חסר שם — אל תיפול ל-Finnhub בגלל זה; השתמש בטיקר
+        if not (fd or sd or ks):
+            return {}
+        name = ticker
     return {
         'longName': name, 'shortName': pr.get('shortName'),
         'sector': ap.get('sector', ''), 'industry': ap.get('industry', ''),
