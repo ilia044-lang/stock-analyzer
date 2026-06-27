@@ -4169,6 +4169,112 @@ def _yahoo_financials(ticker):
             'fcf_annual': _clean_fin(fcf_a)}
 
 
+def _yahoo_get_crumb():
+    """מחזיר crumb תקף של Yahoo (cache שעה) דרך curl_cffi. None אם נכשל."""
+    sess = _YF_SESSION
+    if sess is None:
+        return None
+    now = time.time()
+    if _YF_CRUMB_CACHE.get('crumb') and (now - _YF_CRUMB_CACHE.get('ts', 0)) < 3600:
+        return _YF_CRUMB_CACHE['crumb']
+    try:
+        try:
+            sess.get('https://fc.yahoo.com', timeout=8)
+        except Exception:
+            pass
+        sess.get('https://finance.yahoo.com', timeout=10)
+        rc = sess.get('https://query2.finance.yahoo.com/v1/test/getcrumb', timeout=8)
+        crumb = rc.text.strip()
+        if crumb and len(crumb) < 60 and '{' not in crumb:
+            _YF_CRUMB_CACHE.update({'crumb': crumb, 'ts': now})
+            return crumb
+    except Exception:
+        pass
+    return None
+
+
+def _yahoo_quote_summary(ticker, modules):
+    """quoteSummary דרך curl_cffi + crumb (עוקף IP block). מחזיר dict של המודולים או {}."""
+    sess = _YF_SESSION
+    if sess is None:
+        return {}
+    crumb = _yahoo_get_crumb()
+    if not crumb:
+        return {}
+    try:
+        url = (f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
+               f"?modules={modules}&crumb={crumb}")
+        r = sess.get(url, timeout=12)
+        if r.status_code == 401:                    # crumb פג — רענן פעם אחת
+            _YF_CRUMB_CACHE.update({'crumb': None, 'ts': 0})
+            crumb = _yahoo_get_crumb()
+            if crumb:
+                url = (f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
+                       f"?modules={modules}&crumb={crumb}")
+                r = sess.get(url, timeout=12)
+        if r.status_code == 200:
+            return r.json().get('quoteSummary', {}).get('result', [None])[0] or {}
+    except Exception:
+        pass
+    return {}
+
+
+def _yahoo_info_via_crumb(ticker):
+    """בונה dict בסגנון yfinance .info מ-quoteSummary דרך curl_cffi (עובד גם כשהשרת חסום).
+    מאפשר לראוט הקיים להציג מספרי Yahoo אמיתיים במקום Finnhub. {} אם נכשל."""
+    res = _yahoo_quote_summary(
+        ticker,
+        "financialData,defaultKeyStatistics,summaryDetail,price,assetProfile")
+    if not res:
+        return {}
+    fd = res.get('financialData') or {}
+    ks = res.get('defaultKeyStatistics') or {}
+    sd = res.get('summaryDetail') or {}
+    pr = res.get('price') or {}
+    ap = res.get('assetProfile') or {}
+
+    def g(d, k):
+        v = d.get(k)
+        return v.get('raw') if isinstance(v, dict) else v
+
+    name = pr.get('longName') or pr.get('shortName')
+    if not name and not fd and not sd:
+        return {}
+    return {
+        'longName': name, 'shortName': pr.get('shortName'),
+        'sector': ap.get('sector', ''), 'industry': ap.get('industry', ''),
+        'country': ap.get('country', ''), 'fullTimeEmployees': ap.get('fullTimeEmployees'),
+        'longBusinessSummary': ap.get('longBusinessSummary', ''),
+        'currency': pr.get('currency') or 'USD',
+        'currentPrice': g(fd, 'currentPrice') or g(pr, 'regularMarketPrice'),
+        'regularMarketPrice': g(pr, 'regularMarketPrice'),
+        'regularMarketChangePercent': g(pr, 'regularMarketChangePercent'),
+        'fiftyTwoWeekHigh': g(sd, 'fiftyTwoWeekHigh'), 'fiftyTwoWeekLow': g(sd, 'fiftyTwoWeekLow'),
+        'marketCap': g(pr, 'marketCap') or g(sd, 'marketCap'),
+        'sharesOutstanding': g(ks, 'sharesOutstanding'),
+        'trailingPE': g(sd, 'trailingPE'), 'forwardPE': g(sd, 'forwardPE'),
+        'priceToBook': g(ks, 'priceToBook'),
+        'priceToSalesTrailing12Months': g(sd, 'priceToSalesTrailing12Months'),
+        'enterpriseToEbitda': g(ks, 'enterpriseToEbitda'),
+        'enterpriseToRevenue': g(ks, 'enterpriseToRevenue'),
+        'trailingEps': g(ks, 'trailingEps'), 'forwardEps': g(ks, 'forwardEps'),
+        'grossMargins': g(fd, 'grossMargins'), 'operatingMargins': g(fd, 'operatingMargins'),
+        'profitMargins': g(fd, 'profitMargins') or g(ks, 'profitMargins'),
+        'returnOnEquity': g(fd, 'returnOnEquity'), 'returnOnAssets': g(fd, 'returnOnAssets'),
+        'revenueGrowth': g(fd, 'revenueGrowth'), 'earningsGrowth': g(fd, 'earningsGrowth'),
+        'earningsQuarterlyGrowth': g(ks, 'earningsQuarterlyGrowth'),
+        'debtToEquity': g(fd, 'debtToEquity'), 'currentRatio': g(fd, 'currentRatio'),
+        'quickRatio': g(fd, 'quickRatio'), 'totalCash': g(fd, 'totalCash'),
+        'totalDebt': g(fd, 'totalDebt'),
+        'dividendYield': g(sd, 'dividendYield'), 'dividendRate': g(sd, 'dividendRate'),
+        'payoutRatio': g(sd, 'payoutRatio'), 'beta': g(sd, 'beta'),
+        'recommendationKey': g(fd, 'recommendationKey'),
+        'numberOfAnalystOpinions': g(fd, 'numberOfAnalystOpinions'),
+        'targetMeanPrice': g(fd, 'targetMeanPrice'),
+        'targetLowPrice': g(fd, 'targetLowPrice'), 'targetHighPrice': g(fd, 'targetHighPrice'),
+    }
+
+
 def _finnhub_fundamental(ticker):
     """נתונים פונדמנטליים מ-Finnhub כשYahoo חוסם"""
     if not _FINNHUB_KEY:
@@ -4263,7 +4369,14 @@ def api_fundamental(ticker):
             info = tk.info or {}
         except Exception:
             pass
-        # If Yahoo blocked — use Finnhub
+        # אם yfinance .info חסום — משוך מספרי Yahoo אמיתיים דרך curl_cffi (crumb)
+        using_crumb = False
+        if not info or not info.get('longName'):
+            ci = _yahoo_info_via_crumb(ticker)
+            if ci and ci.get('longName'):
+                info = ci
+                using_crumb = True
+        # מוצא אחרון — Finnhub (אם גם Yahoo crumb נכשל)
         if not info or not info.get('longName'):
             fh = _finnhub_fundamental(ticker)
             if fh:
@@ -4326,6 +4439,33 @@ def api_fundamental(ticker):
         fcf_annual    = _df_row(cf_a,  ['Free Cash Flow', 'freeCashFlow'])
         rev_quarterly = _df_row(fin_q, ['Total Revenue', 'totalRevenue'])
         ni_quarterly  = _df_row(fin_q, ['Net Income', 'Net Income Common Stockholders', 'netIncome'])
+
+        # אם yfinance חסום (crumb path) או שאין נתונים לגרפים — משוך דוחות דרך crumb
+        if using_crumb or not rev_annual:
+            yf_fin = _yahoo_financials(ticker)
+            rev_annual = rev_annual or yf_fin.get('revenue_annual', {})
+            ni_annual  = ni_annual  or yf_fin.get('net_income_annual', {})
+            gp_annual  = gp_annual  or yf_fin.get('gross_profit_annual', {})
+            op_annual  = op_annual  or yf_fin.get('op_income_annual', {})
+            fcf_annual = fcf_annual or yf_fin.get('fcf_annual', {})
+
+        # מרווחים מחושבים מהדוחות (שנת הכספים האחרונה) — מדויק ועקבי עם הגרפים,
+        # ועוקף שדות מרווח שבורים של Yahoo (למשל profitMargins=0 ל-ASTS)
+        def _latest_val(d):
+            if not d:
+                return None
+            try:
+                return d[sorted(d.keys())[-1]]
+            except Exception:
+                return None
+        _rev_l = _latest_val(rev_annual)
+        if _rev_l and _rev_l > 0:
+            _gp_l = _latest_val(gp_annual)
+            _op_l = _latest_val(op_annual)
+            _ni_l = _latest_val(ni_annual)
+            if _gp_l is not None: info['grossMargins']     = _gp_l / _rev_l
+            if _op_l is not None: info['operatingMargins'] = _op_l / _rev_l
+            if _ni_l is not None: info['profitMargins']    = _ni_l / _rev_l
 
         return jsonify({
             # identity
