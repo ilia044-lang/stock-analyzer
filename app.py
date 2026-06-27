@@ -193,6 +193,22 @@ from market_data import (get_vix, get_fear_greed, get_dxy, get_us10y,
 
 app = Flask(__name__)
 
+# Replace NaN/Inf with None globally so browser JSON.parse never fails
+import math as _math
+class _SafeJSONProvider(app.json_provider_class):
+    def dumps(self, obj, **kw):
+        def _fix(o):
+            if isinstance(o, float) and (not _math.isfinite(o)):
+                return None
+            if isinstance(o, dict):
+                return {k: _fix(v) for k, v in o.items()}
+            if isinstance(o, list):
+                return [_fix(v) for v in o]
+            return o
+        return super().dumps(_fix(obj), **kw)
+app.json_provider_class = _SafeJSONProvider
+app.json = _SafeJSONProvider(app)
+
 # ─── Cache ────────────────────────────────────────────────────────────────────
 _cache = {}
 
