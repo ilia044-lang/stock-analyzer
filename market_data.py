@@ -6,10 +6,43 @@ import urllib.request
 import json
 import datetime
 import time
+import requests as _requests
 import yfinance as yf
 
+try:
+    from curl_cffi import requests as _cffi_requests
+    _MD_SESSION = _cffi_requests.Session(impersonate="chrome")
+except Exception:
+    _MD_SESSION = None
+
 def _ticker(symbol):
+    if _MD_SESSION is not None:
+        return yf.Ticker(symbol, session=_MD_SESSION)
     return yf.Ticker(symbol)
+
+def _get_close_iphone(symbol, days=6):
+    """Fetch last N days of closes via iPhone UA — bypasses IP block on Render"""
+    try:
+        end   = int(time.time())
+        start = end - days * 86400
+        url   = (f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}"
+                 f"?interval=1d&period1={start}&period2={end}")
+        hdrs  = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+            'Accept': 'application/json',
+            'Referer': 'https://finance.yahoo.com/',
+        }
+        r = _requests.get(url, headers=hdrs, timeout=8)
+        if r.status_code != 200:
+            return None
+        result = r.json().get('chart', {}).get('result', [None])[0]
+        if not result:
+            return None
+        closes = (result.get('indicators', {}).get('adjclose', [{}])[0].get('adjclose')
+                  or result.get('indicators', {}).get('quote', [{}])[0].get('close'))
+        return [c for c in (closes or []) if c is not None]
+    except Exception:
+        return None
 
 
 # ── מצב שוק + שעות מסחר ──────────────────────────────────────────────────────
@@ -376,12 +409,20 @@ def get_sector_performance():
     results = []
     for ticker, name in SECTORS:
         try:
-            t  = _ticker(ticker)
-            df = t.history(period="5d")
-            if df.empty or len(df) < 2:
+            closes = None
+            # Try yfinance first (curl_cffi session)
+            try:
+                df = _ticker(ticker).history(period="5d")
+                if not df.empty and len(df) >= 2:
+                    closes = [float(df['Close'].iloc[-2]), float(df['Close'].iloc[-1])]
+            except Exception:
+                pass
+            # Fallback: iPhone UA direct API
+            if not closes:
+                closes = _get_close_iphone(ticker, days=6)
+            if not closes or len(closes) < 2:
                 continue
-            curr = float(df['Close'].iloc[-1])
-            prev = float(df['Close'].iloc[-2])
+            prev, curr = float(closes[-2]), float(closes[-1])
             if prev == 0 or math.isnan(curr) or math.isnan(prev):
                 continue
             chg = round((curr - prev) / prev * 100, 2)
