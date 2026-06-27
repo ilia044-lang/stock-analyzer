@@ -2435,10 +2435,23 @@ def analyze():
             short_pct    = info.get('shortPercentOfFloat', None)
             short_shares = info.get('sharesShort', None)
             short_ratio  = info.get('shortRatio', None)   # days to cover
-            if short_pct is not None:
-                short_pct = round(short_pct * 100, 2)
         except Exception:
             pass
+        # אם Yahoo info חסום (Render) — משוך נתוני שורט דרך crumb quoteSummary
+        if short_pct is None and short_shares is None:
+            try:
+                ks = (_yahoo_quote_summary(ticker, 'defaultKeyStatistics')
+                      or {}).get('defaultKeyStatistics', {})
+                def _r(k):
+                    v = ks.get(k)
+                    return v.get('raw') if isinstance(v, dict) else v
+                short_pct    = _r('shortPercentOfFloat')
+                short_shares = _r('sharesShort')
+                short_ratio  = _r('shortRatio')
+            except Exception:
+                pass
+        if short_pct is not None:
+            short_pct = round(short_pct * 100, 2)
 
         # ── דו"ח עצמי ──
         diagnosis = self_diagnose(
