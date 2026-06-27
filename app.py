@@ -2594,6 +2594,35 @@ def market_overview():
             if obj is None: return None
             return {k: (float(v) if hasattr(v, 'item') else v) for k, v in obj.items()}
 
+        # Fallback: fetch sector ETFs via iPhone UA if market_data returned nothing
+        if not sectors:
+            _SECTOR_NAMES = {
+                'XLK':'טכנולוגיה 💻','XLF':'פיננסים 🏦','XLE':'אנרגיה ⛽',
+                'XLV':'בריאות 🏥','XLI':'תעשייה 🏭','XLY':'צרכנות מחזורית 🛍️',
+                'XLP':'צרכנות בסיסית 🛒','XLC':'תקשורת 📡','XLRE':'נדל"ן 🏠',
+                'XLB':'חומרי גלם 🪨','XLU':'שירותים ⚡',
+            }
+            def _sector_chg(sym):
+                closes = _fh_candles(sym, days=8)
+                if closes is None or len(closes) < 2:
+                    return None
+                prev = float(closes['Close'].iloc[-2])
+                curr = float(closes['Close'].iloc[-1])
+                if prev == 0:
+                    return None
+                return round((curr - prev) / prev * 100, 2)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=11) as sex:
+                futs = {sex.submit(_sector_chg, sym): sym for sym in _SECTOR_NAMES}
+                for fut in concurrent.futures.as_completed(futs, timeout=15):
+                    sym = futs[fut]
+                    try:
+                        chg = fut.result()
+                        if chg is not None:
+                            sectors.append({'ticker': sym, 'name': _SECTOR_NAMES[sym], 'change': chg})
+                    except Exception:
+                        pass
+            sectors.sort(key=lambda x: x['change'], reverse=True)
+
         result = {
             'vix':     clean(vix),
             'fg':      clean(fg),
