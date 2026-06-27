@@ -37,16 +37,28 @@ def _fh_candles(ticker, days=100):
         result = r.json().get('chart', {}).get('result', [None])[0]
         if not result:
             return None
-        ts  = result.get('timestamp', [])
-        q   = result.get('indicators', {}).get('quote', [{}])[0]
-        adj = result.get('indicators', {}).get('adjclose', [{}])[0]
-        if not ts or not q.get('close'):
+        ts   = result.get('timestamp', [])
+        q    = result.get('indicators', {}).get('quote', [{}])[0]
+        adj  = result.get('indicators', {}).get('adjclose', [{}])[0]
+        meta = result.get('meta', {})
+        if not ts or not q.get('close') or not q.get('open'):
             return None
+        opens  = list(q['open']); highs = list(q['high']); lows = list(q['low'])
+        closes = list(adj.get('adjclose') or q['close'])
+        vols   = list(q.get('volume') or [None] * len(ts))
+        # תיקון "נר אחרון חסר": Yahoo מחזיר את יום המסחר האחרון עם close=None,
+        # אבל המחיר האמיתי נמצא ב-meta.regularMarketPrice (אחרת מקבלים מחיר של יום אחורה)
+        mp = meta.get('regularMarketPrice')
+        if closes and closes[-1] is None and mp is not None:
+            closes[-1] = mp
+            if opens and opens[-1] is None: opens[-1] = meta.get('regularMarketOpen') or mp
+            if highs and highs[-1] is None: highs[-1] = meta.get('regularMarketDayHigh') or mp
+            if lows  and lows[-1]  is None: lows[-1]  = meta.get('regularMarketDayLow') or mp
+            if vols  and vols[-1]  is None: vols[-1]  = meta.get('regularMarketVolume') or 0
         import datetime as _dt
         idx = pd.DatetimeIndex([_dt.datetime.utcfromtimestamp(t) for t in ts])
-        closes = adj.get('adjclose') or q.get('close')
-        df = pd.DataFrame({'Open': q['open'], 'High': q['high'], 'Low': q['low'],
-                           'Close': closes, 'Volume': q['volume']}, index=idx)
+        df = pd.DataFrame({'Open': opens, 'High': highs, 'Low': lows,
+                           'Close': closes, 'Volume': vols}, index=idx)
         return df.dropna(subset=['Close'])
     except Exception:
         return None
@@ -70,18 +82,27 @@ def _price_history(ticker, stock, period='3mo', days=100):
     """היסטוריית מחירים אמינה: yfinance → ניקוי NaN → fallback ל-iPhone UA.
     מחזיר (df_נקי_או_None, used_fallback)."""
     df = None
+    yf_stale = False
     try:
-        df = _clean_ohlc(stock.history(period=period))
+        raw = stock.history(period=period)
+        # זיהוי "נר אחרון חסר": Yahoo מחזיר את היום האחרון עם close=NaN →
+        # yfinance נראה תקין אבל חסר את המחיר העדכני (יום אחורה)
+        if raw is not None and not raw.empty and pd.isna(raw['Close'].iloc[-1]):
+            yf_stale = True
+        df = _clean_ohlc(raw)
         if df is not None and (df.empty or len(df) < 2):
             df = None
     except Exception:
         df = None
     used_fallback = False
-    if df is None:
-        df = _clean_ohlc(_fh_candles(ticker, days=days))
-        if df is not None and (df.empty or len(df) < 2):
-            df = None
-        used_fallback = df is not None
+    # אם yfinance נכשל או חסר את הנר האחרון — נסה iPhone UA (שממלא מ-meta)
+    if df is None or yf_stale:
+        fb = _clean_ohlc(_fh_candles(ticker, days=days))
+        if fb is not None and not fb.empty and len(fb) >= 2:
+            df = fb
+            used_fallback = True
+    if df is None or df.empty or len(df) < 2:
+        return None, used_fallback
     return df, used_fallback
 
 def _fh_quote(ticker):
