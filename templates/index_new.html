@@ -1,68 +1,80 @@
 {% include "index.html" %}
-<!-- ===== Nimbus redesign layer (does not modify index.html) ===== -->
+<!-- ===== Nimbus × UI/UX Pro Max redesign layer (does not modify index.html) ===== -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 
 /* ══════════════════════════════════════════════════════════
-   NIMBUS REDESIGN — new Apple design language (additive layer)
-   Keeps 100% of the original DOM & JS; upgrades visuals only.
+   NIMBUS × UI/UX Pro Max — "Data-Dense Dashboard" theme layer
+   Slate + stock-green palette · Fira Code numerals · Rubik text.
+   Re-maps the original design tokens; keeps 100% of DOM & JS.
    ══════════════════════════════════════════════════════════ */
 :root{
-  --r-sm:12px; --r-md:16px; --r-lg:20px; --r-xl:26px;
-  --shadow:0 4px 16px rgba(0,0,0,.06),0 18px 44px rgba(0,0,0,.06);
-  --shadow-sm:0 1px 2px rgba(0,0,0,.03),0 2px 8px rgba(0,0,0,.05);
+  --bg:#f8fafc!important; --bg2:#ffffff!important; --bg3:#f2f4f7!important; --bg4:#e9edf2!important;
+  --sep:rgba(15,23,42,.10)!important; --sep2:rgba(15,23,42,.06)!important;
+  --label:#0f172a!important; --label2:#475569!important; --label3:#64748b!important;
+  --blue:#334155!important; --blue-dim:rgba(51,65,85,.10)!important;      /* slate = structural accent */
+  --green:#059669!important; --green-dim:rgba(5,150,105,.12)!important;   /* stock green = up / CTA */
+  --red:#dc2626!important; --red-dim:rgba(220,38,38,.10)!important;
+  --orange:#b45309!important; --orange-dim:rgba(180,83,9,.10)!important;
+  --yellow:#b45309!important; --yellow-dim:rgba(180,83,9,.10)!important;
+  --purple:#6366f1!important; --teal:#0891b2!important;
+  --r-sm:12px; --r-md:14px; --r-lg:16px; --r-xl:18px;
+  --shadow:0 4px 16px rgba(15,23,42,.06),0 18px 40px rgba(15,23,42,.06)!important;
+  --shadow-sm:0 1px 2px rgba(15,23,42,.04),0 2px 8px rgba(15,23,42,.05)!important;
 }
 body{
-  font-family:'Rubik',-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',system-ui,Arial,sans-serif!important;
-  letter-spacing:-.01em;
-  background:#f5f5f7!important;
-  background-image:radial-gradient(ellipse 90% 50% at 50% -4%,rgba(0,113,227,.06),transparent 60%)!important;
+  font-family:'Rubik',-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Arial,sans-serif!important;
+  letter-spacing:-.01em; background:#f8fafc!important;
+  background-image:radial-gradient(ellipse 90% 50% at 50% -4%,rgba(51,65,85,.05),transparent 60%)!important;
 }
-header{
-  background:rgba(245,245,247,.82)!important;
-  backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);
-  border-bottom:1px solid rgba(0,0,0,.07)!important;box-shadow:none!important;padding:14px 28px!important;
+/* monospace numerals for data (skill: Fira Code) */
+.cl-num,.cl-price,.pf-stat-value,.pf-hs-val,.pf-card-value,.mono,
+td[class*="num"],.big-price,.price,#price,.cl-sl-val{
+  font-family:'Fira Code',ui-monospace,'SF Mono',Menlo,monospace!important;
+  font-variant-numeric:tabular-nums;letter-spacing:0;
 }
+header{background:rgba(248,250,252,.82)!important;backdrop-filter:blur(20px) saturate(160%);
+  border-bottom:1px solid rgba(15,23,42,.07)!important;box-shadow:none!important}
 header h1{font-weight:700!important;letter-spacing:-.03em!important}
 
-/* section headers → zone style with accent bar */
+/* section headers → slate accent bar (no reliance on emoji) */
 .section-title{position:relative;font-weight:700!important;letter-spacing:-.02em!important;padding-inline-start:13px!important}
 .section-title::before{content:"";position:absolute;inset-inline-start:0;top:.15em;width:4px;height:1em;border-radius:3px;background:var(--blue)}
 
-/* cards → rounded + soft shadow + hover lift */
+/* cards */
 .mcard,.cl-box,.pf-card,.pf-stat-card,.diag-col,.ot-box,.dip-rule,.pf-hs{
   border-radius:var(--r-lg)!important;box-shadow:var(--shadow-sm)!important;
-  border:1px solid rgba(0,0,0,.06)!important;transition:box-shadow .25s ease,transform .25s ease;
-}
+  border:1px solid rgba(15,23,42,.07)!important;transition:box-shadow .2s ease,transform .2s ease}
 .mcard:hover,.pf-card:hover,.pf-stat-card:hover,.cl-box:hover{box-shadow:var(--shadow)!important;transform:translateY(-2px)}
 
-/* tab bar */
+/* tabs */
 .app-tab-btn{border-radius:12px!important;font-weight:600!important;transition:.2s}
 .app-tab-btn.active{background:var(--bg2)!important;box-shadow:var(--shadow-sm)!important;color:var(--label)!important}
 
-/* pill buttons */
+/* pills / segmented */
 .style-btn,.period-btn,.world-tab{border-radius:980px!important;font-weight:600!important;transition:.2s}
-.style-btn.active-style,.period-btn.active-period,.world-tab.active{background:var(--blue)!important;color:#fff!important;border-color:transparent!important}
+.style-btn.active-style,.period-btn.active-period,.world-tab.active{
+  background:var(--green)!important;color:#fff!important;border-color:transparent!important}
 
-/* primary CTAs → Apple blue */
+/* primary CTAs → stock green */
 .pf-btn-primary,#analyzeBtn,.scan-btn,#analyzePredBtn{
-  background:var(--blue)!important;color:#fff!important;border:none!important;
-  border-radius:14px!important;font-weight:700!important;box-shadow:0 4px 14px rgba(0,113,227,.22)!important;transition:.2s;
-}
-.pf-btn-primary:hover,#analyzeBtn:hover,.scan-btn:hover{filter:brightness(1.05);transform:translateY(-1px)}
+  background:var(--green)!important;color:#fff!important;border:none!important;border-radius:12px!important;
+  font-weight:700!important;box-shadow:0 4px 14px rgba(5,150,105,.24)!important;transition:.2s}
+.pf-btn-primary:hover,#analyzeBtn:hover,.scan-btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
 .pf-btn-secondary{border-radius:12px!important;font-weight:600!important}
 
-/* inputs */
 input,select,textarea{border-radius:12px!important}
-.search-box input{border-radius:16px!important;font-weight:600}
+.search-box input{border-radius:14px!important;font-weight:600}
 
-/* tables */
 .pf-tbl th{font-weight:700!important;text-transform:uppercase;font-size:11px!important;letter-spacing:.03em}
-.pf-tbl td,.pf-tbl th{border-color:rgba(0,0,0,.06)!important}
-.pf-tbl-wrap{border-radius:var(--r-md)!important;overflow:hidden;border:1px solid rgba(0,0,0,.06)!important}
-
-/* stat cards */
+.pf-tbl td,.pf-tbl th{border-color:rgba(15,23,42,.07)!important}
+.pf-tbl-wrap{border-radius:var(--r-md)!important;overflow:hidden;border:1px solid rgba(15,23,42,.07)!important}
 .pf-stat-value{letter-spacing:-.03em!important;font-weight:800!important}
+
+/* skill UX checklist */
+button,[onclick],a,.style-btn,.period-btn,.app-tab-btn{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:4px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
