@@ -2009,6 +2009,11 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/new')
+def index_new():
+    return render_template('index_new.html')
+
+
 @app.route('/analyze')
 def analyze():
     ticker = request.args.get('ticker', '').upper().strip()
