@@ -153,3 +153,91 @@ button,[onclick],a{cursor:pointer}
   if(document.readyState!=='loading')bind();else document.addEventListener('DOMContentLoaded',bind);
 })();
 </script>
+
+<!-- ===== ICT analysis window (per analyzed stock) ===== -->
+<style>
+#fxIct{margin:20px 0;border-radius:22px;overflow:hidden;position:relative;
+  background:rgba(255,255,255,.72);backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
+  border:1px solid rgba(255,255,255,.7);box-shadow:0 12px 34px rgba(15,23,42,.1),inset 0 1px 0 rgba(255,255,255,.7);direction:rtl}
+#fxIct .top{display:flex;align-items:center;gap:10px;padding:15px 18px;color:#fff;
+  background:linear-gradient(120deg,#0f172a,#155e75 60%,#0e7490)}
+#fxIct .top h3{font-family:'Rubik',sans-serif;font-size:16px;font-weight:800;margin:0}
+#fxIct .top .tk{font-family:'Fira Code',monospace;font-weight:700;opacity:.9}
+#fxIct .top .badge{margin-inline-start:auto;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:999px}
+#fxIct .badge.ok{background:rgba(16,185,129,.25);color:#d1fae5;border:1px solid rgba(16,185,129,.5)}
+#fxIct .badge.wait{background:rgba(234,179,8,.22);color:#fef9c3;border:1px solid rgba(234,179,8,.5)}
+#fxIct .body{padding:16px 18px}
+#fxIct .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+#fxIct .chip{font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;background:rgba(15,23,42,.05);color:#334155;border:1px solid rgba(15,23,42,.08)}
+#fxIct .chip.kz{background:rgba(14,165,233,.12);color:#0369a1;border-color:rgba(14,165,233,.3)}
+#fxIct .chip.zone{background:rgba(99,102,241,.12);color:#4338ca;border-color:rgba(99,102,241,.3)}
+#fxIct .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+#fxIct .cell{background:rgba(255,255,255,.7);border:1px solid rgba(15,23,42,.08);border-radius:14px;padding:12px;text-align:center}
+#fxIct .cell .l{font-size:11px;color:#7c8aa0;font-weight:600;margin-bottom:5px}
+#fxIct .cell .v{font-family:'Fira Code',monospace;font-size:18px;font-weight:800;letter-spacing:-.02em}
+#fxIct .cell.entry .v{color:#0e7490}#fxIct .cell.stop .v{color:#dc2626}#fxIct .cell.tgt .v{color:#059669}#fxIct .cell.rr .v{color:#4338ca}
+#fxIct .expl{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){ #fxIct .grid{grid-template-columns:1fr 1fr}#fxIct .expl{grid-template-columns:1fr}}
+#fxIct .box{background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.07);border-radius:14px;padding:12px 14px}
+#fxIct .box .bl{font-size:11.5px;font-weight:800;color:#0e7490;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+#fxIct .box .bt{font-size:12.5px;color:#334155;line-height:1.6}
+#fxIct .lvls{font-size:11.5px;color:#64748b;margin-top:12px;font-family:'Fira Code',monospace;display:flex;flex-wrap:wrap;gap:12px}
+#fxIct .disc{font-size:10.5px;color:#94a3b8;margin-top:10px;text-align:center}
+#fxIct .ldg{padding:24px;text-align:center;color:#7c8aa0;font-size:13px}
+</style>
+<script>
+(function(){
+  var last=null, panel=null, busy=false;
+  function fmt(v){return (v===null||v===undefined||v!==v)?'—':('$'+v);}
+  function build(){
+    if(panel) return panel;
+    panel=document.createElement('div'); panel.id='fxIct';
+    var tc=document.getElementById('tradeCard');
+    if(tc&&tc.parentNode){ tc.parentNode.insertBefore(panel, tc.nextSibling); }
+    else return null;
+    return panel;
+  }
+  function loading(tk){ var p=build(); if(!p)return; p.innerHTML='<div class="top"><h3>🎯 ניתוח ICT</h3><span class="tk">'+tk+'</span></div><div class="ldg">מחשב מבנה שוק, FVG ו-Killzone…</div>'; }
+  function render(d){
+    var p=build(); if(!p)return;
+    var okc = d.valid ? 'ok' : 'wait';
+    var okt = d.valid ? '✓ תנאי מבנה מתקיים' : '⏳ המתן לאישור';
+    var sideTxt = d.side==='long'?'Long (קנייה)':d.side==='short'?'Short (מכירה)':'המתנה';
+    var fvgTxt = d.fvg ? ('FVG '+(d.fvg.type==='bull'?'שורי':'דובי')+' $'+d.fvg.bot+'–$'+d.fvg.top) : 'אין FVG טרי';
+    p.innerHTML =
+     '<div class="top"><h3>🎯 ניתוח ICT — Inner Circle Trader</h3><span class="tk">'+d.ticker+'</span>'+
+       '<span class="badge '+okc+'">'+okt+'</span></div>'+
+     '<div class="body">'+
+       '<div class="chips">'+
+         '<span class="chip">Bias: <b>'+d.bias+'</b></span>'+
+         '<span class="chip zone">'+d.zone+'</span>'+
+         '<span class="chip kz">⏱ '+d.killzone+'</span>'+
+         '<span class="chip">כיוון: <b>'+sideTxt+'</b></span>'+
+       '</div>'+
+       '<div class="grid">'+
+         '<div class="cell entry"><div class="l">💰 כניסה</div><div class="v">'+fmt(d.entry)+'</div></div>'+
+         '<div class="cell stop"><div class="l">🛑 סטופ</div><div class="v">'+fmt(d.stop)+'</div></div>'+
+         '<div class="cell tgt"><div class="l">🎯 יעד</div><div class="v">'+fmt(d.target)+'</div></div>'+
+         '<div class="cell rr"><div class="l">⚖️ R:R</div><div class="v">1:'+d.rr+'</div></div>'+
+       '</div>'+
+       '<div class="expl">'+
+         '<div class="box"><div class="bl">⏱ מתי להיכנס</div><div class="bt">'+d.killzone+'. כניסה רק בתוך ה-Killzone ואחרי איסוף נזילות (Sweep).</div></div>'+
+         '<div class="box"><div class="bl">🎬 איך</div><div class="bt">'+d.how+'</div></div>'+
+       '</div>'+
+       '<div class="box" style="margin-top:12px"><div class="bl">💡 למה</div><div class="bt">'+d.why+'. '+fvgTxt+'. אזור OTE (פיבו 62–79%): $'+d.ote_low+'–$'+d.ote_high+'.</div></div>'+
+       '<div class="lvls"><span>PDH: $'+d.pdh+'</span><span>PDL: $'+d.pdl+'</span><span>OTE: $'+d.ote_low+'–$'+d.ote_high+'</span></div>'+
+       '<div class="disc">שיטת ICT (Michael J. Huddleston) · אוטומטי מנתוני מחיר · לא ייעוץ השקעות</div>'+
+     '</div>';
+  }
+  function load(tk){
+    if(busy)return; busy=true; loading(tk);
+    fetch('/ict?ticker='+encodeURIComponent(tk)).then(function(r){return r.json();}).then(function(j){
+      busy=false; if(j&&!j.error){ render(j); } else if(panel){ panel.innerHTML='<div class="top"><h3>🎯 ניתוח ICT</h3><span class="tk">'+tk+'</span></div><div class="ldg">אין מספיק נתונים ל-ICT עבור מניה זו.</div>'; }
+    }).catch(function(){ busy=false; });
+  }
+  setInterval(function(){
+    var tk=window._currentTicker;
+    if(tk && tk!==last && document.getElementById('tradeCard')){ last=tk; load(tk); }
+  }, 700);
+})();
+</script>
