@@ -2703,21 +2703,27 @@ def ict_analysis():
             if L[i] <= L[i-1] and L[i] <= L[i-2] and L[i] <= L[i+1] and L[i] <= L[i+2]:
                 sl.append((i, L[i]))
 
-        bias, bias_en = 'ניטרלי', 'neutral'
-        if len(sh) >= 2 and len(sl) >= 2:
-            if sh[-1][1] > sh[-2][1] and sl[-1][1] > sl[-2][1]:
-                bias, bias_en = 'עולה (Bullish)', 'bull'
-            elif sh[-1][1] < sh[-2][1] and sl[-1][1] < sl[-2][1]:
-                bias, bias_en = 'יורד (Bearish)', 'bear'
+        # Bias from higher-timeframe trend (moving averages) — robust, not short-biased
+        ma20 = sum(C[-20:]) / 20.0
+        ma50 = sum(C[-50:]) / 50.0 if n >= 50 else sum(C) / float(n)
+        if price >= ma50 and ma20 >= ma50:
+            bias, bias_en = 'עולה (Bullish)', 'bull'
+        elif price <= ma50 and ma20 <= ma50:
+            bias, bias_en = 'יורד (Bearish)', 'bear'
+        else:
+            bias, bias_en = 'ניטרלי (טווח)', 'neutral'
 
         look = min(40, n)
         rng_h = max(H[-look:]); rng_l = min(L[-look:]); eq = (rng_h + rng_l) / 2.0
         in_discount = price <= eq
         zone = 'Premium (יקר) — אזור מכירה' if price > eq else 'Discount (זול) — אזור קנייה'
-
-        last_sl = sl[-1][1] if sl else rng_l
-        last_sh = sh[-1][1] if sh else rng_h
         pdh = round(H[-2], 2); pdl = round(L[-2], 2)
+
+        # most recent leg (for OTE / liquidity)
+        recent = min(30, n)
+        leg_low = min(L[-recent:]); leg_high = max(H[-recent:])
+        last_sl, last_sh = leg_low, leg_high
+        span = max(leg_high - leg_low, 0.01)
 
         fvg = None
         for i in range(n - 1, max(2, n - 15), -1):
@@ -2726,28 +2732,39 @@ def ict_analysis():
             if H[i] < L[i-2]:
                 fvg = {'type': 'bear', 'top': round(L[i-2], 2), 'bot': round(H[i], 2)}; break
 
-        span = max(last_sh - last_sl, 0.01)
-        ote_low = round(last_sh - 0.79 * span, 2)
-        ote_high = round(last_sh - 0.62 * span, 2)
-
         if bias_en == 'bull':
             side = 'long'
-            entry = fvg['bot'] if (fvg and fvg['type'] == 'bull') else round((ote_low + ote_high) / 2, 2)
-            stop = round(last_sl * 0.995, 2)
-            target = round(max(last_sh, rng_h), 2)
-            how = ('המתן ל-Sweep מתחת לשפל האחרון ($%s) ואז ל-MSS (נר Displacement חזק). '
-                   'היכנס Long על ריטסט ל-FVG/OTE ב-Discount — לא לרדוף אחרי המהלך.' % round(last_sl, 2))
+            ote_low = round(leg_high - 0.79 * span, 2)
+            ote_high = round(leg_high - 0.62 * span, 2)
+            cand = fvg['bot'] if (fvg and fvg['type'] == 'bull') else (ote_low + ote_high) / 2.0
+            entry = round(max(min(cand, price), leg_low), 2)      # pullback buy at/below price
+            stop = round(min(leg_low, entry) * 0.985, 2)
+            target = round(max(leg_high, rng_h, price * 1.05), 2)
+            valid = price >= ma20
+            how = ('מגמה עולה 📈 — קנייה בתיקון. המתן ל-Sweep מתחת ל-$%s ולכניסה Long באזור OTE/FVG '
+                   '($%s–$%s), מתחת למחיר הנוכחי. סטופ מתחת לשפל, יעד לנזילות מעל.'
+                   % (round(leg_low, 2), ote_low, ote_high))
         elif bias_en == 'bear':
             side = 'short'
-            entry = fvg['top'] if (fvg and fvg['type'] == 'bear') else round(last_sh - 0.705 * span, 2)
-            stop = round(last_sh * 1.005, 2)
-            target = round(min(last_sl, rng_l), 2)
-            how = ('המתן ל-Sweep מעל השיא האחרון ($%s) ואז ל-MSS למטה. '
-                   'היכנס Short על ריטסט ל-FVG/OTE ב-Premium — לא לרדוף.' % round(last_sh, 2))
+            ote_low = round(leg_low + 0.62 * span, 2)
+            ote_high = round(leg_low + 0.79 * span, 2)
+            cand = fvg['top'] if (fvg and fvg['type'] == 'bear') else (ote_low + ote_high) / 2.0
+            entry = round(min(max(cand, price), leg_high), 2)     # rally sell at/above price
+            stop = round(max(leg_high, entry) * 1.015, 2)
+            target = round(min(leg_low, rng_l, price * 0.95), 2)
+            valid = price <= ma20
+            how = ('מגמה יורדת 📉 — מכירה בראלי. המתן ל-Sweep מעל $%s ולכניסה Short באזור OTE/FVG '
+                   '($%s–$%s), מעל המחיר הנוכחי. סטופ מעל השיא, יעד לנזילות מתחת.'
+                   % (round(leg_high, 2), ote_low, ote_high))
         else:
-            side = 'wait'
-            entry, stop, target = price, round(last_sl * 0.99, 2), round(last_sh, 2)
-            how = 'אין מבנה ICT ברור (מגמה ניטרלית). המתן ל-CHoCH/MSS שיגדיר כיוון לפני כניסה.'
+            side = 'range'
+            ote_low, ote_high = round(rng_l, 2), round(rng_h, 2)
+            entry = round(rng_l * 1.01, 2)
+            stop = round(rng_l * 0.975, 2)
+            target = round(eq, 2)
+            valid = False
+            how = ('טווח (Consolidation) — אין מגמה ברורה. שקול קנייה קרוב לתחתית ($%s) ומכירה קרוב לראש ($%s), '
+                   'או המתן ל-MSS שיגדיר כיוון.' % (round(rng_l, 2), round(rng_h, 2)))
 
         risk = abs(entry - stop); reward = abs(target - entry)
         rr = round(reward / risk, 2) if risk > 0 else 0
@@ -2770,7 +2787,6 @@ def ict_analysis():
         if fvg:
             why += ' · זוהה FVG %s כאזור כניסה' % ('שורי' if fvg['type'] == 'bull' else 'דובי')
 
-        valid = (side == 'long' and in_discount) or (side == 'short' and not in_discount)
 
         result = {
             'ticker': ticker, 'price': price, 'bias': bias, 'side': side,

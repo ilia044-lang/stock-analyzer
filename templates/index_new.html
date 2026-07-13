@@ -204,7 +204,7 @@ button,[onclick],a{cursor:pointer}
     var p=build(); if(!p)return;
     var okc = d.valid ? 'ok' : 'wait';
     var okt = d.valid ? '✓ תנאי מבנה מתקיים' : '⏳ המתן לאישור';
-    var sideTxt = d.side==='long'?'Long (קנייה)':d.side==='short'?'Short (מכירה)':'המתנה';
+    var sideTxt = d.side==='long'?'Long (קנייה)':d.side==='short'?'Short (מכירה)':'טווח (המתנה)';
     var fvgTxt = d.fvg ? ('FVG '+(d.fvg.type==='bull'?'שורי':'דובי')+' $'+d.fvg.bot+'–$'+d.fvg.top) : 'אין FVG טרי';
     p.innerHTML =
      '<div class="top"><h3>🎯 ניתוח ICT — Inner Circle Trader</h3><span class="tk">'+d.ticker+'</span>'+
