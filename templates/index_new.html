@@ -89,3 +89,67 @@ button,[onclick],a{cursor:pointer}
   if(document.readyState!=='loading')play();else document.addEventListener('DOMContentLoaded',play);
 })();
 </script>
+
+<!-- ===== Sector hover → top-4 rising stocks tooltip ===== -->
+<style>
+#fxSecTip{position:fixed;z-index:9999;min-width:210px;max-width:260px;pointer-events:none;opacity:0;
+  transform:translateY(6px);transition:opacity .16s ease,transform .16s ease;
+  background:rgba(255,255,255,.86);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);
+  border:1px solid rgba(255,255,255,.7);border-radius:16px;
+  box-shadow:0 18px 44px rgba(15,23,42,.18),0 4px 12px rgba(15,23,42,.1);padding:12px 13px;font-family:'Rubik',system-ui,sans-serif;direction:rtl}
+#fxSecTip.show{opacity:1;transform:translateY(0)}
+#fxSecTip .h{font-size:12.5px;font-weight:800;color:#0b1220;margin-bottom:9px;display:flex;align-items:center;gap:6px}
+#fxSecTip .h::before{content:"";width:4px;height:14px;border-radius:3px;background:linear-gradient(120deg,#10b981,#0ea5e9)}
+#fxSecTip .r{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(15,23,42,.07)}
+#fxSecTip .r:first-of-type{border-top:none}
+#fxSecTip .r .rk{width:18px;height:18px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;background:linear-gradient(120deg,#10b981,#0ea5e9);flex-shrink:0}
+#fxSecTip .r .tk{font-family:'Fira Code',monospace;font-weight:700;font-size:13px;color:#0b1220}
+#fxSecTip .r .pr{font-family:'Fira Code',monospace;font-size:11px;color:#7c8aa0}
+#fxSecTip .r .ch{margin-inline-start:auto;font-family:'Fira Code',monospace;font-weight:700;font-size:13px}
+#fxSecTip .up{color:#059669}#fxSecTip .dn{color:#dc2626}
+#fxSecTip .ld{font-size:12px;color:#7c8aa0;text-align:center;padding:6px 0}
+#sectorsList > div{cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+#sectorsList > div:hover{transform:translateX(-3px)}
+</style>
+<script>
+(function(){
+  var MAP={'טכנולוגיה':'XLK','פיננסים':'XLF','אנרגיה':'XLE','בריאות':'XLV','תעשייה':'XLI','מחזורית':'XLY','בסיסית':'XLP','תקשורת':'XLC','נדל':'XLRE','חומרי גלם':'XLB','שירותים':'XLU'};
+  var NAMES={'XLK':'טכנולוגיה 💻','XLF':'פיננסים 🏦','XLE':'אנרגיה ⛽','XLV':'בריאות 🏥','XLI':'תעשייה 🏭','XLY':'צרכנות מחזורית 🛍️','XLP':'צרכנות בסיסית 🛒','XLC':'תקשורת 📡','XLRE':'נדל״ן 🏠','XLB':'חומרי גלם 🪨','XLU':'שירותים ⚡'};
+  var cache={},tip;
+  function ensure(){ if(!tip){tip=document.createElement('div');tip.id='fxSecTip';document.body.appendChild(tip);} return tip; }
+  function etfFor(txt){ for(var k in MAP){ if(txt.indexOf(k)>=0) return MAP[k]; } return null; }
+  function render(etf){
+    var e=ensure(); var d=cache[etf];
+    var head='<div class="h">'+(NAMES[etf]||'')+' · המובילות היום</div>';
+    if(d==='loading'){ e.innerHTML=head+'<div class="ld">טוען מניות…</div>'; return; }
+    if(!d||!d.length){ e.innerHTML=head+'<div class="ld">אין נתונים כרגע</div>'; return; }
+    e.innerHTML=head+d.map(function(s,i){
+      var up=s.change_pct>=0; var sign=up?'+':'';
+      return '<div class="r"><span class="rk">'+(i+1)+'</span><span class="tk">'+s.ticker+'</span>'+
+             '<span class="pr">$'+s.price+'</span>'+
+             '<span class="ch '+(up?'up':'dn')+'">'+sign+s.change_pct+'%</span></div>';
+    }).join('');
+  }
+  function load(etf){
+    if(cache[etf]&&cache[etf]!=='loading') return Promise.resolve();
+    cache[etf]='loading'; render(etf);
+    return fetch('/sector-leaders?etf='+etf).then(function(r){return r.json();})
+      .then(function(j){ cache[etf]=(j&&j.leaders)||[]; render(etf); })
+      .catch(function(){ cache[etf]=[]; render(etf); });
+  }
+  function pos(x,y){ var e=ensure(),w=e.offsetWidth||230,h=e.offsetHeight||160;
+    var L=x-w-16; if(L<8) L=x+16; var T=y-10; if(T+h>innerHeight-8)T=innerHeight-h-8; if(T<8)T=8;
+    e.style.left=L+'px'; e.style.top=T+'px'; }
+  function bind(){
+    var list=document.getElementById('sectorsList'); if(!list||list.__fxb) return; list.__fxb=1;
+    function rowOf(t){ while(t&&t.parentElement!==list) t=t.parentElement; return (t&&t.parentElement===list)?t:null; }
+    list.addEventListener('mouseover',function(e){ var row=rowOf(e.target); if(!row)return;
+      var etf=etfFor(row.textContent||''); if(!etf)return; ensure().classList.add('show'); load(etf).then(function(){render(etf);}); render(etf); pos(e.clientX,e.clientY); });
+    list.addEventListener('mousemove',function(e){ if(tip&&tip.classList.contains('show')) pos(e.clientX,e.clientY); });
+    list.addEventListener('mouseleave',function(){ if(tip) tip.classList.remove('show'); });
+  }
+  // #sectorsList is filled async by the live-data JS — poll briefly to bind once it exists.
+  var tries=0,iv=setInterval(function(){ bind(); if(++tries>40||(document.getElementById('sectorsList')&&document.getElementById('sectorsList').__fxb)) clearInterval(iv); },500);
+  if(document.readyState!=='loading')bind();else document.addEventListener('DOMContentLoaded',bind);
+})();
+</script>
