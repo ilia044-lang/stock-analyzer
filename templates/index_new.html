@@ -264,11 +264,19 @@ button,[onclick],a{cursor:pointer}
       tip.style.opacity=1;tip.style.left=((xx/W)*r.width)+'px';tip.textContent='$'+s[idx];});
     ov.addEventListener('mouseleave',function(){cx.setAttribute('opacity','0');tip.style.opacity=0;});
   }
+  function fail(tk,msg){ var p=build(); if(!p)return;
+    p.innerHTML='<div class="top"><h3>🎯 ניתוח ICT</h3><span class="tk">'+tk+'</span></div><div class="ldg">'+(msg||'לא ניתן לחשב ICT למניה זו כרגע. נסה שוב בעוד רגע.')+'<br><button onclick="window.__ictRetry&&window.__ictRetry()" style="margin-top:10px;background:linear-gradient(120deg,#10b981,#0ea5e9);color:#fff;border:none;border-radius:10px;padding:6px 16px;font-weight:700;cursor:pointer;font-family:Rubik,sans-serif">נסה שוב</button></div>'; }
   function load(tk){
     if(busy)return; busy=true; loading(tk);
-    fetch('/ict?ticker='+encodeURIComponent(tk)).then(function(r){return r.json();}).then(function(j){
-      busy=false; if(j&&!j.error){ render(j); } else if(panel){ panel.innerHTML='<div class="top"><h3>🎯 ניתוח ICT</h3><span class="tk">'+tk+'</span></div><div class="ldg">אין מספיק נתונים ל-ICT עבור מניה זו.</div>'; }
-    }).catch(function(){ busy=false; });
+    window.__ictRetry=function(){ busy=false; last=null; load(tk); };
+    var ctrl=('AbortController' in window)?new AbortController():null;
+    var to=setTimeout(function(){ if(ctrl)ctrl.abort(); },22000);
+    fetch('/ict?ticker='+encodeURIComponent(tk), ctrl?{signal:ctrl.signal}:{})
+      .then(function(r){ return r.json(); })
+      .then(function(j){ clearTimeout(to); busy=false;
+        if(j && !j.error && j.entry!==undefined){ render(j); }
+        else { fail(tk, (j&&j.error)?'אין מספיק נתונים ל-ICT עבור מניה זו.':null); } })
+      .catch(function(){ clearTimeout(to); busy=false; fail(tk); });
   }
   setInterval(function(){
     var tk=window._currentTicker;
