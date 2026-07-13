@@ -2650,23 +2650,23 @@ def sector_leaders():
     if cached:
         return jsonify(cached)
     leaders = []
+    def _chg(tk):
+        try:
+            df = _fh_candles(tk, days=6)
+            if df is None or 'Close' not in df or len(df) < 2:
+                return None
+            prev = float(df['Close'].iloc[-2]); curr = float(df['Close'].iloc[-1])
+            if prev <= 0:
+                return None
+            return {'ticker': tk, 'price': round(curr, 2),
+                    'change_pct': round((curr - prev) / prev * 100, 2)}
+        except Exception:
+            return None
     try:
-        data = yf.download(tickers, period='2d', progress=False,
-                           auto_adjust=True, threads=True)
-        closes = data['Close'] if 'Close' in getattr(data, 'columns', []) else data
-        for tk in tickers:
-            try:
-                col = closes[tk] if hasattr(closes, 'columns') and tk in closes.columns else closes
-                col = col.dropna()
-                if len(col) < 2:
-                    continue
-                prev = float(col.iloc[-2]); curr = float(col.iloc[-1])
-                if prev <= 0:
-                    continue
-                leaders.append({'ticker': tk, 'price': round(curr, 2),
-                                'change_pct': round((curr - prev) / prev * 100, 2)})
-            except Exception:
-                continue
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+            for r in ex.map(_chg, tickers):
+                if r:
+                    leaders.append(r)
     except Exception:
         pass
     leaders.sort(key=lambda x: x['change_pct'], reverse=True)
@@ -2686,12 +2686,10 @@ def ict_analysis():
     if cached:
         return jsonify(cached)
     try:
-        df = yf.download(ticker, period='4mo', interval='1d',
-                         progress=False, auto_adjust=True)
+        stock = _ticker(ticker)
+        df, _ = _price_history(ticker, stock, period='6mo', days=150)
         if df is None or len(df) < 25:
             return jsonify({'error': 'no data'}), 404
-        if getattr(df.columns, 'nlevels', 1) > 1:
-            df.columns = df.columns.get_level_values(0)
         H = [float(x) for x in df['High'].tolist()]
         L = [float(x) for x in df['Low'].tolist()]
         C = [float(x) for x in df['Close'].tolist()]
