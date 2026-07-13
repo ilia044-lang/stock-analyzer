@@ -2676,6 +2676,119 @@ def sector_leaders():
     return jsonify(result)
 
 
+@app.route('/ict')
+def ict_analysis():
+    """ניתוח ICT למניה בודדת: Bias, Premium/Discount, FVG, OTE, Killzone, וכניסה/סטופ/יעד."""
+    ticker = request.args.get('ticker', '').upper().strip()
+    if not ticker:
+        return jsonify({'error': 'no ticker'}), 400
+    cached = cache_get(f'ict_{ticker}', ttl=180)
+    if cached:
+        return jsonify(cached)
+    try:
+        df = yf.download(ticker, period='4mo', interval='1d',
+                         progress=False, auto_adjust=True)
+        if df is None or len(df) < 25:
+            return jsonify({'error': 'no data'}), 404
+        if getattr(df.columns, 'nlevels', 1) > 1:
+            df.columns = df.columns.get_level_values(0)
+        H = [float(x) for x in df['High'].tolist()]
+        L = [float(x) for x in df['Low'].tolist()]
+        C = [float(x) for x in df['Close'].tolist()]
+        n = len(C); price = round(C[-1], 2)
+
+        # swing pivots (fractal, window=2)
+        sh, sl = [], []
+        for i in range(2, n - 2):
+            if H[i] >= H[i-1] and H[i] >= H[i-2] and H[i] >= H[i+1] and H[i] >= H[i+2]:
+                sh.append((i, H[i]))
+            if L[i] <= L[i-1] and L[i] <= L[i-2] and L[i] <= L[i+1] and L[i] <= L[i+2]:
+                sl.append((i, L[i]))
+
+        bias, bias_en = 'ניטרלי', 'neutral'
+        if len(sh) >= 2 and len(sl) >= 2:
+            if sh[-1][1] > sh[-2][1] and sl[-1][1] > sl[-2][1]:
+                bias, bias_en = 'עולה (Bullish)', 'bull'
+            elif sh[-1][1] < sh[-2][1] and sl[-1][1] < sl[-2][1]:
+                bias, bias_en = 'יורד (Bearish)', 'bear'
+
+        look = min(40, n)
+        rng_h = max(H[-look:]); rng_l = min(L[-look:]); eq = (rng_h + rng_l) / 2.0
+        in_discount = price <= eq
+        zone = 'Premium (יקר) — אזור מכירה' if price > eq else 'Discount (זול) — אזור קנייה'
+
+        last_sl = sl[-1][1] if sl else rng_l
+        last_sh = sh[-1][1] if sh else rng_h
+        pdh = round(H[-2], 2); pdl = round(L[-2], 2)
+
+        fvg = None
+        for i in range(n - 1, max(2, n - 15), -1):
+            if L[i] > H[i-2]:
+                fvg = {'type': 'bull', 'top': round(L[i], 2), 'bot': round(H[i-2], 2)}; break
+            if H[i] < L[i-2]:
+                fvg = {'type': 'bear', 'top': round(L[i-2], 2), 'bot': round(H[i], 2)}; break
+
+        span = max(last_sh - last_sl, 0.01)
+        ote_low = round(last_sh - 0.79 * span, 2)
+        ote_high = round(last_sh - 0.62 * span, 2)
+
+        if bias_en == 'bull':
+            side = 'long'
+            entry = fvg['bot'] if (fvg and fvg['type'] == 'bull') else round((ote_low + ote_high) / 2, 2)
+            stop = round(last_sl * 0.995, 2)
+            target = round(max(last_sh, rng_h), 2)
+            how = ('המתן ל-Sweep מתחת לשפל האחרון ($%s) ואז ל-MSS (נר Displacement חזק). '
+                   'היכנס Long על ריטסט ל-FVG/OTE ב-Discount — לא לרדוף אחרי המהלך.' % round(last_sl, 2))
+        elif bias_en == 'bear':
+            side = 'short'
+            entry = fvg['top'] if (fvg and fvg['type'] == 'bear') else round(last_sh - 0.705 * span, 2)
+            stop = round(last_sh * 1.005, 2)
+            target = round(min(last_sl, rng_l), 2)
+            how = ('המתן ל-Sweep מעל השיא האחרון ($%s) ואז ל-MSS למטה. '
+                   'היכנס Short על ריטסט ל-FVG/OTE ב-Premium — לא לרדוף.' % round(last_sh, 2))
+        else:
+            side = 'wait'
+            entry, stop, target = price, round(last_sl * 0.99, 2), round(last_sh, 2)
+            how = 'אין מבנה ICT ברור (מגמה ניטרלית). המתן ל-CHoCH/MSS שיגדיר כיוון לפני כניסה.'
+
+        risk = abs(entry - stop); reward = abs(target - entry)
+        rr = round(reward / risk, 2) if risk > 0 else 0
+
+        try:
+            from zoneinfo import ZoneInfo
+            now_il = datetime.datetime.now(ZoneInfo('Asia/Jerusalem'))
+        except Exception:
+            now_il = datetime.datetime.utcnow() + datetime.timedelta(hours=3)
+        hm = now_il.hour + now_il.minute / 60.0
+        in_ny = 15 <= hm < 18
+        if 17 <= hm < 18:
+            kz = 'Silver Bullet פעיל עכשיו ⭐ (17:00–18:00) — החלון הכי חד'
+        elif in_ny:
+            kz = 'NY Open פעיל עכשיו ✅ (15:00–18:00) — ווליום גבוה'
+        else:
+            kz = 'מחוץ ל-Killzone — המתן ל-15:00–18:00 (שעון ישראל)'
+
+        why = 'Bias %s · %s' % (bias, zone)
+        if fvg:
+            why += ' · זוהה FVG %s כאזור כניסה' % ('שורי' if fvg['type'] == 'bull' else 'דובי')
+
+        valid = (side == 'long' and in_discount) or (side == 'short' and not in_discount)
+
+        result = {
+            'ticker': ticker, 'price': price, 'bias': bias, 'side': side,
+            'zone': zone, 'in_discount': in_discount,
+            'entry': entry, 'stop': stop, 'target': target, 'rr': rr,
+            'ote_low': ote_low, 'ote_high': ote_high,
+            'pdh': pdh, 'pdl': pdl, 'fvg': fvg,
+            'killzone': kz, 'in_killzone': in_ny,
+            'why': why, 'how': how, 'valid': valid,
+        }
+        cache_set(f'ict_{ticker}', result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/drivers')
 def market_drivers():
     """מזהה מה מניע את השוק עכשיו"""
