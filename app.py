@@ -2805,6 +2805,81 @@ def ict_analysis():
         return jsonify({'error': str(e)}), 500
 
 
+_ICT_UNIVERSE = [
+    'NVDA','AMD','AVGO','MU','ANET','SMCI','QCOM','MRVL','TXN','PLTR','HOOD','COIN',
+    'APP','CRWD','PANW','NOW','SNOW','DDOG','NET','SHOP','META','GOOGL','AMZN','MSFT',
+    'AAPL','TSLA','NFLX','UBER','ABNB','GEV','VST','CEG','LLY','JPM','V','XOM',
+    'ASTS','RKLB','SOFI','MSTR','DKNG','RDDT','CVNA','AMAT','LRCX','KLAC',
+]
+
+@app.route('/ict-scan')
+def ict_scan():
+    """סורק ICT: מניות במגמת עלייה שנמצאות עכשיו באזור כניסה (תיקון לתמיכה)."""
+    cached = cache_get('ict_scan', ttl=600)
+    if cached:
+        return jsonify(cached)
+
+    def scan(tk):
+        try:
+            df = _fh_candles(tk, days=130)
+            if df is None or 'Close' not in df or len(df) < 50:
+                return None
+            C = [float(x) for x in df['Close'].tolist()]
+            H = [float(x) for x in df['High'].tolist()]
+            L = [float(x) for x in df['Low'].tolist()]
+            n = len(C); price = round(C[-1], 2)
+            ma20 = sum(C[-20:]) / 20.0
+            ma50 = sum(C[-50:]) / 50.0
+            recent = min(30, n)
+            leg_low = min(L[-recent:]); leg_high = max(H[-recent:])
+            look = min(40, n); rng_h = max(H[-look:])
+            # bullish dip setup: uptrend + price near MA20 support (actionable now)
+            if price >= ma50 and ma20 >= ma50:
+                near = (price - ma20) / ma20 * 100.0
+                if -4 <= near <= 6:
+                    entry = round(min(price, ma20 * 1.02), 2)
+                    stop = round(min(leg_low, ma20) * 0.97, 2)
+                    target = round(max(leg_high, rng_h, price * 1.06), 2)
+                    risk = max(entry - stop, 0.01)
+                    rr = round((target - entry) / risk, 2)
+                    if rr >= 1.5:
+                        return {'ticker': tk, 'side': 'LONG', 'price': price,
+                                'entry': entry, 'stop': stop, 'target': target,
+                                'rr': rr, 'near': round(near, 2)}
+            return None
+        except Exception:
+            return None
+
+    out = []
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+            for r in ex.map(scan, _ICT_UNIVERSE):
+                if r:
+                    out.append(r)
+    except Exception:
+        pass
+    out.sort(key=lambda r: (abs(r['near']), -r['rr']))
+
+    try:
+        from zoneinfo import ZoneInfo
+        now_il = datetime.datetime.now(ZoneInfo('Asia/Jerusalem'))
+    except Exception:
+        now_il = datetime.datetime.utcnow() + datetime.timedelta(hours=3)
+    hm = now_il.hour + now_il.minute / 60.0
+    in_ny = 15 <= hm < 18
+    if 17 <= hm < 18:
+        kz = 'Silver Bullet פעיל ⭐ (17:00–18:00)'
+    elif in_ny:
+        kz = 'NY Open פעיל ✅ (15:00–18:00)'
+    else:
+        kz = 'מחוץ ל-Killzone — פעיל 15:00–18:00 (שעון ישראל)'
+    result = {'matches': out[:10], 'killzone': kz, 'in_killzone': in_ny,
+              'scanned': len(_ICT_UNIVERSE), 'found': len(out),
+              'time': now_il.strftime('%H:%M')}
+    cache_set('ict_scan', result)
+    return jsonify(result)
+
+
 @app.route('/drivers')
 def market_drivers():
     """מזהה מה מניע את השוק עכשיו"""
