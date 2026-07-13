@@ -1,14 +1,12 @@
 {% include "index.html" %}
-<!-- ===== Nimbus FX — innovative animated glass theme (additive; DOM & live-data JS untouched) ===== -->
+<!-- ===== Nimbus FX — animated glass theme (additive; never hides dynamic content) ===== -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --fx-ink:#0b1220; --fx-ink2:#475569; --fx-ink3:#7c8aa0;
-  --fx-a1:#10b981; --fx-a2:#0ea5e9; --fx-a3:#6366f1;   /* emerald · sky · indigo */
+  --fx-a1:#10b981; --fx-a2:#0ea5e9; --fx-a3:#6366f1;
   --fx-grad:linear-gradient(120deg,var(--fx-a1),var(--fx-a2) 55%,var(--fx-a3));
-  /* remap original tokens */
   --bg:transparent!important; --bg2:rgba(255,255,255,.72)!important; --bg3:rgba(255,255,255,.55)!important; --bg4:rgba(255,255,255,.85)!important;
   --label:#0b1220!important; --label2:#475569!important; --label3:#7c8aa0!important;
   --blue:#0ea5e9!important; --green:#10b981!important; --red:#ef4444!important;
@@ -16,42 +14,29 @@
   --r-sm:14px;--r-md:18px;--r-lg:22px;--r-xl:26px;
 }
 html{scroll-behavior:smooth}
-body{
-  font-family:'Rubik',system-ui,Arial,sans-serif!important;letter-spacing:-.01em;
-  background:#eef2f8!important;position:relative;overflow-x:hidden;
-}
-/* animated aurora mesh background */
-body::before{
-  content:"";position:fixed;inset:-20% -10% -10% -10%;z-index:-2;pointer-events:none;
+body{font-family:'Rubik',system-ui,Arial,sans-serif!important;letter-spacing:-.01em;background:#eef2f8!important;position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:-20% -10% -10% -10%;z-index:-2;pointer-events:none;
   background:
     radial-gradient(38% 40% at 18% 12%, rgba(16,185,129,.30), transparent 60%),
     radial-gradient(34% 38% at 82% 8%, rgba(14,165,233,.28), transparent 62%),
     radial-gradient(40% 44% at 72% 88%, rgba(99,102,241,.24), transparent 60%),
     radial-gradient(34% 40% at 12% 82%, rgba(16,185,129,.18), transparent 60%);
-  filter:blur(20px);animation:fxfloat 18s ease-in-out infinite alternate;
-}
-body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:linear-gradient(180deg,rgba(238,242,248,.4),rgba(238,242,248,.85));backdrop-filter:blur(2px)}
+  filter:blur(20px);animation:fxfloat 18s ease-in-out infinite alternate}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(238,242,248,.4),rgba(238,242,248,.85))}
 @keyframes fxfloat{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-3%,2%,0) scale(1.06)}100%{transform:translate3d(3%,-2%,0) scale(1.03)}}
-@media(prefers-reduced-motion:reduce){body::before{animation:none}*{animation-duration:.001ms!important;transition:none!important}}
+@media(prefers-reduced-motion:reduce){body::before{animation:none}*{animation-duration:.001ms!important}}
 
-/* glass cards */
 .mcard,.cl-box,.pf-card,.pf-stat-card,.diag-col,.ot-box,.dip-rule,.pf-hs{
-  background:rgba(255,255,255,.68)!important;
-  backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
+  background:rgba(255,255,255,.68)!important;backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
   border:1px solid rgba(255,255,255,.6)!important;border-radius:var(--r-lg)!important;
   box-shadow:0 8px 24px rgba(15,23,42,.06),0 2px 8px rgba(15,23,42,.04),inset 0 1px 0 rgba(255,255,255,.7)!important;
-  transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .35s!important;position:relative;overflow:hidden;
-}
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .35s!important;position:relative;overflow:hidden}
 .mcard:hover,.pf-card:hover,.pf-stat-card:hover,.cl-box:hover{
   transform:translateY(-6px) scale(1.008)!important;
   box-shadow:0 20px 44px rgba(16,185,129,.14),0 8px 20px rgba(15,23,42,.08),inset 0 1px 0 rgba(255,255,255,.8)!important;
-  border-color:rgba(16,185,129,.35)!important;
-}
-/* moving sheen on hover */
+  border-color:rgba(16,185,129,.35)!important}
 .mcard::after,.pf-card::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
-  background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-18deg);
-  transition:left .7s ease;pointer-events:none}
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-18deg);transition:left .7s ease;pointer-events:none}
 .mcard:hover::after,.pf-card:hover::after{left:130%}
 
 header{background:rgba(255,255,255,.55)!important;backdrop-filter:blur(22px) saturate(160%)!important;
@@ -60,24 +45,18 @@ header h1{background:var(--fx-grad);-webkit-background-clip:text;background-clip
   font-weight:800!important;letter-spacing:-.03em!important;background-size:200% auto;animation:fxshine 6s linear infinite}
 @keyframes fxshine{to{background-position:200% center}}
 
-/* numbers → Fira Code */
 .cl-num,.cl-price,.pf-stat-value,.pf-hs-val{font-family:'Fira Code',ui-monospace,monospace!important;font-variant-numeric:tabular-nums}
 
-/* section titles → gradient accent + animated bar */
 .section-title{position:relative;font-weight:800!important;letter-spacing:-.02em!important;padding-inline-start:16px!important}
 .section-title::before{content:"";position:absolute;inset-inline-start:0;top:.1em;width:5px;height:1.05em;border-radius:4px;
   background:var(--fx-grad);box-shadow:0 0 12px rgba(16,185,129,.5);animation:fxpulse 2.6s ease-in-out infinite}
 @keyframes fxpulse{0%,100%{opacity:1}50%{opacity:.55}}
 
-/* buttons */
 .style-btn,.period-btn,.world-tab,.app-tab-btn{border-radius:980px!important;font-weight:600!important;transition:.25s!important}
-.style-btn.active-style,.period-btn.active-period,.world-tab.active{
-  background:var(--fx-grad)!important;color:#fff!important;border-color:transparent!important;box-shadow:0 6px 18px rgba(16,185,129,.35)!important}
+.style-btn.active-style,.period-btn.active-period,.world-tab.active{background:var(--fx-grad)!important;color:#fff!important;border-color:transparent!important;box-shadow:0 6px 18px rgba(16,185,129,.35)!important}
 .app-tab-btn.active{background:rgba(255,255,255,.9)!important;box-shadow:0 4px 14px rgba(15,23,42,.1)!important}
-.pf-btn-primary,#analyzeBtn,.scan-btn,#analyzePredBtn{
-  position:relative;overflow:hidden;background:var(--fx-grad)!important;color:#fff!important;border:none!important;
-  border-radius:14px!important;font-weight:700!important;box-shadow:0 8px 22px rgba(16,185,129,.32)!important;
-  transition:transform .2s,box-shadow .2s!important}
+.pf-btn-primary,#analyzeBtn,.scan-btn,#analyzePredBtn{position:relative;overflow:hidden;background:var(--fx-grad)!important;color:#fff!important;border:none!important;
+  border-radius:14px!important;font-weight:700!important;box-shadow:0 8px 22px rgba(16,185,129,.32)!important;transition:transform .2s,box-shadow .2s!important}
 .pf-btn-primary:hover,#analyzeBtn:hover,.scan-btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 12px 28px rgba(16,185,129,.42)!important}
 .pf-btn-primary::before,#analyzeBtn::before,.scan-btn::before{content:"";position:absolute;top:0;left:-70%;width:50%;height:100%;
   background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-18deg);transition:left .6s}
@@ -86,29 +65,27 @@ header h1{background:var(--fx-grad);-webkit-background-clip:text;background-clip
 input,select,textarea{border-radius:14px!important;background:rgba(255,255,255,.7)!important}
 .search-box input{border-radius:18px!important;font-weight:600}
 .search-box input:focus{box-shadow:0 0 0 4px rgba(16,185,129,.18)!important;border-color:var(--fx-a1)!important}
-
-/* scroll reveal */
-.fx-rise{opacity:0;transform:translateY(26px) scale(.985);transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
-.fx-rise.fx-in{opacity:1;transform:none}
-
 .pf-tbl-wrap{border-radius:var(--r-md)!important;overflow:hidden;background:rgba(255,255,255,.6)!important;backdrop-filter:blur(12px)}
 .pf-tbl th{font-weight:700!important;text-transform:uppercase;font-size:11px!important;letter-spacing:.03em}
 :focus-visible{outline:2px solid var(--fx-a1);outline-offset:2px;border-radius:6px}
 button,[onclick],a{cursor:pointer}
+
+/* one-time entrance for elements PRESENT AT LOAD only. End state is fully visible,
+   so if JS never runs, everything is still shown. Never touches dynamic content. */
+@keyframes fxIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+.fx-enter{animation:fxIn .6s cubic-bezier(.2,.8,.2,1) both}
 </style>
 <script>
 (function(){
-  var reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
-  function arm(){
-    var sel='.mcard,.cl-box,.pf-card,.pf-stat-card,.ot-box,.dip-rule,.diag-col,.pf-hs,.section-title,.pf-tbl-wrap';
-    var els=document.querySelectorAll(sel);
-    if(reduce){els.forEach(function(e){e.classList.add('fx-in')});return;}
-    var io=new IntersectionObserver(function(en){en.forEach(function(x){if(x.isIntersecting){x.target.classList.add('fx-in');io.unobserve(x.target);}})},{threshold:.08,rootMargin:'0px 0px -40px 0px'});
-    els.forEach(function(e){ if(!e.classList.contains('fx-rise')) e.classList.add('fx-rise'); io.observe(e); });
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  function play(){
+    // animate ONLY the top-level sections already in the DOM at load; one-time, no observers.
+    var main=document.querySelector('main')||document.body;
+    var kids=Array.prototype.slice.call(main.children).filter(function(el){
+      return el.offsetParent!==null && el.getBoundingClientRect().height>10;
+    }).slice(0,14);
+    kids.forEach(function(el,i){ el.style.animationDelay=(i*60)+'ms'; el.classList.add('fx-enter'); });
   }
-  if(document.readyState!=='loading')arm();else document.addEventListener('DOMContentLoaded',arm);
-  // re-arm when new cards are injected by the live-data JS
-  var mo=new MutationObserver(function(){clearTimeout(window.__fxT);window.__fxT=setTimeout(arm,250)});
-  mo.observe(document.body,{childList:true,subtree:true});
+  if(document.readyState!=='loading')play();else document.addEventListener('DOMContentLoaded',play);
 })();
 </script>
