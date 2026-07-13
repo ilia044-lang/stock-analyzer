@@ -2626,6 +2626,56 @@ def get_price():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/sector-leaders')
+def sector_leaders():
+    """4 המניות הכי עולות בסקטור נתון (ETF) — לטולטיפ בהצבעה על הסקטור."""
+    etf = request.args.get('etf', '').upper().strip()
+    leaders_map = {
+        'XLK': ['AAPL','MSFT','NVDA','AVGO','ORCL','CRM','AMD','ADBE','CSCO','ACN','QCOM','TXN'],
+        'XLF': ['BRK-B','JPM','V','MA','BAC','WFC','GS','MS','SPGI','AXP','C','SCHW'],
+        'XLE': ['XOM','CVX','COP','WMB','EOG','SLB','MPC','PSX','OXY','KMI','VLO','HES'],
+        'XLV': ['LLY','UNH','JNJ','MRK','ABBV','TMO','ABT','ISRG','DHR','PFE','AMGN','BMY'],
+        'XLI': ['GE','CAT','RTX','HON','UNP','BA','DE','LMT','UPS','ETN','ADP','GD'],
+        'XLY': ['AMZN','TSLA','HD','MCD','BKNG','LOW','NKE','SBUX','TJX','ORLY','CMG','MAR'],
+        'XLP': ['COST','WMT','PG','KO','PEP','PM','MO','MDLZ','CL','TGT','KMB','GIS'],
+        'XLC': ['META','GOOGL','GOOG','NFLX','DIS','TMUS','CMCSA','T','VZ','CHTR','EA','TTWO'],
+        'XLRE': ['PLD','AMT','EQIX','WELL','SPG','PSA','O','CCI','DLR','CBRE','EXR','VICI'],
+        'XLB': ['LIN','SHW','FCX','ECL','APD','NEM','DOW','NUE','CTVA','DD','VMC','MLM'],
+        'XLU': ['NEE','SO','DUK','CEG','AEP','SRE','D','EXC','XEL','PEG','ED','PCG'],
+    }
+    tickers = leaders_map.get(etf)
+    if not tickers:
+        return jsonify({'etf': etf, 'leaders': []})
+    cached = cache_get(f'sectorlead_{etf}', ttl=300)
+    if cached:
+        return jsonify(cached)
+    leaders = []
+    try:
+        data = yf.download(tickers, period='2d', progress=False,
+                           auto_adjust=True, threads=True)
+        closes = data['Close'] if 'Close' in getattr(data, 'columns', []) else data
+        for tk in tickers:
+            try:
+                col = closes[tk] if hasattr(closes, 'columns') and tk in closes.columns else closes
+                col = col.dropna()
+                if len(col) < 2:
+                    continue
+                prev = float(col.iloc[-2]); curr = float(col.iloc[-1])
+                if prev <= 0:
+                    continue
+                leaders.append({'ticker': tk, 'price': round(curr, 2),
+                                'change_pct': round((curr - prev) / prev * 100, 2)})
+            except Exception:
+                continue
+    except Exception:
+        pass
+    leaders.sort(key=lambda x: x['change_pct'], reverse=True)
+    result = {'etf': etf, 'leaders': leaders[:4]}
+    if leaders:
+        cache_set(f'sectorlead_{etf}', result)
+    return jsonify(result)
+
+
 @app.route('/drivers')
 def market_drivers():
     """מזהה מה מניע את השוק עכשיו"""
