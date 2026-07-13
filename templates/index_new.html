@@ -305,6 +305,7 @@ button,[onclick],a{cursor:pointer}
 #fxScan .tk{font-family:'Fira Code',monospace;font-weight:800;font-size:13.5px;color:#0b1220}
 #fxScan .num{font-family:'Fira Code',monospace}
 #fxScan .lg{font-size:10px;font-weight:800;color:#065f46;background:rgba(16,185,129,.14);padding:2px 8px;border-radius:999px}
+#fxScan .sh{font-size:10px;font-weight:800;color:#991b1b;background:rgba(220,38,38,.14);padding:2px 8px;border-radius:999px}
 #fxScan .go{background:linear-gradient(120deg,#10b981,#0ea5e9);color:#fff;border:none;border-radius:9px;padding:5px 12px;font-weight:800;cursor:pointer;font-family:'Rubik',sans-serif;font-size:12px}
 #fxScan .up{color:#059669}#fxScan .dn{color:#dc2626}
 #fxScan .tblwrap{overflow-x:auto;margin-top:4px}
@@ -315,14 +316,14 @@ button,[onclick],a{cursor:pointer}
   function build(){ if(built)return panel; var tab=document.getElementById('tabAnalysis'); if(!tab)return null;
     panel=document.createElement('div'); panel.id='fxScan'; tab.insertBefore(panel, tab.firstChild); built=true; idle(); return panel; }
   function head(kz){ return '<div class="top"><h3>🎯 סורק ICT — setups מוכנים עכשיו</h3><span class="kz">'+(kz||'⏱ סורק מניות במגמת עלייה באזור כניסה')+'</span></div>'; }
-  function idle(){ var p=build(); if(!p)return; p.innerHTML=head()+'<div class="body"><button class="sbtn" onclick="window.__ictScan&&window.__ictScan()">🔍 סרוק עכשיו</button><div class="meta">סורק ~46 מניות מובילות ומחזיר את אלה במגמת עלייה שנמצאות עכשיו באזור כניסה (תיקון לתמיכה).</div></div>'; }
+  function idle(){ var p=build(); if(!p)return; p.innerHTML=head()+'<div class="body"><button class="sbtn" onclick="window.__ictScan&&window.__ictScan()">🔍 סרוק עכשיו</button><div class="meta">סורק ~46 מניות מובילות ומחזיר setups של Long (מגמת עלייה) ו-Short (מגמת ירידה) שנמצאות עכשיו באזור כניסה.</div></div>'; }
   function loading(){ var p=build(); if(!p)return; p.innerHTML=head()+'<div class="ld">סורק מניות… מחשב מבנה שוק ואזורי כניסה (עד ~15 שנ׳)</div>'; }
   function render(d){
     var p=build(); if(!p)return;
     var m=d.matches||[];
     var rows = m.length? ('<div class="tblwrap"><table><thead><tr><th>מניה</th><th>כיוון</th><th>מחיר</th><th>כניסה</th><th>סטופ</th><th>יעד</th><th>R:R</th><th></th></tr></thead><tbody>'+
-      m.map(function(x){return '<tr><td><span class="tk">'+x.ticker+'</span></td><td><span class="lg">LONG</span></td>'+
-        '<td class="num">$'+x.price+'</td><td class="num up">$'+x.entry+'</td><td class="num dn">$'+x.stop+'</td><td class="num up">$'+x.target+'</td>'+
+      m.map(function(x){return '<tr><td><span class="tk">'+x.ticker+'</span></td><td><span class="'+(x.side==='SHORT'?'sh':'lg')+'">'+x.side+'</span></td>'+
+        '<td class="num">$'+x.price+'</td><td class="num">$'+x.entry+'</td><td class="num dn">$'+x.stop+'</td><td class="num up">$'+x.target+'</td>'+
         '<td class="num" style="font-weight:800">1:'+x.rr+'</td>'+
         '<td><button class="go" onclick="if(window.setTicker){setTicker(\''+x.ticker+'\');window.scrollTo({top:420,behavior:\'smooth\'});}">נתח ›</button></td></tr>';}).join('')+
       '</tbody></table></div>')

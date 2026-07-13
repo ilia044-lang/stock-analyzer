@@ -2832,20 +2832,30 @@ def ict_scan():
             ma50 = sum(C[-50:]) / 50.0
             recent = min(30, n)
             leg_low = min(L[-recent:]); leg_high = max(H[-recent:])
-            look = min(40, n); rng_h = max(H[-look:])
-            # bullish dip setup: uptrend + price near MA20 support (actionable now)
-            if price >= ma50 and ma20 >= ma50:
-                near = (price - ma20) / ma20 * 100.0
-                if -4 <= near <= 6:
-                    entry = round(min(price, ma20 * 1.02), 2)
-                    stop = round(min(leg_low, ma20) * 0.97, 2)
-                    target = round(max(leg_high, rng_h, price * 1.06), 2)
-                    risk = max(entry - stop, 0.01)
-                    rr = round((target - entry) / risk, 2)
-                    if rr >= 1.5:
-                        return {'ticker': tk, 'side': 'LONG', 'price': price,
-                                'entry': entry, 'stop': stop, 'target': target,
-                                'rr': rr, 'near': round(near, 2)}
+            look = min(40, n); rng_h = max(H[-look:]); rng_l = min(L[-look:])
+            near = (price - ma20) / ma20 * 100.0
+            # LONG: uptrend + pullback to MA20 support (buy the dip)
+            if price >= ma50 and ma20 >= ma50 and -4 <= near <= 6:
+                entry = round(min(price, ma20 * 1.02), 2)
+                stop = round(min(leg_low, ma20) * 0.97, 2)
+                target = round(max(leg_high, rng_h, price * 1.06), 2)
+                risk = max(entry - stop, 0.01)
+                rr = round((target - entry) / risk, 2)
+                if rr >= 1.5:
+                    return {'ticker': tk, 'side': 'LONG', 'price': price,
+                            'entry': entry, 'stop': stop, 'target': target,
+                            'rr': rr, 'near': round(near, 2)}
+            # SHORT: downtrend + rally to MA20 resistance (sell the rip)
+            if price <= ma50 and ma20 <= ma50 and -6 <= near <= 4:
+                entry = round(max(price, ma20 * 0.98), 2)
+                stop = round(max(leg_high, ma20) * 1.03, 2)
+                target = round(min(leg_low, rng_l, price * 0.94), 2)
+                risk = max(stop - entry, 0.01)
+                rr = round((entry - target) / risk, 2)
+                if rr >= 1.5:
+                    return {'ticker': tk, 'side': 'SHORT', 'price': price,
+                            'entry': entry, 'stop': stop, 'target': target,
+                            'rr': rr, 'near': round(near, 2)}
             return None
         except Exception:
             return None
