@@ -2782,6 +2782,8 @@ def ict_analysis():
             'pdh': pdh, 'pdl': pdl, 'fvg': fvg,
             'killzone': kz, 'in_killzone': in_ny,
             'why': why, 'how': how, 'valid': valid,
+            'series': [round(x, 2) for x in C[-45:]],
+            'range_high': round(rng_h, 2), 'range_low': round(rng_l, 2),
         }
         cache_set(f'ict_{ticker}', result)
         return jsonify(result)
