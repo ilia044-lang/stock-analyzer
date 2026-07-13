@@ -284,3 +284,60 @@ button,[onclick],a{cursor:pointer}
   }, 700);
 })();
 </script>
+
+<!-- ===== ICT Scanner card (top of analysis tab) ===== -->
+<style>
+#fxScan{margin:0 0 20px;border-radius:22px;overflow:hidden;position:relative;
+  background:rgba(255,255,255,.72);backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
+  border:1px solid rgba(255,255,255,.7);box-shadow:0 12px 34px rgba(15,23,42,.1);direction:rtl}
+#fxScan .top{display:flex;align-items:center;gap:10px;padding:15px 18px;color:#fff;background:linear-gradient(120deg,#065f46,#0e7490 60%,#155e75)}
+#fxScan .top h3{font-family:'Rubik',sans-serif;font-size:16px;font-weight:800;margin:0}
+#fxScan .top .kz{margin-inline-start:auto;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35)}
+#fxScan .body{padding:14px 16px}
+#fxScan .sbtn{background:linear-gradient(120deg,#10b981,#0ea5e9);color:#fff;border:none;border-radius:12px;padding:9px 18px;font-weight:800;cursor:pointer;font-family:'Rubik',sans-serif;font-size:13.5px;box-shadow:0 6px 16px rgba(16,185,129,.3)}
+#fxScan .sbtn:hover{filter:brightness(1.05)}
+#fxScan .meta{font-size:11.5px;color:#7c8aa0;margin-top:8px}
+#fxScan .ld{padding:16px;text-align:center;color:#7c8aa0;font-size:13px}
+#fxScan table{width:100%;border-collapse:collapse;font-size:12.5px}
+#fxScan th{font-size:10.5px;text-transform:uppercase;color:#94a3b8;font-weight:800;text-align:right;padding:8px 8px;border-bottom:1px solid rgba(15,23,42,.08)}
+#fxScan td{padding:9px 8px;border-bottom:1px solid rgba(15,23,42,.06);font-weight:600;white-space:nowrap}
+#fxScan tr:last-child td{border-bottom:none}
+#fxScan .tk{font-family:'Fira Code',monospace;font-weight:800;font-size:13.5px;color:#0b1220}
+#fxScan .num{font-family:'Fira Code',monospace}
+#fxScan .lg{font-size:10px;font-weight:800;color:#065f46;background:rgba(16,185,129,.14);padding:2px 8px;border-radius:999px}
+#fxScan .go{background:linear-gradient(120deg,#10b981,#0ea5e9);color:#fff;border:none;border-radius:9px;padding:5px 12px;font-weight:800;cursor:pointer;font-family:'Rubik',sans-serif;font-size:12px}
+#fxScan .up{color:#059669}#fxScan .dn{color:#dc2626}
+#fxScan .tblwrap{overflow-x:auto;margin-top:4px}
+</style>
+<script>
+(function(){
+  var panel=null, built=false, running=false;
+  function build(){ if(built)return panel; var tab=document.getElementById('tabAnalysis'); if(!tab)return null;
+    panel=document.createElement('div'); panel.id='fxScan'; tab.insertBefore(panel, tab.firstChild); built=true; idle(); return panel; }
+  function head(kz){ return '<div class="top"><h3>🎯 סורק ICT — setups מוכנים עכשיו</h3><span class="kz">'+(kz||'⏱ סורק מניות במגמת עלייה באזור כניסה')+'</span></div>'; }
+  function idle(){ var p=build(); if(!p)return; p.innerHTML=head()+'<div class="body"><button class="sbtn" onclick="window.__ictScan&&window.__ictScan()">🔍 סרוק עכשיו</button><div class="meta">סורק ~46 מניות מובילות ומחזיר את אלה במגמת עלייה שנמצאות עכשיו באזור כניסה (תיקון לתמיכה).</div></div>'; }
+  function loading(){ var p=build(); if(!p)return; p.innerHTML=head()+'<div class="ld">סורק מניות… מחשב מבנה שוק ואזורי כניסה (עד ~15 שנ׳)</div>'; }
+  function render(d){
+    var p=build(); if(!p)return;
+    var m=d.matches||[];
+    var rows = m.length? ('<div class="tblwrap"><table><thead><tr><th>מניה</th><th>כיוון</th><th>מחיר</th><th>כניסה</th><th>סטופ</th><th>יעד</th><th>R:R</th><th></th></tr></thead><tbody>'+
+      m.map(function(x){return '<tr><td><span class="tk">'+x.ticker+'</span></td><td><span class="lg">LONG</span></td>'+
+        '<td class="num">$'+x.price+'</td><td class="num up">$'+x.entry+'</td><td class="num dn">$'+x.stop+'</td><td class="num up">$'+x.target+'</td>'+
+        '<td class="num" style="font-weight:800">1:'+x.rr+'</td>'+
+        '<td><button class="go" onclick="if(window.setTicker){setTicker(\''+x.ticker+'\');window.scrollTo({top:420,behavior:\'smooth\'});}">נתח ›</button></td></tr>';}).join('')+
+      '</tbody></table></div>')
+      : '<div class="ld">אין setups מוכנים כרגע — רוב המניות מורחקות מאזור הכניסה. נסה שוב מאוחר יותר.</div>';
+    p.innerHTML=head(d.killzone)+'<div class="body">'+rows+
+      '<div class="meta">נסרקו '+d.scanned+' מניות · נמצאו '+d.found+' · עודכן '+d.time+' · '+
+      '<a href="javascript:void(0)" onclick="window.__ictScan&&window.__ictScan()" style="color:#0e7490;font-weight:700">רענן</a></div></div>';
+  }
+  window.__ictScan=function(){
+    if(running)return; running=true; loading();
+    var ctrl=('AbortController' in window)?new AbortController():null; var to=setTimeout(function(){if(ctrl)ctrl.abort();},30000);
+    fetch('/ict-scan', ctrl?{signal:ctrl.signal}:{}).then(function(r){return r.json();}).then(function(j){ clearTimeout(to); running=false; render(j); })
+      .catch(function(){ clearTimeout(to); running=false; var p=build(); if(p)p.innerHTML=head()+'<div class="ld">הסריקה נכשלה. <a href="javascript:void(0)" onclick="window.__ictScan()" style="color:#0e7490;font-weight:700">נסה שוב</a></div>'; });
+  };
+  function init(){ if(build()){ setTimeout(window.__ictScan, 1200); } }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
