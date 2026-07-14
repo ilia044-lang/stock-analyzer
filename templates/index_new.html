@@ -187,6 +187,14 @@ button,[onclick],a{cursor:pointer}
 #fxIct .isteps{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:6px}
 #fxIct .isteps li{font-size:12px;color:#334155;line-height:1.5}
 #fxIct .isteps li::marker{color:#0e7490;font-weight:800}
+#fxIct .fxrr{margin:12px 0 4px}
+#fxIct .fxrr-t{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:#64748b;margin-bottom:5px}
+#fxIct .fxrr-track{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;background:rgba(15,23,42,.05)}
+#fxIct .fxrr .seg{height:100%}
+#fxIct .fxrr .risk{background:linear-gradient(90deg,#ef4444,#dc2626)}
+#fxIct .fxrr .rw{background:linear-gradient(90deg,#10b981,#059669)}
+#fxIct .fxrr .rw2{background:#34d399}
+#fxIct .fxrr-lab{display:flex;justify-content:space-between;font-family:'Fira Code',monospace;font-size:10.5px;color:#64748b;margin-top:5px}
 #fxIct .ictc{position:relative;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.07);border-radius:14px;padding:6px 4px;margin-bottom:2px}
 #fxIct .icttip{position:absolute;top:3px;transform:translateX(-50%);background:#0f172a;color:#fff;font-family:'Fira Code',monospace;font-size:11px;padding:2px 7px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .1s;white-space:nowrap}
 </style>
@@ -195,6 +203,15 @@ button,[onclick],a{cursor:pointer}
   var last=null, panel=null, busy=false;
   function fmt(v){return (v===null||v===undefined||v!==v)?'—':('$'+v);}
   function steplist(arr,fallback){ return (arr&&arr.length)?('<ol class="isteps">'+arr.map(function(s){return '<li>'+s+'</li>';}).join('')+'</ol>'):('<div class="bt">'+(fallback||'')+'</div>'); }
+  function rrbar(d){
+    if(typeof d.entry!=='number'||typeof d.stop!=='number'||typeof d.target!=='number')return '';
+    var risk=Math.abs(d.entry-d.stop), r1=Math.abs(d.target-d.entry), r2=(typeof d.target2==='number')?Math.abs(d.target2-d.target):0;
+    if(risk<=0)return '';
+    return '<div class="fxrr"><div class="fxrr-t"><span>🛑 סיכון</span><span>סיכוי 🎯</span></div>'+
+      '<div class="fxrr-track"><div class="seg risk" style="flex:'+risk+'"></div><div class="seg rw" style="flex:'+r1+'"></div>'+
+      (r2>0?'<div class="seg rw2" style="flex:'+r2+'"></div>':'')+'</div>'+
+      '<div class="fxrr-lab"><span class="dn">'+fmt(d.stop)+'</span><span>'+fmt(d.entry)+'</span><span class="up">'+fmt(d.target)+'</span>'+
+      (r2>0?'<span class="up">'+fmt(d.target2)+'</span>':'')+'</div></div>'; }
   function build(){
     if(panel) return panel;
     panel=document.createElement('div'); panel.id='fxIct';
@@ -226,6 +243,7 @@ button,[onclick],a{cursor:pointer}
          '<div class="cell tgt"><div class="l">🎯 יעד 1</div><div class="v">'+fmt(d.target)+'</div></div>'+
          '<div class="cell rr"><div class="l">⚖️ R:R</div><div class="v">1:'+d.rr+'</div></div>'+
        '</div>'+
+       rrbar(d)+
        '<div id="fxIctChartWrap"></div>'+
        '<div class="expl">'+
          '<div class="box"><div class="bl">⏱ מתי להיכנס</div>'+steplist(d.entry_steps,d.killzone)+'</div>'+
@@ -310,6 +328,9 @@ button,[onclick],a{cursor:pointer}
 #fxScan .num{font-family:'Fira Code',monospace}
 #fxScan .lg{font-size:10px;font-weight:800;color:#065f46;background:rgba(16,185,129,.14);padding:2px 8px;border-radius:999px}
 #fxScan .sh{font-size:10px;font-weight:800;color:#991b1b;background:rgba(220,38,38,.14);padding:2px 8px;border-radius:999px}
+#fxScan .rrmini{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:3px;background:rgba(15,23,42,.06);gap:1px}
+#fxScan .rrmini .rk{flex:1;background:#dc2626}
+#fxScan .rrmini .rw{background:#059669}
 #fxScan .go{background:linear-gradient(120deg,#10b981,#0ea5e9);color:#fff;border:none;border-radius:9px;padding:5px 12px;font-weight:800;cursor:pointer;font-family:'Rubik',sans-serif;font-size:12px}
 #fxScan .up{color:#059669}#fxScan .dn{color:#dc2626}
 #fxScan .tblwrap{overflow-x:auto;margin-top:4px}
@@ -328,7 +349,7 @@ button,[onclick],a{cursor:pointer}
     var rows = m.length? ('<div class="tblwrap"><table><thead><tr><th>מניה</th><th>כיוון</th><th>מחיר</th><th>כניסה</th><th>סטופ</th><th>יעד</th><th>R:R</th><th></th></tr></thead><tbody>'+
       m.map(function(x){return '<tr><td><span class="tk">'+x.ticker+'</span></td><td><span class="'+(x.side==='SHORT'?'sh':'lg')+'">'+x.side+'</span></td>'+
         '<td class="num">$'+x.price+'</td><td class="num">$'+x.entry+'</td><td class="num dn">$'+x.stop+'</td><td class="num up">$'+x.target+'</td>'+
-        '<td class="num" style="font-weight:800">1:'+x.rr+'</td>'+
+        '<td style="font-weight:800;min-width:76px"><span class="num">1:'+x.rr+'</span><div class="rrmini"><i class="rk"></i><i class="rw" style="flex:'+x.rr+'"></i></div></td>'+
         '<td><button class="go" onclick="if(window.setTicker){setTicker(\''+x.ticker+'\');window.scrollTo({top:420,behavior:\'smooth\'});}">נתח ›</button></td></tr>';}).join('')+
       '</tbody></table></div>')
       : '<div class="ld">אין setups מוכנים כרגע — רוב המניות מורחקות מאזור הכניסה. נסה שוב מאוחר יותר.</div>';
@@ -344,5 +365,29 @@ button,[onclick],a{cursor:pointer}
   };
   function init(){ if(build()){ setTimeout(window.__ictScan, 1200); } }
   if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+
+<!-- ===== Score ring gauge (visualizes the analysis score number) ===== -->
+<style>#fxScoreRing{display:flex;justify-content:center;margin-top:10px}</style>
+<script>
+(function(){
+  var last=null;
+  function tick(){
+    var el=document.getElementById('clScoreNum'); if(!el) return;
+    var m=(el.textContent||'').match(/(\d+)/); if(!m){ return; }
+    var v=parseInt(m[1],10); if(isNaN(v)) return; if(v===last) return; last=v;
+    var host=(el.closest&&el.closest('.cl-score-bar'))||el.parentElement; if(!host) return;
+    var ring=document.getElementById('fxScoreRing');
+    if(!ring){ ring=document.createElement('div'); ring.id='fxScoreRing'; host.appendChild(ring); }
+    var col=v>=70?'#059669':(v>=40?'#c98500':'#dc2626');
+    var C=2*Math.PI*26, off=C*(1-Math.max(0,Math.min(100,v))/100);
+    ring.innerHTML='<svg viewBox="0 0 64 64" width="64" height="64" style="overflow:visible">'+
+      '<circle cx="32" cy="32" r="26" fill="none" stroke="rgba(15,23,42,.08)" stroke-width="7"/>'+
+      '<circle cx="32" cy="32" r="26" fill="none" stroke="'+col+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 32 32)" style="transition:stroke-dashoffset .8s ease"/>'+
+      '<text x="32" y="36" text-anchor="middle" font-family="Fira Code,monospace" font-size="18" font-weight="800" fill="'+col+'">'+v+'</text>'+
+      '<text x="32" y="48" text-anchor="middle" font-family="Rubik,sans-serif" font-size="7.5" fill="#94a3b8">/100</text></svg>';
+  }
+  setInterval(tick, 800);
 })();
 </script>
