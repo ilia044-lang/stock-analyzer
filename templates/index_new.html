@@ -184,6 +184,9 @@ button,[onclick],a{cursor:pointer}
 #fxIct .lvls{font-size:11.5px;color:#64748b;margin-top:12px;font-family:'Fira Code',monospace;display:flex;flex-wrap:wrap;gap:12px}
 #fxIct .disc{font-size:10.5px;color:#94a3b8;margin-top:10px;text-align:center}
 #fxIct .ldg{padding:24px;text-align:center;color:#7c8aa0;font-size:13px}
+#fxIct .isteps{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:6px}
+#fxIct .isteps li{font-size:12px;color:#334155;line-height:1.5}
+#fxIct .isteps li::marker{color:#0e7490;font-weight:800}
 #fxIct .ictc{position:relative;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.07);border-radius:14px;padding:6px 4px;margin-bottom:2px}
 #fxIct .icttip{position:absolute;top:3px;transform:translateX(-50%);background:#0f172a;color:#fff;font-family:'Fira Code',monospace;font-size:11px;padding:2px 7px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .1s;white-space:nowrap}
 </style>
@@ -191,6 +194,7 @@ button,[onclick],a{cursor:pointer}
 (function(){
   var last=null, panel=null, busy=false;
   function fmt(v){return (v===null||v===undefined||v!==v)?'—':('$'+v);}
+  function steplist(arr,fallback){ return (arr&&arr.length)?('<ol class="isteps">'+arr.map(function(s){return '<li>'+s+'</li>';}).join('')+'</ol>'):('<div class="bt">'+(fallback||'')+'</div>'); }
   function build(){
     if(panel) return panel;
     panel=document.createElement('div'); panel.id='fxIct';
@@ -219,13 +223,13 @@ button,[onclick],a{cursor:pointer}
        '<div class="grid">'+
          '<div class="cell entry"><div class="l">💰 כניסה</div><div class="v">'+fmt(d.entry)+'</div></div>'+
          '<div class="cell stop"><div class="l">🛑 סטופ</div><div class="v">'+fmt(d.stop)+'</div></div>'+
-         '<div class="cell tgt"><div class="l">🎯 יעד</div><div class="v">'+fmt(d.target)+'</div></div>'+
+         '<div class="cell tgt"><div class="l">🎯 יעד 1</div><div class="v">'+fmt(d.target)+'</div></div>'+
          '<div class="cell rr"><div class="l">⚖️ R:R</div><div class="v">1:'+d.rr+'</div></div>'+
        '</div>'+
        '<div id="fxIctChartWrap"></div>'+
        '<div class="expl">'+
-         '<div class="box"><div class="bl">⏱ מתי להיכנס</div><div class="bt">'+d.killzone+'. כניסה רק בתוך ה-Killzone ואחרי איסוף נזילות (Sweep).</div></div>'+
-         '<div class="box"><div class="bl">🎬 איך</div><div class="bt">'+d.how+'</div></div>'+
+         '<div class="box"><div class="bl">⏱ מתי להיכנס</div>'+steplist(d.entry_steps,d.killzone)+'</div>'+
+         '<div class="box"><div class="bl">🎯 מתי לצאת</div>'+steplist(d.exit_steps,d.how)+'</div>'+
        '</div>'+
        '<div class="box" style="margin-top:12px"><div class="bl">💡 למה</div><div class="bt">'+d.why+'. '+fvgTxt+'. אזור OTE (פיבו 62–79%): $'+d.ote_low+'–$'+d.ote_high+'.</div></div>'+
        '<div class="lvls"><span>PDH: $'+d.pdh+'</span><span>PDL: $'+d.pdl+'</span><span>OTE: $'+d.ote_low+'–$'+d.ote_high+'</span></div>'+
@@ -237,7 +241,7 @@ button,[onclick],a{cursor:pointer}
     var wrap=document.getElementById('fxIctChartWrap'); if(!wrap)return;
     var s=d.series||[]; if(s.length<3){wrap.innerHTML='';return;}
     var W=600,Hh=180,pl=6,pr=58,pt=10,pb=16;
-    var lv=[d.entry,d.stop,d.target,d.ote_low,d.ote_high].filter(function(v){return typeof v==='number'&&v===v;});
+    var lv=[d.entry,d.stop,d.target,d.target2,d.ote_low,d.ote_high].filter(function(v){return typeof v==='number'&&v===v;});
     var lo=Math.min.apply(null,s.concat(lv)),hi=Math.max.apply(null,s.concat(lv));
     var pd=(hi-lo)*0.06||1; lo-=pd; hi+=pd;
     var X=function(i){return pl+i*((W-pl-pr)/(s.length-1));};
@@ -252,7 +256,7 @@ button,[onclick],a{cursor:pointer}
     wrap.innerHTML='<div class="ictc"><svg viewBox="0 0 '+W+' '+Hh+'" preserveAspectRatio="none" width="100%" height="180" style="display:block">'+
       '<defs><linearGradient id="ictg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0e7490" stop-opacity=".22"/><stop offset="1" stop-color="#0e7490" stop-opacity="0"/></linearGradient></defs>'+
       band+'<path d="'+area+'" fill="url(#ictg)"/><path d="'+path+'" fill="none" stroke="#0e7490" stroke-width="2" stroke-linejoin="round"/>'+
-      hl(d.target,'#059669','5 4','יעד')+hl(d.entry,'#0ea5e9','1 0','כניסה')+hl(d.stop,'#dc2626','5 4','סטופ')+
+      hl(d.target2,'#10b981','2 3','יעד2')+hl(d.target,'#059669','5 4','יעד1')+hl(d.entry,'#0ea5e9','1 0','כניסה')+hl(d.stop,'#dc2626','5 4','סטופ')+
       '<circle cx="'+X(s.length-1).toFixed(1)+'" cy="'+Y(s[s.length-1]).toFixed(1)+'" r="3.5" fill="#0e7490"/>'+
       '<line id="ictcx" x1="0" y1="'+pt+'" x2="0" y2="'+(Hh-pb)+'" stroke="#334155" stroke-width="1" opacity="0"/>'+
       '<rect id="ictov" x="0" y="0" width="'+W+'" height="'+Hh+'" fill="transparent" style="cursor:crosshair"/></svg>'+
