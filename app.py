@@ -2787,6 +2787,40 @@ def ict_analysis():
         if fvg:
             why += ' · זוהה FVG %s כאזור כניסה' % ('שורי' if fvg['type'] == 'bull' else 'דובי')
 
+        # second target (further liquidity) + staged-exit plan
+        if side == 'long':
+            target2 = round(max(target * 1.06, leg_high + 0.5 * span), 2)
+        elif side == 'short':
+            target2 = round(min(target * 0.94, leg_low - 0.5 * span), 2)
+        else:
+            target2 = round(rng_h, 2)
+        breakeven = entry
+
+        if side in ('long', 'short'):
+            d_txt = 'Long' if side == 'long' else 'Short'
+            swp = ('מתחת ל-$%s' % round(leg_low, 2)) if side == 'long' else ('מעל $%s' % round(leg_high, 2))
+            disp = 'ירוק' if side == 'long' else 'אדום'
+            entry_steps = [
+                'ודא ש-Killzone פעיל — 15:00–18:00 (מיטבי Silver Bullet 17:00–18:00, שעון ישראל).',
+                'המתן שהמחיר יגיע לאזור הכניסה ~$%s (תיקון ל-OTE/FVG, %s).' % (entry, zone.split(' —')[0]),
+                'חכה ל-Liquidity Sweep %s (איסוף נזילות) ואז ל-MSS — נר Displacement %s חזק.' % (swp, disp),
+                'כניסת %s על הריטסט ל-FVG/OTE — לא רודפים אחרי הנר.' % d_txt,
+            ]
+            exit_steps = [
+                'יעד 1 — $%s: קח כ-50%% רווח, והזז את הסטופ לנקודת הכניסה ($%s) = No-Loss.' % (target, breakeven),
+                'יעד 2 — $%s: סגור את יתרת הפוזיציה (בריכת הנזילות הרחוקה).' % target2,
+                'סטופ — $%s: אם המחיר סוגר מעבר לרמה, יציאה מלאה. בלי רגשות.' % stop,
+                'ביטול הסטאפ: סגירה יומית מעבר לסטופ או CHoCH נגד הכיוון → הסטאפ בטל.',
+            ]
+        else:
+            entry_steps = [
+                'אין מגמה ברורה — המתן ל-MSS שיגדיר כיוון לפני כניסה.',
+                'סקאלפ טווח בלבד: קנייה קרוב ל-$%s, מכירה קרוב ל-$%s.' % (round(rng_l, 2), round(rng_h, 2)),
+            ]
+            exit_steps = [
+                'יעד: אמצע הטווח ($%s) או הקצה הנגדי.' % round(eq, 2),
+                'סטופ: מעבר לקצה הטווח שממנו נכנסת.',
+            ]
 
         result = {
             'ticker': ticker, 'price': price, 'bias': bias, 'side': side,
@@ -2796,6 +2830,8 @@ def ict_analysis():
             'pdh': pdh, 'pdl': pdl, 'fvg': fvg,
             'killzone': kz, 'in_killzone': in_ny,
             'why': why, 'how': how, 'valid': valid,
+            'target2': target2, 'breakeven': breakeven,
+            'entry_steps': entry_steps, 'exit_steps': exit_steps,
             'series': [round(x, 2) for x in C[-45:]],
             'range_high': round(rng_h, 2), 'range_low': round(rng_l, 2),
         }
