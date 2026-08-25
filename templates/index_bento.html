@@ -1,0 +1,380 @@
+{% include "index.html" %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Calistoga&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Bento palette mapped onto the site's existing tokens — keeps ALL content, re-themes it */
+  --bg:#0b1220!important; --bg2:#131c30!important; --bg3:#182238!important; --bg4:#1e293e!important;
+  --sep:rgba(255,255,255,.08)!important; --sep2:rgba(255,255,255,.05)!important;
+  --label:#f4f7fb!important; --label2:#9fb0c9!important; --label3:#67789a!important;
+  --blue:#8b5cf6!important; --blue-dim:rgba(139,92,246,.16)!important;      /* purple accent */
+  --green:#34d399!important; --green-dim:rgba(52,211,153,.16)!important;
+  --red:#f87171!important; --red-dim:rgba(248,113,113,.16)!important;
+  --orange:#fbbf24!important; --yellow:#fbbf24!important; --purple:#a78bfa!important; --teal:#22d3ee!important;
+  --r-sm:14px;--r-md:18px;--r-lg:22px;--r-xl:26px;
+}
+body{background:#0b1220!important;color:#f4f7fb!important;
+  font-family:'Inter',system-ui,sans-serif!important;
+  background-image:radial-gradient(50% 40% at 85% 0%,rgba(245,158,11,.08),transparent 60%),radial-gradient(46% 40% at 8% 100%,rgba(139,92,246,.10),transparent 60%)!important;
+  background-attachment:fixed!important}
+/* numbers → mono */
+.cl-num,.cl-price,.pf-stat-value,.pf-hs-val,.mbar-val,[class*="price"]{font-family:'JetBrains Mono',ui-monospace,monospace!important;font-variant-numeric:tabular-nums}
+/* headings → Calistoga display + gold accent bar */
+.section-title,h1,h2,h3{font-family:'Calistoga',Georgia,serif!important;font-weight:400!important;letter-spacing:-.01em!important;color:#f4f7fb!important}
+.section-title{position:relative;padding-inline-start:16px!important}
+.section-title::before{content:"";position:absolute;inset-inline-start:0;top:.12em;width:5px;height:1em;border-radius:4px;background:linear-gradient(#f59e0b,#8b5cf6)}
+header{background:rgba(11,18,32,.82)!important;backdrop-filter:blur(18px)!important;border-bottom:1px solid rgba(255,255,255,.07)!important}
+header h1{background:linear-gradient(120deg,#f59e0b,#fbbf24)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important}
+/* cards → dark bento */
+.mcard,.cl-box,.pf-card,.pf-stat-card,.diag-col,.ot-box,.dip-rule,.pf-hs,.trade-card,.psych-card,.rec-card{
+  background:#131c30!important;border:1px solid rgba(255,255,255,.07)!important;border-radius:22px!important;
+  box-shadow:0 10px 30px rgba(0,0,0,.28)!important;color:#f4f7fb!important}
+input,select,textarea{background:#182238!important;color:#f4f7fb!important;border-radius:14px!important;border:1px solid rgba(255,255,255,.1)!important}
+/* pills / tabs */
+.app-tab-btn{border-radius:12px!important;color:#9fb0c9!important;font-weight:600!important}
+.app-tab-btn.active{background:#182238!important;color:#f4f7fb!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important}
+.style-btn,.period-btn,.world-tab{border-radius:999px!important;font-weight:600!important}
+.style-btn.active-style,.period-btn.active-period,.world-tab.active{background:linear-gradient(120deg,#f59e0b,#fbbf24)!important;color:#1a1206!important;border-color:transparent!important}
+/* CTAs → gold */
+.pf-btn-primary,#analyzeBtn,.scan-btn,#analyzePredBtn{background:linear-gradient(120deg,#f59e0b,#fbbf24)!important;color:#1a1206!important;border:none!important;border-radius:14px!important;font-weight:800!important;box-shadow:0 8px 20px rgba(245,158,11,.28)!important}
+.pf-btn-secondary{background:#182238!important;color:#f4f7fb!important;border-radius:12px!important}
+.pf-tbl th{color:#9fb0c9!important;text-transform:uppercase;font-size:11px!important;letter-spacing:.04em}
+.pf-tbl td,.pf-tbl th{border-color:rgba(255,255,255,.07)!important}
+.pf-tbl-wrap{border-radius:18px!important;overflow:hidden;border:1px solid rgba(255,255,255,.07)!important}
+button,[onclick],a{cursor:pointer}
+</style>
+
+<!-- ===== Sector hover → top-4 rising stocks tooltip ===== -->
+<style>
+#fxSecTip{position:fixed;z-index:9999;min-width:210px;max-width:260px;pointer-events:none;opacity:0;
+  transform:translateY(6px);transition:opacity .16s ease,transform .16s ease;
+  background:rgba(255,255,255,.86);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);
+  border:1px solid rgba(255,255,255,.7);border-radius:16px;
+  box-shadow:0 18px 44px rgba(15,23,42,.18),0 4px 12px rgba(15,23,42,.1);padding:12px 13px;font-family:'Rubik',system-ui,sans-serif;direction:rtl}
+#fxSecTip.show{opacity:1;transform:translateY(0)}
+#fxSecTip .h{font-size:12.5px;font-weight:800;color:#0b1220;margin-bottom:9px;display:flex;align-items:center;gap:6px}
+#fxSecTip .h::before{content:"";width:4px;height:14px;border-radius:3px;background:linear-gradient(120deg,#10b981,#0ea5e9)}
+#fxSecTip .r{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(15,23,42,.07)}
+#fxSecTip .r:first-of-type{border-top:none}
+#fxSecTip .r .rk{width:18px;height:18px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;background:linear-gradient(120deg,#10b981,#0ea5e9);flex-shrink:0}
+#fxSecTip .r .tk{font-family:'Fira Code',monospace;font-weight:700;font-size:13px;color:#0b1220}
+#fxSecTip .r .pr{font-family:'Fira Code',monospace;font-size:11px;color:#7c8aa0}
+#fxSecTip .r .ch{margin-inline-start:auto;font-family:'Fira Code',monospace;font-weight:700;font-size:13px}
+#fxSecTip .up{color:#059669}#fxSecTip .dn{color:#dc2626}
+#fxSecTip .ld{font-size:12px;color:#7c8aa0;text-align:center;padding:6px 0}
+#sectorsList > div{cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+#sectorsList > div:hover{transform:translateX(-3px)}
+</style>
+<script>
+(function(){
+  var MAP={'טכנולוגיה':'XLK','פיננסים':'XLF','אנרגיה':'XLE','בריאות':'XLV','תעשייה':'XLI','מחזורית':'XLY','בסיסית':'XLP','תקשורת':'XLC','נדל':'XLRE','חומרי גלם':'XLB','שירותים':'XLU'};
+  var NAMES={'XLK':'טכנולוגיה 💻','XLF':'פיננסים 🏦','XLE':'אנרגיה ⛽','XLV':'בריאות 🏥','XLI':'תעשייה 🏭','XLY':'צרכנות מחזורית 🛍️','XLP':'צרכנות בסיסית 🛒','XLC':'תקשורת 📡','XLRE':'נדל״ן 🏠','XLB':'חומרי גלם 🪨','XLU':'שירותים ⚡'};
+  var cache={},tip;
+  function ensure(){ if(!tip){tip=document.createElement('div');tip.id='fxSecTip';document.body.appendChild(tip);} return tip; }
+  function etfFor(txt){ for(var k in MAP){ if(txt.indexOf(k)>=0) return MAP[k]; } return null; }
+  function render(etf){
+    var e=ensure(); var d=cache[etf];
+    var head='<div class="h">'+(NAMES[etf]||'')+' · המובילות היום</div>';
+    if(d==='loading'){ e.innerHTML=head+'<div class="ld">טוען מניות…</div>'; return; }
+    if(!d||!d.length){ e.innerHTML=head+'<div class="ld">אין נתונים כרגע</div>'; return; }
+    e.innerHTML=head+d.map(function(s,i){
+      var up=s.change_pct>=0; var sign=up?'+':'';
+      return '<div class="r"><span class="rk">'+(i+1)+'</span><span class="tk">'+s.ticker+'</span>'+
+             '<span class="pr">$'+s.price+'</span>'+
+             '<span class="ch '+(up?'up':'dn')+'">'+sign+s.change_pct+'%</span></div>';
+    }).join('');
+  }
+  function load(etf){
+    if(cache[etf]&&cache[etf]!=='loading') return Promise.resolve();
+    cache[etf]='loading'; render(etf);
+    return fetch('/sector-leaders?etf='+etf).then(function(r){return r.json();})
+      .then(function(j){ cache[etf]=(j&&j.leaders)||[]; render(etf); })
+      .catch(function(){ cache[etf]=[]; render(etf); });
+  }
+  function pos(x,y){ var e=ensure(),w=e.offsetWidth||230,h=e.offsetHeight||160;
+    var L=x-w-16; if(L<8) L=x+16; var T=y-10; if(T+h>innerHeight-8)T=innerHeight-h-8; if(T<8)T=8;
+    e.style.left=L+'px'; e.style.top=T+'px'; }
+  function bind(){
+    var list=document.getElementById('sectorsList'); if(!list||list.__fxb) return; list.__fxb=1;
+    function rowOf(t){ while(t&&t.parentElement!==list) t=t.parentElement; return (t&&t.parentElement===list)?t:null; }
+    list.addEventListener('mouseover',function(e){ var row=rowOf(e.target); if(!row)return;
+      var etf=etfFor(row.textContent||''); if(!etf)return; ensure().classList.add('show'); load(etf).then(function(){render(etf);}); render(etf); pos(e.clientX,e.clientY); });
+    list.addEventListener('mousemove',function(e){ if(tip&&tip.classList.contains('show')) pos(e.clientX,e.clientY); });
+    list.addEventListener('mouseleave',function(){ if(tip) tip.classList.remove('show'); });
+  }
+  // #sectorsList is filled async by the live-data JS — poll briefly to bind once it exists.
+  var tries=0,iv=setInterval(function(){ bind(); if(++tries>40||(document.getElementById('sectorsList')&&document.getElementById('sectorsList').__fxb)) clearInterval(iv); },500);
+  if(document.readyState!=='loading')bind();else document.addEventListener('DOMContentLoaded',bind);
+})();
+</script>
+
+<!-- ===== ICT analysis window (per analyzed stock) ===== -->
+<style>
+#fxIct{margin:20px 0;border-radius:22px;overflow:hidden;position:relative;
+  background:rgba(255,255,255,.72);backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
+  border:1px solid rgba(255,255,255,.7);box-shadow:0 12px 34px rgba(15,23,42,.1),inset 0 1px 0 rgba(255,255,255,.7);direction:rtl}
+#fxIct .top{display:flex;align-items:center;gap:10px;padding:15px 18px;color:#fff;
+  background:linear-gradient(120deg,#0f172a,#155e75 60%,#0e7490)}
+#fxIct .top h3{font-family:'Rubik',sans-serif;font-size:16px;font-weight:800;margin:0}
+#fxIct .top .tk{font-family:'Fira Code',monospace;font-weight:700;opacity:.9}
+#fxIct .top .badge{margin-inline-start:auto;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:999px}
+#fxIct .badge.ok{background:rgba(16,185,129,.25);color:#d1fae5;border:1px solid rgba(16,185,129,.5)}
+#fxIct .badge.wait{background:rgba(234,179,8,.22);color:#fef9c3;border:1px solid rgba(234,179,8,.5)}
+#fxIct .body{padding:16px 18px}
+#fxIct .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+#fxIct .chip{font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;background:rgba(15,23,42,.05);color:#334155;border:1px solid rgba(15,23,42,.08)}
+#fxIct .chip.kz{background:rgba(14,165,233,.12);color:#0369a1;border-color:rgba(14,165,233,.3)}
+#fxIct .chip.zone{background:rgba(99,102,241,.12);color:#4338ca;border-color:rgba(99,102,241,.3)}
+#fxIct .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+#fxIct .cell{background:rgba(255,255,255,.7);border:1px solid rgba(15,23,42,.08);border-radius:14px;padding:12px;text-align:center}
+#fxIct .cell .l{font-size:11px;color:#7c8aa0;font-weight:600;margin-bottom:5px}
+#fxIct .cell .v{font-family:'Fira Code',monospace;font-size:18px;font-weight:800;letter-spacing:-.02em}
+#fxIct .cell.entry .v{color:#0e7490}#fxIct .cell.stop .v{color:#dc2626}#fxIct .cell.tgt .v{color:#059669}#fxIct .cell.rr .v{color:#4338ca}
+#fxIct .expl{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){ #fxIct .grid{grid-template-columns:1fr 1fr}#fxIct .expl{grid-template-columns:1fr}}
+#fxIct .box{background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.07);border-radius:14px;padding:12px 14px}
+#fxIct .box .bl{font-size:11.5px;font-weight:800;color:#0e7490;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+#fxIct .box .bt{font-size:12.5px;color:#334155;line-height:1.6}
+#fxIct .lvls{font-size:11.5px;color:#64748b;margin-top:12px;font-family:'Fira Code',monospace;display:flex;flex-wrap:wrap;gap:12px}
+#fxIct .disc{font-size:10.5px;color:#94a3b8;margin-top:10px;text-align:center}
+#fxIct .ldg{padding:24px;text-align:center;color:#7c8aa0;font-size:13px}
+#fxIct .isteps{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:6px}
+#fxIct .isteps li{font-size:12px;color:#334155;line-height:1.5}
+#fxIct .isteps li::marker{color:#0e7490;font-weight:800}
+#fxIct .fxrr{margin:12px 0 4px}
+#fxIct .fxrr-t{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:#64748b;margin-bottom:5px}
+#fxIct .fxrr-track{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;background:rgba(15,23,42,.05)}
+#fxIct .fxrr .seg{height:100%}
+#fxIct .fxrr .risk{background:linear-gradient(90deg,#ef4444,#dc2626)}
+#fxIct .fxrr .rw{background:linear-gradient(90deg,#10b981,#059669)}
+#fxIct .fxrr .rw2{background:#34d399}
+#fxIct .fxrr-lab{display:flex;justify-content:space-between;font-family:'Fira Code',monospace;font-size:10.5px;color:#64748b;margin-top:5px}
+#fxIct .ictc{position:relative;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.07);border-radius:14px;padding:6px 4px;margin-bottom:2px}
+#fxIct .icttip{position:absolute;top:3px;transform:translateX(-50%);background:#0f172a;color:#fff;font-family:'Fira Code',monospace;font-size:11px;padding:2px 7px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .1s;white-space:nowrap}
+</style>
+<script>
+(function(){
+  var last=null, panel=null, busy=false;
+  function fmt(v){return (v===null||v===undefined||v!==v)?'—':('$'+v);}
+  function steplist(arr,fallback){ return (arr&&arr.length)?('<ol class="isteps">'+arr.map(function(s){return '<li>'+s+'</li>';}).join('')+'</ol>'):('<div class="bt">'+(fallback||'')+'</div>'); }
+  function rrbar(d){
+    if(typeof d.entry!=='number'||typeof d.stop!=='number'||typeof d.target!=='number')return '';
+    var risk=Math.abs(d.entry-d.stop), r1=Math.abs(d.target-d.entry), r2=(typeof d.target2==='number')?Math.abs(d.target2-d.target):0;
+    if(risk<=0)return '';
+    return '<div class="fxrr"><div class="fxrr-t"><span>🛑 סיכון</span><span>סיכוי 🎯</span></div>'+
+      '<div class="fxrr-track"><div class="seg risk" style="flex:'+risk+'"></div><div class="seg rw" style="flex:'+r1+'"></div>'+
+      (r2>0?'<div class="seg rw2" style="flex:'+r2+'"></div>':'')+'</div>'+
+      '<div class="fxrr-lab"><span class="dn">'+fmt(d.stop)+'</span><span>'+fmt(d.entry)+'</span><span class="up">'+fmt(d.target)+'</span>'+
+      (r2>0?'<span class="up">'+fmt(d.target2)+'</span>':'')+'</div></div>'; }
+  function build(){
+    if(panel) return panel;
+    panel=document.createElement('div'); panel.id='fxIct';
+    var tc=document.getElementById('tradeCard');
+    if(tc&&tc.parentNode){ tc.parentNode.insertBefore(panel, tc.nextSibling); }
+    else return null;
+    return panel;
+  }
+  function loading(tk){ var p=build(); if(!p)return; p.innerHTML='<div class="top"><h3>🎯 ניתוח ICT</h3><span class="tk">'+tk+'</span></div><div class="ldg">מחשב מבנה שוק, FVG ו-Killzone…</div>'; }
+  function render(d){
+    var p=build(); if(!p)return;
+    var okc = d.valid ? 'ok' : 'wait';
+    var okt = d.valid ? '✓ תנאי מבנה מתקיים' : '⏳ המתן לאישור';
+    var sideTxt = d.side==='long'?'Long (קנייה)':d.side==='short'?'Short (מכירה)':'טווח (המתנה)';
+    var fvgTxt = d.fvg ? ('FVG '+(d.fvg.type==='bull'?'שורי':'דובי')+' $'+d.fvg.bot+'–$'+d.fvg.top) : 'אין FVG טרי';
+    p.innerHTML =
+     '<div class="top"><h3>🎯 ניתוח ICT — Inner Circle Trader</h3><span class="tk">'+d.ticker+'</span>'+
+       '<span class="badge '+okc+'">'+okt+'</span></div>'+
+     '<div class="body">'+
+       '<div class="chips">'+
+         '<span class="chip">Bias: <b>'+d.bias+'</b></span>'+
+         '<span class="chip zone">'+d.zone+'</span>'+
+         '<span class="chip kz">⏱ '+d.killzone+'</span>'+
+         '<span class="chip">כיוון: <b>'+sideTxt+'</b></span>'+
+       '</div>'+
+       '<div class="grid">'+
+         '<div class="cell entry"><div class="l">💰 כניסה</div><div class="v">'+fmt(d.entry)+'</div></div>'+
+         '<div class="cell stop"><div class="l">🛑 סטופ</div><div class="v">'+fmt(d.stop)+'</div></div>'+
+         '<div class="cell tgt"><div class="l">🎯 יעד 1</div><div class="v">'+fmt(d.target)+'</div></div>'+
+         '<div class="cell rr"><div class="l">⚖️ R:R</div><div class="v">1:'+d.rr+'</div></div>'+
+       '</div>'+
+       rrbar(d)+
+       '<div id="fxIctChartWrap"></div>'+
+       '<div class="expl">'+
+         '<div class="box"><div class="bl">⏱ מתי להיכנס</div>'+steplist(d.entry_steps,d.killzone)+'</div>'+
+         '<div class="box"><div class="bl">🎯 מתי לצאת</div>'+steplist(d.exit_steps,d.how)+'</div>'+
+       '</div>'+
+       '<div class="box" style="margin-top:12px"><div class="bl">💡 למה</div><div class="bt">'+d.why+'. '+fvgTxt+'. אזור OTE (פיבו 62–79%): $'+d.ote_low+'–$'+d.ote_high+'.</div></div>'+
+       '<div class="lvls"><span>PDH: $'+d.pdh+'</span><span>PDL: $'+d.pdl+'</span><span>OTE: $'+d.ote_low+'–$'+d.ote_high+'</span></div>'+
+       '<div class="disc">שיטת ICT (Michael J. Huddleston) · אוטומטי מנתוני מחיר · לא ייעוץ השקעות</div>'+
+     '</div>';
+    drawIctChart(d);
+  }
+  function drawIctChart(d){
+    var wrap=document.getElementById('fxIctChartWrap'); if(!wrap)return;
+    var s=d.series||[]; if(s.length<3){wrap.innerHTML='';return;}
+    var W=600,Hh=180,pl=6,pr=58,pt=10,pb=16;
+    var lv=[d.entry,d.stop,d.target,d.target2,d.ote_low,d.ote_high].filter(function(v){return typeof v==='number'&&v===v;});
+    var lo=Math.min.apply(null,s.concat(lv)),hi=Math.max.apply(null,s.concat(lv));
+    var pd=(hi-lo)*0.06||1; lo-=pd; hi+=pd;
+    var X=function(i){return pl+i*((W-pl-pr)/(s.length-1));};
+    var Y=function(v){return pt+(hi-v)/(hi-lo)*(Hh-pt-pb);};
+    function hl(v,c,dash,lab){ if(typeof v!=='number'||v!==v)return '';var y=Y(v).toFixed(1);
+      return '<line x1="'+pl+'" y1="'+y+'" x2="'+(W-pr)+'" y2="'+y+'" stroke="'+c+'" stroke-width="1.3" stroke-dasharray="'+dash+'" opacity=".9"/>'+
+             '<text x="'+(W-pr+4)+'" y="'+(+y+3)+'" font-size="10" font-family="Fira Code,monospace" fill="'+c+'">'+lab+' '+v+'</text>'; }
+    var path=''; s.forEach(function(v,i){path+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ';});
+    var area=path+'L'+X(s.length-1).toFixed(1)+' '+(Hh-pb)+' L'+pl+' '+(Hh-pb)+' Z';
+    var band=''; if(typeof d.ote_low==='number'&&typeof d.ote_high==='number'){var a=Y(d.ote_high),b=Y(d.ote_low);
+      band='<rect x="'+pl+'" y="'+Math.min(a,b).toFixed(1)+'" width="'+(W-pl-pr)+'" height="'+Math.abs(b-a).toFixed(1)+'" fill="rgba(99,102,241,.12)"/>';}
+    wrap.innerHTML='<div class="ictc"><svg viewBox="0 0 '+W+' '+Hh+'" preserveAspectRatio="none" width="100%" height="180" style="display:block">'+
+      '<defs><linearGradient id="ictg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0e7490" stop-opacity=".22"/><stop offset="1" stop-color="#0e7490" stop-opacity="0"/></linearGradient></defs>'+
+      band+'<path d="'+area+'" fill="url(#ictg)"/><path d="'+path+'" fill="none" stroke="#0e7490" stroke-width="2" stroke-linejoin="round"/>'+
+      hl(d.target2,'#10b981','2 3','יעד2')+hl(d.target,'#059669','5 4','יעד1')+hl(d.entry,'#0ea5e9','1 0','כניסה')+hl(d.stop,'#dc2626','5 4','סטופ')+
+      '<circle cx="'+X(s.length-1).toFixed(1)+'" cy="'+Y(s[s.length-1]).toFixed(1)+'" r="3.5" fill="#0e7490"/>'+
+      '<line id="ictcx" x1="0" y1="'+pt+'" x2="0" y2="'+(Hh-pb)+'" stroke="#334155" stroke-width="1" opacity="0"/>'+
+      '<rect id="ictov" x="0" y="0" width="'+W+'" height="'+Hh+'" fill="transparent" style="cursor:crosshair"/></svg>'+
+      '<div class="icttip" id="icttip"></div></div>';
+    var svg=wrap.querySelector('svg'),cx=wrap.querySelector('#ictcx'),tip=wrap.querySelector('#icttip'),ov=wrap.querySelector('#ictov');
+    ov.addEventListener('mousemove',function(e){var r=svg.getBoundingClientRect();var px=(e.clientX-r.left)/r.width*W;
+      var step=(W-pl-pr)/(s.length-1);var idx=Math.round((px-pl)/step);idx=Math.max(0,Math.min(s.length-1,idx));
+      var xx=X(idx);cx.setAttribute('x1',xx);cx.setAttribute('x2',xx);cx.setAttribute('opacity','.5');
+      tip.style.opacity=1;tip.style.left=((xx/W)*r.width)+'px';tip.textContent='$'+s[idx];});
+    ov.addEventListener('mouseleave',function(){cx.setAttribute('opacity','0');tip.style.opacity=0;});
+  }
+  function fail(tk,msg){ var p=build(); if(!p)return;
+    p.innerHTML='<div class="top"><h3>🎯 ניתוח ICT</h3><span class="tk">'+tk+'</span></div><div class="ldg">'+(msg||'לא ניתן לחשב ICT למניה זו כרגע. נסה שוב בעוד רגע.')+'<br><button onclick="window.__ictRetry&&window.__ictRetry()" style="margin-top:10px;background:linear-gradient(120deg,#10b981,#0ea5e9);color:#fff;border:none;border-radius:10px;padding:6px 16px;font-weight:700;cursor:pointer;font-family:Rubik,sans-serif">נסה שוב</button></div>'; }
+  function load(tk){
+    if(busy)return; busy=true; loading(tk);
+    window.__ictRetry=function(){ busy=false; last=null; load(tk); };
+    var ctrl=('AbortController' in window)?new AbortController():null;
+    var to=setTimeout(function(){ if(ctrl)ctrl.abort(); },22000);
+    fetch('/ict?ticker='+encodeURIComponent(tk), ctrl?{signal:ctrl.signal}:{})
+      .then(function(r){ return r.json(); })
+      .then(function(j){ clearTimeout(to); busy=false;
+        if(j && !j.error && j.entry!==undefined){ render(j); }
+        else { fail(tk, (j&&j.error)?'אין מספיק נתונים ל-ICT עבור מניה זו.':null); } })
+      .catch(function(){ clearTimeout(to); busy=false; fail(tk); });
+  }
+  setInterval(function(){
+    var tk=window._currentTicker;
+    if(tk && tk!==last && document.getElementById('tradeCard')){ last=tk; load(tk); }
+  }, 700);
+})();
+</script>
+
+<!-- ===== ICT Scanner card (top of analysis tab) ===== -->
+<style>
+#fxScan{margin:0 0 20px;border-radius:22px;overflow:hidden;position:relative;
+  background:rgba(255,255,255,.72);backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
+  border:1px solid rgba(255,255,255,.7);box-shadow:0 12px 34px rgba(15,23,42,.1);direction:rtl}
+#fxScan .top{display:flex;align-items:center;gap:10px;padding:15px 18px;color:#fff;background:linear-gradient(120deg,#065f46,#0e7490 60%,#155e75)}
+#fxScan .top h3{font-family:'Rubik',sans-serif;font-size:16px;font-weight:800;margin:0}
+#fxScan .top .kz{margin-inline-start:auto;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35)}
+#fxScan .body{padding:14px 16px}
+#fxScan .sbtn{background:linear-gradient(120deg,#10b981,#0ea5e9);color:#fff;border:none;border-radius:12px;padding:9px 18px;font-weight:800;cursor:pointer;font-family:'Rubik',sans-serif;font-size:13.5px;box-shadow:0 6px 16px rgba(16,185,129,.3)}
+#fxScan .sbtn:hover{filter:brightness(1.05)}
+#fxScan .meta{font-size:11.5px;color:#7c8aa0;margin-top:8px}
+#fxScan .ld{padding:16px;text-align:center;color:#7c8aa0;font-size:13px}
+#fxScan table{width:100%;border-collapse:collapse;font-size:12.5px}
+#fxScan th{font-size:10.5px;text-transform:uppercase;color:#94a3b8;font-weight:800;text-align:right;padding:8px 8px;border-bottom:1px solid rgba(15,23,42,.08)}
+#fxScan td{padding:9px 8px;border-bottom:1px solid rgba(15,23,42,.06);font-weight:600;white-space:nowrap}
+#fxScan tr:last-child td{border-bottom:none}
+#fxScan .tk{font-family:'Fira Code',monospace;font-weight:800;font-size:13.5px;color:#0b1220}
+#fxScan .num{font-family:'Fira Code',monospace}
+#fxScan .lg{font-size:10px;font-weight:800;color:#065f46;background:rgba(16,185,129,.14);padding:2px 8px;border-radius:999px}
+#fxScan .sh{font-size:10px;font-weight:800;color:#991b1b;background:rgba(220,38,38,.14);padding:2px 8px;border-radius:999px}
+#fxScan .rrmini{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:3px;background:rgba(15,23,42,.06);gap:1px}
+#fxScan .rrmini .rk{flex:1;background:#dc2626}
+#fxScan .rrmini .rw{background:#059669}
+#fxScan .go{background:linear-gradient(120deg,#10b981,#0ea5e9);color:#fff;border:none;border-radius:9px;padding:5px 12px;font-weight:800;cursor:pointer;font-family:'Rubik',sans-serif;font-size:12px}
+#fxScan .up{color:#059669}#fxScan .dn{color:#dc2626}
+#fxScan .tblwrap{overflow-x:auto;margin-top:4px}
+</style>
+<script>
+(function(){
+  var panel=null, built=false, running=false;
+  function build(){ if(built)return panel; var tab=document.getElementById('tabAnalysis'); if(!tab)return null;
+    panel=document.createElement('div'); panel.id='fxScan'; tab.insertBefore(panel, tab.firstChild); built=true; idle(); return panel; }
+  function head(kz){ return '<div class="top"><h3>🎯 סורק ICT — setups מוכנים עכשיו</h3><span class="kz">'+(kz||'⏱ סורק מניות במגמת עלייה באזור כניסה')+'</span></div>'; }
+  function idle(){ var p=build(); if(!p)return; p.innerHTML=head()+'<div class="body"><button class="sbtn" onclick="window.__ictScan&&window.__ictScan()">🔍 סרוק עכשיו</button><div class="meta">סורק ~46 מניות מובילות ומחזיר setups של Long (מגמת עלייה) ו-Short (מגמת ירידה) שנמצאות עכשיו באזור כניסה.</div></div>'; }
+  function loading(){ var p=build(); if(!p)return; p.innerHTML=head()+'<div class="ld">סורק מניות… מחשב מבנה שוק ואזורי כניסה (עד ~15 שנ׳)</div>'; }
+  function render(d){
+    var p=build(); if(!p)return;
+    var m=d.matches||[];
+    var rows = m.length? ('<div class="tblwrap"><table><thead><tr><th>מניה</th><th>כיוון</th><th>מחיר</th><th>כניסה</th><th>סטופ</th><th>יעד</th><th>R:R</th><th></th></tr></thead><tbody>'+
+      m.map(function(x){return '<tr><td><span class="tk">'+x.ticker+'</span></td><td><span class="'+(x.side==='SHORT'?'sh':'lg')+'">'+x.side+'</span></td>'+
+        '<td class="num">$'+x.price+'</td><td class="num">$'+x.entry+'</td><td class="num dn">$'+x.stop+'</td><td class="num up">$'+x.target+'</td>'+
+        '<td style="font-weight:800;min-width:76px"><span class="num">1:'+x.rr+'</span><div class="rrmini"><i class="rk"></i><i class="rw" style="flex:'+x.rr+'"></i></div></td>'+
+        '<td><button class="go" onclick="if(window.setTicker){setTicker(\''+x.ticker+'\');window.scrollTo({top:420,behavior:\'smooth\'});}">נתח ›</button></td></tr>';}).join('')+
+      '</tbody></table></div>')
+      : '<div class="ld">אין setups מוכנים כרגע — רוב המניות מורחקות מאזור הכניסה. נסה שוב מאוחר יותר.</div>';
+    p.innerHTML=head(d.killzone)+'<div class="body">'+rows+
+      '<div class="meta">נסרקו '+d.scanned+' מניות · נמצאו '+d.found+' · עודכן '+d.time+' · '+
+      '<a href="javascript:void(0)" onclick="window.__ictScan&&window.__ictScan()" style="color:#0e7490;font-weight:700">רענן</a></div></div>';
+  }
+  window.__ictScan=function(){
+    if(running)return; running=true; loading();
+    var ctrl=('AbortController' in window)?new AbortController():null; var to=setTimeout(function(){if(ctrl)ctrl.abort();},30000);
+    fetch('/ict-scan', ctrl?{signal:ctrl.signal}:{}).then(function(r){return r.json();}).then(function(j){ clearTimeout(to); running=false; render(j); })
+      .catch(function(){ clearTimeout(to); running=false; var p=build(); if(p)p.innerHTML=head()+'<div class="ld">הסריקה נכשלה. <a href="javascript:void(0)" onclick="window.__ictScan()" style="color:#0e7490;font-weight:700">נסה שוב</a></div>'; });
+  };
+  function init(){ if(build()){ setTimeout(window.__ictScan, 1200); } }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+
+<!-- ===== Score ring gauge (visualizes the analysis score number) ===== -->
+<style>#fxScoreRing{display:flex;justify-content:center;margin-top:10px}</style>
+<script>
+(function(){
+  var last=null;
+  function tick(){
+    var el=document.getElementById('clScoreNum'); if(!el) return;
+    var m=(el.textContent||'').match(/(\d+)/); if(!m){ return; }
+    var v=parseInt(m[1],10); if(isNaN(v)) return; if(v===last) return; last=v;
+    var host=(el.closest&&el.closest('.cl-score-bar'))||el.parentElement; if(!host) return;
+    var ring=document.getElementById('fxScoreRing');
+    if(!ring){ ring=document.createElement('div'); ring.id='fxScoreRing'; host.appendChild(ring); }
+    var col=v>=70?'#059669':(v>=40?'#c98500':'#dc2626');
+    var C=2*Math.PI*26, off=C*(1-Math.max(0,Math.min(100,v))/100);
+    ring.innerHTML='<svg viewBox="0 0 64 64" width="64" height="64" style="overflow:visible">'+
+      '<circle cx="32" cy="32" r="26" fill="none" stroke="rgba(15,23,42,.08)" stroke-width="7"/>'+
+      '<circle cx="32" cy="32" r="26" fill="none" stroke="'+col+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 32 32)" style="transition:stroke-dashoffset .8s ease"/>'+
+      '<text x="32" y="36" text-anchor="middle" font-family="Fira Code,monospace" font-size="18" font-weight="800" fill="'+col+'">'+v+'</text>'+
+      '<text x="32" y="48" text-anchor="middle" font-family="Rubik,sans-serif" font-size="7.5" fill="#94a3b8">/100</text></svg>';
+  }
+  setInterval(tick, 800);
+})();
+</script>
+
+
+<!-- ===== Bento dark tuning for feature panels ===== -->
+<style>
+#fxSecTip{background:rgba(19,28,48,.95)!important;border-color:rgba(255,255,255,.1)!important}
+#fxSecTip .h,#fxSecTip .tk{color:#f4f7fb!important}
+#fxSecTip .r{border-color:rgba(255,255,255,.08)!important}
+#fxSecTip .pr,#fxSecTip .ld{color:#9fb0c9!important}
+#fxIct{background:#131c30!important;border-color:rgba(255,255,255,.08)!important;box-shadow:0 12px 34px rgba(0,0,0,.35)!important}
+#fxIct .top{background:linear-gradient(120deg,#1a1206,#7c3aed 55%,#b45309)!important}
+#fxIct .chip{background:rgba(255,255,255,.06)!important;color:#cdd8ea!important;border-color:rgba(255,255,255,.12)!important}
+#fxIct .chip.kz{background:rgba(245,158,11,.16)!important;color:#fbbf24!important;border-color:rgba(245,158,11,.35)!important}
+#fxIct .chip.zone{background:rgba(139,92,246,.16)!important;color:#c4b5fd!important;border-color:rgba(139,92,246,.35)!important}
+#fxIct .cell,#fxIct .box,#fxIct .ictc{background:#182238!important;border-color:rgba(255,255,255,.08)!important}
+#fxIct .cell .l{color:#8393b0!important}
+#fxIct .cell.entry .v{color:#38bdf8!important}
+#fxIct .box .bl{color:#fbbf24!important}
+#fxIct .box .bt,#fxIct .isteps li{color:#cdd8ea!important}
+#fxIct .isteps li::marker{color:#fbbf24!important}
+#fxIct .lvls,#fxIct .disc,#fxIct .ldg{color:#8393b0!important}
+#fxIct .fxrr-track{background:rgba(255,255,255,.06)!important}
+#fxIct .fxrr-t,#fxIct .fxrr-lab{color:#8393b0!important}
+#fxScan{background:#131c30!important;border-color:rgba(255,255,255,.08)!important}
+#fxScan .top{background:linear-gradient(120deg,#3b0764,#7c3aed 55%,#b45309)!important}
+#fxScan th{color:#8393b0!important;border-color:rgba(255,255,255,.09)!important}
+#fxScan td{border-color:rgba(255,255,255,.07)!important;color:#e6ecf6!important}
+#fxScan .tk,#fxScan .num{color:#f4f7fb!important}
+#fxScan .sbtn,#fxScan .go{background:linear-gradient(120deg,#f59e0b,#fbbf24)!important;color:#1a1206!important}
+#fxScan .meta,#fxScan .ld{color:#8393b0!important}
+#fxScan .rrmini{background:rgba(255,255,255,.07)!important}
+#fxScoreRing svg text{fill:#f4f7fb!important}
+</style>
