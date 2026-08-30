@@ -2019,6 +2019,11 @@ def index_bento():
     return render_template('index_bento.html')
 
 
+@app.route('/apple')
+def index_apple():
+    return render_template('index_apple.html')
+
+
 @app.route('/analyze')
 def analyze():
     ticker = request.args.get('ticker', '').upper().strip()
